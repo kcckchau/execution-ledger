@@ -1,0 +1,64 @@
+---
+description: Architecture rules for the execution-ledger trading journal MVP
+alwaysApply: true
+---
+
+# Architecture Rules
+
+## Stack
+- Next.js App Router + TypeScript
+- No backend, no DB, no auth in V1
+- Persistence: `localStorage` only
+
+## Data Model
+
+```ts
+interface Trade {
+  id: string;
+  date: string;       // ISO string
+  symbol: string;
+  entry: number;
+  exit: number;
+  pnl: number;
+  setup: string;
+  grade: string;
+  notes?: string;
+}
+```
+
+## File Structure
+
+```
+app/
+  page.tsx              # Trade list + filters
+  add/page.tsx          # Add trade form
+components/
+  TradeTable.tsx        # Renders list of trades
+  TradeForm.tsx         # Add/edit form
+  TradeFilters.tsx      # Filter by setup/grade
+lib/
+  trades.ts             # localStorage helpers (load/save)
+  pnl.ts                # PnL calculations
+  format.ts             # Display formatting
+types/
+  trade.ts              # Trade interface
+```
+
+## Rules
+
+- Components are small and focused: layout, form, table, filter
+- UI components only render data — no business logic inside
+- Business logic lives in `lib/`
+- No repository pattern, no service layer, no global state unless needed
+- No premature abstraction
+- Prefer flat file structure over deep nesting
+
+## Core Loop (build in this order)
+1. Add trade form
+2. Save to local state
+3. Persist to localStorage
+4. Render trades in table
+5. Filter by setup and grade
+
+## Non-Goals (V1)
+- Broker integration, real-time data, cloud sync, AI, advanced analytics
