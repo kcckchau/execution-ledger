@@ -1,36 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Execution Ledger
 
-## Getting Started
+A trade journal for tracking and reviewing your executions. Data is stored in a shared Postgres database so multiple machines stay in sync.
 
-First, run the development server:
+---
+
+## 1. Set up a free database (Neon)
+
+1. Go to [neon.tech](https://neon.tech) and create a free account
+2. Create a new project (pick any region close to you)
+3. Copy the **Connection string** — it looks like:
+   ```
+   postgresql://user:password@ep-xxx.us-east-2.aws.neon.tech/neondb?sslmode=require
+   ```
+4. Keep this URL — you'll use it on both machines
+
+---
+
+## 2. Running with Docker (recommended)
+
+**Prerequisites:** [Docker](https://docs.docker.com/get-docker/) installed.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Build the image (once, or after pulling updates)
+docker build -t execution-ledger .
+
+# Run — paste your Neon connection string here
+docker run -p 3000:3000 -e DATABASE_URL="postgresql://..." execution-ledger
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). The first run automatically applies the database migrations.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Run both your laptop and desktop with the same `DATABASE_URL` and they share all trade data.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+To run in the background (detached):
 
-## Learn More
+```bash
+docker run -d -p 3000:3000 \
+  -e DATABASE_URL="postgresql://..." \
+  --name execution-ledger \
+  execution-ledger
+```
 
-To learn more about Next.js, take a look at the following resources:
+To stop / restart:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+docker stop execution-ledger
+docker start execution-ledger
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## 3. Local Development
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+**Prerequisites:** Node.js 20+ and [pnpm](https://pnpm.io/installation)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+# Copy and fill in your database URL
+cp .env.example .env
+# edit .env and set DATABASE_URL
+
+pnpm install       # also runs prisma generate
+pnpm dev
+```
+
+Open [http://localhost:3000](http://localhost:3000). The app hot-reloads as you edit files.
+
+Apply migrations to your database before first run:
+
+```bash
+pnpm exec prisma migrate deploy
+```
+
+To build and run the production server locally:
+
+```bash
+pnpm build
+pnpm start
+```
