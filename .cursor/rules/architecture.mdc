@@ -3,6 +3,8 @@ description: Architecture rules for the execution-ledger trading journal MVP
 alwaysApply: true
 ---
 
+Use pnpm, not npm
+
 # Architecture Rules
 
 ## Stack
