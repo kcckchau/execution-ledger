@@ -11,10 +11,18 @@ import {
   LineStyle,
   type Logical,
   type SeriesMarker,
+  type SeriesMarkerShape,
   type UTCTimestamp,
 } from 'lightweight-charts';
+import { createSessionTimezoneChartFormatters } from '@/lib/chartTimeLocalization';
+import { computeEma } from '@/lib/ema';
 import type { SessionChartData, SessionChartExecutionProp } from '@/types/sessionChart';
+import type { TradeMarkerItem } from '@/types/tradeMarkers';
 import type { ActionType } from '@/types/setup';
+
+const VWAP_COLOR = '#b8bcc4';
+const EMA9_COLOR = '#22d3ee';
+const EMA21_COLOR = '#eab308';
 
 const ACTION_MARKER_COLORS: Record<ActionType, string> = {
   starter: '#22c55e',
@@ -36,6 +44,10 @@ const LEVEL_LINE_CONFIG: {
   { key: 'premarket_low', title: 'Pre L', color: '#38bdf8', lineStyle: LineStyle.Solid },
   { key: 'opening_range_high', title: 'OR H', color: '#fb923c', lineStyle: LineStyle.Solid },
   { key: 'opening_range_low', title: 'OR L', color: '#f472b6', lineStyle: LineStyle.Solid },
+  { key: 'regular_high', title: 'RTH H', color: '#34d399', lineStyle: LineStyle.Solid },
+  { key: 'regular_low', title: 'RTH L', color: '#059669', lineStyle: LineStyle.Solid },
+  { key: 'aftermarket_high', title: 'AH H', color: '#c084fc', lineStyle: LineStyle.Solid },
+  { key: 'aftermarket_low', title: 'AH L', color: '#a855f7', lineStyle: LineStyle.Solid },
 ];
 
 function toUtcTimestamp(iso: string): UTCTimestamp {
@@ -54,14 +66,42 @@ function normalizeExecution(
   };
 }
 
+const CHART_MARKER_SHAPES = new Set<string>(['circle', 'square', 'arrowUp', 'arrowDown']);
+
+function tradeMarkerToSeriesMarker(m: TradeMarkerItem): SeriesMarker<UTCTimestamp> {
+  const iso = m.minuteTime ?? m.time;
+  const shape = CHART_MARKER_SHAPES.has(m.shape)
+    ? (m.shape as SeriesMarkerShape)
+    : ('circle' as SeriesMarkerShape);
+  return {
+    time: toUtcTimestamp(iso),
+    position: 'atPriceMiddle',
+    price: m.price,
+    shape,
+    color: m.color,
+    text: m.text,
+    size: 1,
+  };
+}
+
 export interface SessionChartProps {
   session: SessionChartData;
-  executions: SessionChartExecutionProp[];
+  /**
+   * When defined (including an empty array), IBKR file markers: shape, color, text from payload.
+   * When omitted, `executions` drives markers (journal / mock).
+   */
+  tradeMarkers?: TradeMarkerItem[];
+  executions?: SessionChartExecutionProp[];
   /** Extra classes for the outer wrapper (chart is `w-full` × `min-h`). */
   className?: string;
 }
 
-export default function SessionChart({ session, executions, className = '' }: SessionChartProps) {
+export default function SessionChart({
+  session,
+  tradeMarkers,
+  executions = [],
+  className = '',
+}: SessionChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -85,8 +125,34 @@ export default function SessionChart({ session, executions, className = '' }: Se
       value: c.vwap,
     }));
 
+    const closes = sorted.map((c) => c.close);
+    const ema9SeriesValues = computeEma(closes, 9);
+    const ema21SeriesValues = computeEma(closes, 21);
+
+    const ema9Data = sorted
+      .map((c, i) => ({
+        time: toUtcTimestamp(c.time),
+        value: ema9SeriesValues[i],
+      }))
+      .filter((d): d is { time: UTCTimestamp; value: number } => d.value !== null);
+
+    const ema21Data = sorted
+      .map((c, i) => ({
+        time: toUtcTimestamp(c.time),
+        value: ema21SeriesValues[i],
+      }))
+      .filter((d): d is { time: UTCTimestamp; value: number } => d.value !== null);
+
+    const sessionTimeZone = session.timezone?.trim() || 'America/New_York';
+    const { timeFormatter, tickMarkFormatter } =
+      createSessionTimezoneChartFormatters(sessionTimeZone);
+
     const chart = createChart(el, {
       autoSize: true,
+      localization: {
+        locale: 'en-US',
+        timeFormatter,
+      },
       layout: {
         background: { type: ColorType.Solid, color: '#0b0e11' },
         textColor: '#d1d5db',
@@ -114,8 +180,37 @@ export default function SessionChart({ session, executions, className = '' }: Se
         rightOffset: 0,
         minBarSpacing: 0.5,
         lockVisibleTimeRangeOnResize: false,
+        tickMarkFormatter,
       },
     });
+
+    // Lines first so candlesticks draw on top.
+    const vwapSeries = chart.addSeries(LineSeries, {
+      color: VWAP_COLOR,
+      lineWidth: 2,
+      priceLineVisible: false,
+      lastValueVisible: true,
+      title: 'VWAP',
+    });
+    vwapSeries.setData(vwapData);
+
+    const ema9Line = chart.addSeries(LineSeries, {
+      color: EMA9_COLOR,
+      lineWidth: 2,
+      priceLineVisible: false,
+      lastValueVisible: true,
+      title: 'EMA 9',
+    });
+    ema9Line.setData(ema9Data);
+
+    const ema21Line = chart.addSeries(LineSeries, {
+      color: EMA21_COLOR,
+      lineWidth: 2,
+      priceLineVisible: false,
+      lastValueVisible: true,
+      title: 'EMA 21',
+    });
+    ema21Line.setData(ema21Data);
 
     const candleSeries = chart.addSeries(CandlestickSeries, {
       upColor: '#22c55e',
@@ -125,15 +220,6 @@ export default function SessionChart({ session, executions, className = '' }: Se
       wickDownColor: '#ef4444',
     });
     candleSeries.setData(candleData);
-
-    const vwapSeries = chart.addSeries(LineSeries, {
-      color: '#f59e0b',
-      lineWidth: 2,
-      priceLineVisible: false,
-      lastValueVisible: true,
-      title: 'VWAP',
-    });
-    vwapSeries.setData(vwapData);
 
     for (const { key, title, color, lineStyle: ls } of LEVEL_LINE_CONFIG) {
       const price = session.levels[key];
@@ -148,18 +234,21 @@ export default function SessionChart({ session, executions, className = '' }: Se
       });
     }
 
-    const markers: SeriesMarker<UTCTimestamp>[] = executions.map((raw) => {
-      const ex = normalizeExecution(raw);
-      return {
-        time: ex.time,
-        position: 'atPriceMiddle',
-        price: ex.price,
-        shape: 'circle',
-        color: ACTION_MARKER_COLORS[ex.action],
-        text: ex.action.charAt(0).toUpperCase(),
-        size: 1.2,
-      };
-    });
+    const markers: SeriesMarker<UTCTimestamp>[] =
+      tradeMarkers !== undefined
+        ? tradeMarkers.map(tradeMarkerToSeriesMarker)
+        : executions.map((raw) => {
+            const ex = normalizeExecution(raw);
+            return {
+              time: ex.time,
+              position: 'atPriceMiddle',
+              price: ex.price,
+              shape: 'circle' as const,
+              color: ACTION_MARKER_COLORS[ex.action],
+              text: ex.action.charAt(0).toUpperCase(),
+              size: 1.2,
+            };
+          });
 
     createSeriesMarkers(candleSeries, markers, { autoScale: true });
 
@@ -189,7 +278,7 @@ export default function SessionChart({ session, executions, className = '' }: Se
       ro.disconnect();
       chart.remove();
     };
-  }, [session, executions]);
+  }, [session, executions, tradeMarkers]);
 
   if (session.candles.length === 0) {
     return (

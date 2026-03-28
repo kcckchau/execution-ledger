@@ -1,5 +1,6 @@
 import { readFile } from 'fs/promises';
 import path from 'path';
+import { normalizeMarketSessionFile, type MarketSessionFileJson } from '@/lib/normalizeMarketSession';
 import type { SessionChartData } from '@/types/sessionChart';
 
 /** YYYY-MM-DD */
@@ -53,5 +54,6 @@ export async function loadMarketSession(
     return { ok: false, reason: 'invalid_json' };
   }
 
-  return { ok: true, data: parsed as SessionChartData };
+  const data = normalizeMarketSessionFile(parsed as MarketSessionFileJson);
+  return { ok: true, data };
 }

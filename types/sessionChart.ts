@@ -19,6 +19,12 @@ export interface SessionLevels {
   premarket_low: number;
   opening_range_high: number;
   opening_range_low: number;
+  /** RTH session high/low when present in extended-hours files */
+  regular_high?: number;
+  regular_low?: number;
+  /** After-hours session high/low */
+  aftermarket_high?: number;
+  aftermarket_low?: number;
 }
 
 /** Session payload for the intraday chart (1-minute bars + levels). */

@@ -19,7 +19,7 @@ export default function SetupLog({
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-12 text-center">
         <p className="text-sm font-medium text-zinc-300">No setups logged yet.</p>
         <p className="mt-1.5 text-xs text-zinc-500 max-w-xs mx-auto">
-          Start by recording a thesis, then log each execution under it.
+          Start by logging a structured decision and risk plan, then add executions.
         </p>
       </div>
     );

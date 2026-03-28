@@ -8,11 +8,14 @@ import {
   GRADE_COLORS,
   ACTION_BORDER_COLORS,
   ACTION_LABELS,
+  MARKET_CONTEXT_LABELS,
 } from '@/types/setup';
+import { formatPlannedRiskReward } from '@/lib/plannedRiskReward';
 import { calcSetupPnl, formatPnl } from '@/lib/pnl';
 import { formatSetupDate } from '@/lib/dateUtils';
 import ExecutionForm from './ExecutionForm';
 import ReviewPanel from './ReviewPanel';
+import SetupSessionChart from './SetupSessionChart';
 
 interface SetupCardProps {
   setup: TradeSetup;
@@ -71,6 +74,14 @@ export default function SetupCard({
   const pnl = calcSetupPnl(setup.executions, setup.direction);
   const hasExecutions = setup.executions.length > 0;
   const hasRealizedPnl = pnl.totalExitSize > 0;
+  const plannedRR = formatPlannedRiskReward(
+    setup.riskEntry,
+    setup.riskStop,
+    setup.riskTarget,
+    setup.direction
+  );
+  const hasRiskPlan =
+    setup.riskEntry.trim() || setup.riskStop.trim() || setup.riskTarget.trim();
 
   const sortedExecutions = [...setup.executions].sort(
     (a, b) => new Date(a.executionTime).getTime() - new Date(b.executionTime).getTime(),
@@ -138,13 +149,85 @@ export default function SetupCard({
         </div>
       </div>
 
-      {/* ── Thesis + notes ── */}
-      <div className="px-5 pb-4 flex flex-col gap-1.5">
-        <p className="text-sm text-zinc-300 leading-relaxed">{setup.thesis}</p>
+      {/* ── Decision + risk + notes ── */}
+      <div className="flex flex-col gap-3 px-5 pb-4">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+            Decision
+          </p>
+          <dl className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2">
+            <div className="flex gap-2">
+              <dt className="shrink-0 text-zinc-500">Context</dt>
+              <dd className="text-zinc-200">
+                {MARKET_CONTEXT_LABELS[setup.marketContext]}
+              </dd>
+            </div>
+            <div className="flex gap-2 sm:col-span-2">
+              <dt className="shrink-0 text-zinc-500">Setup</dt>
+              <dd className="text-zinc-200">{setup.setupType}</dd>
+            </div>
+            <div className="flex flex-col gap-0.5 sm:col-span-2">
+              <dt className="text-zinc-500">Trigger</dt>
+              <dd className="text-zinc-300">{setup.trigger}</dd>
+            </div>
+            <div className="flex flex-col gap-0.5 sm:col-span-2">
+              <dt className="text-zinc-500">Invalidation</dt>
+              <dd className="text-zinc-300">{setup.invalidation}</dd>
+            </div>
+            <div className="flex flex-col gap-0.5 sm:col-span-2">
+              <dt className="text-zinc-500">Target (idea)</dt>
+              <dd className="text-zinc-300">{setup.decisionTarget}</dd>
+            </div>
+          </dl>
+        </div>
+
+        {hasRiskPlan && (
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+              Risk plan
+            </p>
+            <dl className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm">
+              {setup.riskEntry.trim() && (
+                <div className="flex gap-2">
+                  <dt className="text-zinc-500">Entry</dt>
+                  <dd className="font-mono tabular-nums text-zinc-200">{setup.riskEntry}</dd>
+                </div>
+              )}
+              {setup.riskStop.trim() && (
+                <div className="flex gap-2">
+                  <dt className="text-zinc-500">Stop</dt>
+                  <dd className="font-mono tabular-nums text-zinc-200">{setup.riskStop}</dd>
+                </div>
+              )}
+              {setup.riskTarget.trim() && (
+                <div className="flex gap-2">
+                  <dt className="text-zinc-500">Target</dt>
+                  <dd className="font-mono tabular-nums text-zinc-200">{setup.riskTarget}</dd>
+                </div>
+              )}
+              {plannedRR !== null && (
+                <div className="flex gap-2">
+                  <dt className="text-zinc-500">Planned R:R</dt>
+                  <dd className="font-mono tabular-nums text-emerald-400/90">
+                    1 : {plannedRR}
+                  </dd>
+                </div>
+              )}
+            </dl>
+          </div>
+        )}
+
         {setup.overallNotes && (
-          <p className="text-xs text-zinc-500">{setup.overallNotes}</p>
+          <p className="text-xs leading-relaxed text-zinc-500">{setup.overallNotes}</p>
         )}
       </div>
+
+      <SetupSessionChart
+        key={`${setup.symbol}-${setup.setupDate}`}
+        symbol={setup.symbol}
+        setupDate={setup.setupDate}
+        executions={setup.executions}
+      />
 
       {/* ── Executions ── */}
       <div className="border-t border-zinc-800">
