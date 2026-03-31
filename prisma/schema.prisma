@@ -1,0 +1,67 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model TradeSetup {
+  id             String   @id
+  setupDate      String
+  symbol         String
+  direction      String
+  marketContext  String
+  setupType      String
+  trigger        String
+  invalidation   String
+  decisionTarget String
+  riskEntry      String
+  riskStop       String
+  riskTarget     String
+  initialGrade   String?
+  status         String   @default("open")
+  overallNotes   String   @default("")
+  /// Stored as JSON: { followedPlan, wentWell, failed, lesson }
+  review         Json?
+  executions     Execution[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Execution {
+  id            String     @id
+  setupId       String
+  actionType    String
+  price         Float
+  size          Int
+  executionTime DateTime
+  note          String     @default("")
+  setup         TradeSetup @relation(fields: [setupId], references: [id], onDelete: Cascade)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+model ChartMarker {
+  id             String   @id
+  symbol         String
+  tradeDate      String
+  executionTime  DateTime
+  side           String
+  shares         Float
+  price          Float
+  executionType  String
+  positionEffect String
+  source         String   @default("ibkr")
+  externalId     String
+  markerShape    String
+  markerColor    String
+  markerText     String
+  createdAt      DateTime @default(now())
+
+  @@unique([symbol, tradeDate, externalId])
+  @@index([symbol, tradeDate])
+}

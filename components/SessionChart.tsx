@@ -31,6 +31,13 @@ const ACTION_MARKER_COLORS: Record<ActionType, string> = {
   exit: '#ef4444',
 };
 
+const ACTION_MARKER_LABELS: Record<ActionType, string> = {
+  starter: 'O',
+  add: 'A',
+  trim: 'T',
+  exit: 'C',
+};
+
 const LEVEL_LINE_CONFIG: {
   key: keyof SessionChartData['levels'];
   title: string;
@@ -73,9 +80,15 @@ function tradeMarkerToSeriesMarker(m: TradeMarkerItem): SeriesMarker<UTCTimestam
   const shape = CHART_MARKER_SHAPES.has(m.shape)
     ? (m.shape as SeriesMarkerShape)
     : ('circle' as SeriesMarkerShape);
+  const position =
+    shape === 'arrowUp'
+      ? 'atPriceBottom'
+      : shape === 'arrowDown'
+        ? 'atPriceTop'
+        : 'atPriceMiddle';
   return {
     time: toUtcTimestamp(iso),
-    position: 'atPriceMiddle',
+    position,
     price: m.price,
     shape,
     color: m.color,
@@ -245,7 +258,7 @@ export default function SessionChart({
               price: ex.price,
               shape: 'circle' as const,
               color: ACTION_MARKER_COLORS[ex.action],
-              text: ex.action.charAt(0).toUpperCase(),
+              text: ACTION_MARKER_LABELS[ex.action],
               size: 1.2,
             };
           });

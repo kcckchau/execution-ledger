@@ -27,7 +27,7 @@ type Side = 'BOT' | 'SLD';
 type ExecutionType = 'starter' | 'add' | 'trim' | 'exit';
 
 interface CsvRow {
-  localTime: string; // "2026-03-30 10:52:49"
+  localTime: string; // "2026-03-30 10:52:49"  (NY wall-clock from CSV)
   symbol: string;
   side: Side;
   shares: number;
@@ -39,8 +39,9 @@ interface MergedFill {
   symbol: string;
   side: Side;
   shares: number;
-  price: number; // VWAP across partial fills
-  date: Date;
+  price: number;    // VWAP across partial fills
+  date: Date;       // UTC Date (used only for sort order)
+  csvLocalStr: string; // Original NY wall-clock string from earliest fill, e.g. "2026-03-30 10:52:49"
   permId: string;
 }
 
@@ -60,92 +61,76 @@ interface MarkerItem {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const COLORS: Record<ExecutionType, string> = {
-  starter: '#22c55e',
-  add:     '#3b82f6',
-  trim:    '#eab308',
-  exit:    '#ef4444',
+/**
+ * Marker colors are keyed by execution side:
+ *   - BOT  -> darker green than the up-candle
+ *   - SLD  -> darker red than the down-candle
+ */
+const COLORS: Record<Side, string> = {
+  BOT: '#15803d', // green-700 — darker than candlestick green
+  SLD: '#b91c1c', // red-700  — darker than candlestick red
 };
 
 const LABEL: Record<ExecutionType, string> = {
-  starter: 'S',
+  starter: 'O',
   add:     'A',
   trim:    'T',
-  exit:    'X',
+  exit:    'C',
 };
 
 // ── Time helpers ──────────────────────────────────────────────────────────────
 
 /**
- * Returns the UTC offset string for America/New_York on a given date.
- * e.g. "-04:00" (EDT summer) or "-05:00" (EST winter).
+ * Compute the UTC offset for America/New_York on a given date string (YYYY-MM-DD).
+ * Uses a pure JS DST calculation — no Intl dependency, works on any machine timezone.
  *
- * Uses the difference between UTC noon and New York noon to compute the offset,
- * which is robust across all Node.js versions and does not depend on `shortOffset`.
+ * US DST rule: EDT (UTC-4) from the 2nd Sunday of March to the 1st Sunday of November.
  */
 function easternOffset(dateStr: string): string {
-  // Probe at UTC noon — safely within the trading day, away from DST boundaries.
-  const probe = new Date(`${dateStr}T12:00:00Z`);
+  const [y, m, d] = dateStr.split('-').map(Number);
 
-  const nyFmt = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/New_York',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
-  const nyTime = nyFmt.format(probe); // "08:00" for EDT, "07:00" for EST
-  const [nyH, nyM] = nyTime.split(':').map(Number);
+  function nthSunday(year: number, month: number, n: number): number {
+    const firstOfMonth = new Date(Date.UTC(year, month - 1, 1));
+    const firstSun = (7 - firstOfMonth.getUTCDay()) % 7; // days until first Sunday (0 if already Sunday)
+    return 1 + firstSun + (n - 1) * 7;
+  }
 
-  // UTC noon = 12:00 → offset = NY hour - 12
-  let offsetMins = (nyH * 60 + nyM) - (12 * 60);
-  // Guard against midnight-crossing edge cases
-  if (offsetMins > 720)  offsetMins -= 1440;
-  if (offsetMins < -720) offsetMins += 1440;
+  const dstStart = nthSunday(y, 3, 2);  // 2nd Sunday of March
+  const dstEnd   = nthSunday(y, 11, 1); // 1st Sunday of November
 
-  const sign  = offsetMins <= 0 ? '-' : '+';
-  const absH  = String(Math.floor(Math.abs(offsetMins) / 60)).padStart(2, '0');
-  const absM  = String(Math.abs(offsetMins) % 60).padStart(2, '0');
-  return `${sign}${absH}:${absM}`;
+  const inEdt =
+    (m === 3  && d >= dstStart) ||
+    (m > 3    && m < 11)        ||
+    (m === 11 && d < dstEnd);
+
+  return inEdt ? '-04:00' : '-05:00';
 }
 
 /**
- * Parse "2026-03-30 10:52:49" as a New York wall-clock time → UTC Date.
- * Always attaches the given offset so the result is timezone-unambiguous,
- * regardless of the machine's local timezone.
- */
-function parseEastern(localStr: string, offset: string): Date {
-  // Produces a spec-compliant ISO 8601 string: "2026-03-30T10:52:49-04:00"
-  return new Date(`${localStr.replace(' ', 'T')}${offset}`);
-}
-
-/**
- * Date → "2026-03-30T10:52:49-04:00"
- * Reconstructs the New York wall-clock time from the UTC instant.
- * Never uses toLocaleString() so the result is machine-timezone-independent.
- */
-function toIsoOffset(d: Date, offset: string): string {
-  const sign = offset[0] === '-' ? -1 : 1;
-  const [offH, offM] = offset.slice(1).split(':').map(Number);
-  const localMs = d.getTime() + sign * (offH * 60 + offM) * 60_000;
-  const ld = new Date(localMs);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return (
-    `${ld.getUTCFullYear()}-${pad(ld.getUTCMonth() + 1)}-${pad(ld.getUTCDate())}` +
-    `T${pad(ld.getUTCHours())}:${pad(ld.getUTCMinutes())}:${pad(ld.getUTCSeconds())}${offset}`
-  );
-}
-
-/**
- * Date → minute-truncated ISO string with standard colon offset.
- * e.g. "2026-03-30T10:52:00-04:00"
+ * Build a UTC Date from a NY wall-clock string and the pre-computed offset.
+ * e.g. "2026-03-30 10:52:49" + "-04:00" → Date at 14:52:49 UTC
  *
- * The offset always keeps its colon ("-04:00", not "-0400") because the
- * compact form is implementation-defined in ECMAScript and can silently
- * misparse in some environments.
+ * This is only used for sort order. The original string is kept for output.
  */
-function toMinuteIso(d: Date, offset: string): string {
-  const full = toIsoOffset(d, offset);
-  return `${full.slice(0, 16)}:00${offset}`; // "2026-03-30T10:52:00-04:00"
+function parseEastern(csvLocalStr: string, offset: string): Date {
+  return new Date(`${csvLocalStr.replace(' ', 'T')}${offset}`);
+}
+
+/**
+ * Format a marker `time` field from the original CSV local string.
+ * "2026-03-30 10:52:49" + "-04:00"  →  "2026-03-30T10:52:49-04:00"
+ */
+function markerTime(csvLocalStr: string, offset: string): string {
+  return `${csvLocalStr.replace(' ', 'T')}${offset}`;
+}
+
+/**
+ * Format a marker `minuteTime` field (second-truncated) from the original CSV local string.
+ * "2026-03-30 10:52:49" + "-04:00"  →  "2026-03-30T10:52:00-04:00"
+ */
+function markerMinuteTime(csvLocalStr: string, offset: string): string {
+  const dt = csvLocalStr.replace(' ', 'T');
+  return `${dt.slice(0, 16)}:00${offset}`;
 }
 
 // ── CSV parsing ───────────────────────────────────────────────────────────────
@@ -179,7 +164,7 @@ function parseCsv(raw: string, symbolFilter?: string): CsvRow[] {
 
 /**
  * Fills sharing the same perm_id are partial fills of one order.
- * Merge them: sum shares, VWAP price, keep earliest timestamp.
+ * Merge: sum shares, VWAP price, keep the earliest timestamp and its original local string.
  */
 function mergeByPermId(rows: (CsvRow & { date: Date })[]): MergedFill[] {
   const map = new Map<string, (CsvRow & { date: Date })[]>();
@@ -194,27 +179,22 @@ function mergeByPermId(rows: (CsvRow & { date: Date })[]): MergedFill[] {
     const vwap = fills.reduce((s, f) => s + f.price * f.shares, 0) / totalShares;
     const earliest = fills.reduce((a, b) => (a.date < b.date ? a : b));
     return {
-      symbol:   earliest.symbol,
-      side:     earliest.side,
-      shares:   totalShares,
-      price:    parseFloat(vwap.toFixed(4)),
-      date:     earliest.date,
-      permId:   earliest.permId,
+      symbol:      earliest.symbol,
+      side:        earliest.side,
+      shares:      totalShares,
+      price:       parseFloat(vwap.toFixed(4)),
+      date:        earliest.date,
+      csvLocalStr: earliest.localTime, // keep original NY wall-clock string
+      permId:      earliest.permId,
     };
   });
 }
 
 // ── Position tracking ─────────────────────────────────────────────────────────
 
-/**
- * Assigns executionType by tracking the running net position across fills.
- *
- *  position === 0 before fill → starter (opening)
- *  position grows in same direction → add
- *  position shrinks but stays open → trim
- *  position reaches 0 → exit
- */
-function assignExecutionTypes(fills: MergedFill[]): MarkerItem[] {
+function assignExecutionTypes(
+  fills: MergedFill[]
+): (MarkerItem & { _csvLocalStr: string })[] {
   let position = 0;
 
   return fills.map((fill) => {
@@ -234,8 +214,8 @@ function assignExecutionTypes(fills: MergedFill[]): MarkerItem[] {
     }
 
     return {
-      time:            '',        // filled below
-      minuteTime:      '',
+      time:            '', // set after
+      minuteTime:      '', // set after
       symbol:          fill.symbol,
       side:            fill.side,
       shares:          fill.shares,
@@ -243,10 +223,10 @@ function assignExecutionTypes(fills: MergedFill[]): MarkerItem[] {
       executionType,
       positionEffect:  executionType === 'starter' || executionType === 'add' ? 'open' : 'close',
       shape:           fill.side === 'BOT' ? 'arrowUp' : 'arrowDown',
-      color:           COLORS[executionType],
+      color:           COLORS[fill.side],
       text:            LABEL[executionType],
-      _date:           fill.date,  // temp, removed before output
-    } as MarkerItem & { _date: Date };
+      _csvLocalStr:    fill.csvLocalStr,
+    };
   });
 }
 
@@ -271,14 +251,15 @@ function main() {
   const offset    = easternOffset(tradeDate);
   const symbol    = symbolArg ?? rows[0].symbol;
 
-  const timed = rows.map((r) => ({ ...r, date: parseEastern(r.localTime, offset) }));
+  const timed  = rows.map((r) => ({ ...r, date: parseEastern(r.localTime, offset) }));
   const merged = mergeByPermId(timed).sort((a, b) => a.date.getTime() - b.date.getTime());
-  const withTypes = assignExecutionTypes(merged) as (MarkerItem & { _date: Date })[];
+  const typed  = assignExecutionTypes(merged);
 
-  const markers: MarkerItem[] = withTypes.map(({ _date, ...m }) => ({
+  // Build final markers using the original CSV local string — no UTC roundtrip.
+  const markers: MarkerItem[] = typed.map(({ _csvLocalStr, ...m }) => ({
     ...m,
-    time:       toIsoOffset(_date, offset),
-    minuteTime: toMinuteIso(_date, offset),
+    time:       markerTime(_csvLocalStr, offset),
+    minuteTime: markerMinuteTime(_csvLocalStr, offset),
   }));
 
   const compactDate = tradeDate.replace(/-/g, '');
@@ -298,17 +279,19 @@ function main() {
 
   // Summary
   let pos = 0;
-  const posCheck = markers.map((m) => {
-    const d = m.side === 'BOT' ? m.shares : -m.shares;
-    pos += d;
-    return `  ${m.time.slice(11, 19)}  ${m.side} ${m.shares.toString().padStart(6)} @ ${m.price.toFixed(4).padStart(10)}  [${m.executionType.padEnd(7)}]  pos=${pos}`;
+  const log = markers.map((m) => {
+    pos += m.side === 'BOT' ? m.shares : -m.shares;
+    return (
+      `  ${m.time.slice(11, 19)}  ${m.side} ${m.shares.toString().padStart(6)}` +
+      ` @ ${m.price.toFixed(4).padStart(10)}  [${m.executionType.padEnd(7)}]  pos=${pos}`
+    );
   });
 
   console.log(`\nConverted: ${rows.length} raw fills → ${markers.length} merged markers`);
   console.log(`Offset   : ${offset}  (America/New_York on ${tradeDate})`);
   console.log(`Output   : ${outPath}`);
   console.log(`\n── Fill log ─────────────────────────────────────────────────────`);
-  posCheck.forEach((l) => console.log(l));
+  log.forEach((l) => console.log(l));
   console.log(`\nFinal position: ${pos}  ${pos !== 0 ? '⚠️  not flat — check data' : '✓ flat'}`);
   console.log(`\nNext step:`);
   console.log(`  pnpm import:markers ${symbol} ${tradeDate} ${outPath}`);

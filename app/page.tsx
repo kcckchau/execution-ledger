@@ -325,11 +325,7 @@ export default function Home() {
     setSetups((prev) =>
       prev.map((s) =>
         s.id === setupId
-          ? {
-              ...s,
-              executions: [...s.executions, execution],
-              updatedAt: new Date().toISOString(),
-            }
+          ? { ...s, executions: [...s.executions, execution], updatedAt: new Date().toISOString() }
           : s,
       ),
     );
@@ -338,9 +334,7 @@ export default function Home() {
   function saveReview(setupId: string, review: SetupReview) {
     setSetups((prev) =>
       prev.map((s) =>
-        s.id === setupId
-          ? { ...s, review, updatedAt: new Date().toISOString() }
-          : s,
+        s.id === setupId ? { ...s, review, updatedAt: new Date().toISOString() } : s,
       ),
     );
   }
@@ -348,8 +342,69 @@ export default function Home() {
   function updateStatus(setupId: string, status: 'open' | 'closed') {
     setSetups((prev) =>
       prev.map((s) =>
+        s.id === setupId ? { ...s, status, updatedAt: new Date().toISOString() } : s,
+      ),
+    );
+  }
+
+  async function updateSetup(id: string, updated: TradeSetup) {
+    const res = await fetch(`/api/setups/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updated),
+    });
+    if (res.ok) {
+      const data: TradeSetup = await res.json();
+      setSetups((prev) => prev.map((s) => (s.id === id ? data : s)));
+    }
+  }
+
+  async function deleteSetup(id: string) {
+    await fetch(`/api/setups/${id}`, { method: 'DELETE' });
+    setSetups((prev) => prev.filter((s) => s.id !== id));
+  }
+
+  async function deleteSetups(ids: string[]) {
+    await fetch('/api/setups', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    });
+    setSetups((prev) => prev.filter((s) => !ids.includes(s.id)));
+  }
+
+  async function updateExecution(setupId: string, exec: Execution) {
+    const res = await fetch(`/api/setups/${setupId}/executions/${exec.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(exec),
+    });
+    if (res.ok) {
+      const data: Execution = await res.json();
+      setSetups((prev) =>
+        prev.map((s) =>
+          s.id === setupId
+            ? {
+                ...s,
+                executions: s.executions.map((e) => (e.id === exec.id ? data : e)),
+                updatedAt: new Date().toISOString(),
+              }
+            : s,
+        ),
+      );
+    }
+  }
+
+  async function deleteExecution(setupId: string, execId: string) {
+    await fetch(`/api/setups/${setupId}/executions/${execId}`, { method: 'DELETE' });
+    setSetups((prev) =>
+      prev.map((s) =>
         s.id === setupId
-          ? { ...s, status, updatedAt: new Date().toISOString() }
+          ? {
+              ...s,
+              executions: s.executions.filter((e) => e.id !== execId),
+              updatedAt: new Date().toISOString(),
+            }
           : s,
       ),
     );
@@ -468,6 +523,11 @@ export default function Home() {
                 onAddExecution={addExecution}
                 onSaveReview={saveReview}
                 onUpdateStatus={updateStatus}
+                onDeleteSetup={deleteSetup}
+                onDeleteSetups={deleteSetups}
+                onUpdateSetup={updateSetup}
+                onUpdateExecution={updateExecution}
+                onDeleteExecution={deleteExecution}
               />
             )}
           </>
@@ -477,6 +537,11 @@ export default function Home() {
             onAddExecution={addExecution}
             onSaveReview={saveReview}
             onUpdateStatus={updateStatus}
+            onDeleteSetup={deleteSetup}
+            onDeleteSetups={deleteSetups}
+            onUpdateSetup={updateSetup}
+            onUpdateExecution={updateExecution}
+            onDeleteExecution={deleteExecution}
           />
         )}
       </main>

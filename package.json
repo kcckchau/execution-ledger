@@ -9,11 +9,11 @@
     "lint": "eslint",
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate deploy",
-    "import:markers": "tsx scripts/import-markers.ts",
-    "convert:csv": "tsx scripts/convert-ibkr-csv.ts",
-    "import:csv": "sh -c 'csv=\"$1\"; symbol=\"$2\"; date=\"$3\"; compact_date=$(printf %s \"$date\" | tr -d \"-\"); pnpm convert:csv \"$csv\" \"$symbol\" && pnpm import:markers \"$symbol\" \"$date\" \"./data/trades/$symbol/${compact_date}-markers.json\" --replace' --"
+    "import:markers": "tsx scripts/import-markers.ts"
   },
   "dependencies": {
+    "@prisma/client": "^6.19.2",
+    "dotenv": "^17.3.1",
     "lightweight-charts": "^5.1.0",
     "next": "16.2.1",
     "react": "19.2.4",
@@ -26,7 +26,10 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
+    "pg": "^8.20.0",
+    "prisma": "^6.19.2",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }

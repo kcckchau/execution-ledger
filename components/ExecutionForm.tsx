@@ -5,18 +5,35 @@ import { type Execution, type ActionType, ACTION_TYPES } from '@/types/setup';
 
 interface ExecutionFormProps {
   setupId: string;
-  onAdd: (execution: Execution) => void;
+  /** Create mode: called with the new execution. */
+  onAdd?: (execution: Execution) => void;
+  /** Edit mode: called with the updated execution. Requires initialExecution. */
+  onSave?: (execution: Execution) => void;
   onCancel: () => void;
+  /** When provided, the form pre-fills and operates in edit mode. */
+  initialExecution?: Execution;
 }
 
 function getCurrentTime(): string {
   const now = new Date();
-  const h = now.getHours().toString().padStart(2, '0');
-  const m = now.getMinutes().toString().padStart(2, '0');
-  return `${h}:${m}`;
+  return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 }
 
-function makeDefaultForm() {
+function timeFromIso(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+}
+
+function makeForm(init?: Execution) {
+  if (init) {
+    return {
+      actionType: init.actionType as ActionType,
+      price: init.price.toString(),
+      size: init.size.toString(),
+      time: timeFromIso(init.executionTime),
+      note: init.note,
+    };
+  }
   return {
     actionType: 'starter' as ActionType,
     price: '',
@@ -30,33 +47,54 @@ const inputClass =
   'h-9 rounded-md border border-zinc-700 bg-zinc-800 px-3 text-sm text-white ' +
   'focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-colors';
 
-export default function ExecutionForm({ setupId, onAdd, onCancel }: ExecutionFormProps) {
-  const [form, setForm] = useState(makeDefaultForm);
+export default function ExecutionForm({
+  setupId,
+  onAdd,
+  onSave,
+  onCancel,
+  initialExecution,
+}: ExecutionFormProps) {
+  const isEdit = !!initialExecution;
+  const [form, setForm] = useState(() => makeForm(initialExecution));
+  const [saving, setSaving] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const price = parseFloat(form.price);
-    const size = parseFloat(form.size);
-    if (isNaN(price) || isNaN(size) || size <= 0) return;
+    const size = parseInt(form.size, 10);
+    if (!isFinite(price) || price <= 0) return;
+    if (!isFinite(size) || size <= 0) return;
 
     const [hours, minutes] = form.time.split(':').map(Number);
-    const execDate = new Date();
+    const execDate = isEdit
+      ? new Date(initialExecution!.executionTime)
+      : new Date();
     execDate.setHours(hours, minutes, 0, 0);
 
     const now = new Date().toISOString();
-    onAdd({
-      id: crypto.randomUUID(),
+    const execution: Execution = {
+      id: initialExecution?.id ?? crypto.randomUUID(),
       setupId,
       actionType: form.actionType,
       price,
       size,
       executionTime: execDate.toISOString(),
       note: form.note.trim(),
-      createdAt: now,
+      createdAt: initialExecution?.createdAt ?? now,
       updatedAt: now,
-    });
+    };
 
-    setForm(makeDefaultForm());
+    setSaving(true);
+    try {
+      if (isEdit && onSave) {
+        await onSave(execution);
+      } else if (onAdd) {
+        await onAdd(execution);
+        setForm(makeForm());
+      }
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -138,15 +176,17 @@ export default function ExecutionForm({ setupId, onAdd, onCancel }: ExecutionFor
         <button
           type="button"
           onClick={onCancel}
-          className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+          disabled={saving}
+          className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors disabled:opacity-40"
         >
           Cancel
         </button>
         <button
           type="submit"
-          className="h-8 px-4 rounded-md bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-500 transition-colors"
+          disabled={saving}
+          className="h-8 px-4 rounded-md bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-500 transition-colors disabled:opacity-60"
         >
-          Log Execution
+          {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Log Execution'}
         </button>
       </div>
     </form>

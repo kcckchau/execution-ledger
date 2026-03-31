@@ -14,89 +14,19 @@ export interface ImportResult {
   inserted: number;
   skipped: number;
   /** Ledger (TradeSetup + Execution) */
-  setupIds: string[];
-  setupCount: number;
+  setupId: string;
   execInserted: number;
   execSkipped: number;
 }
 
 // ── Internals ─────────────────────────────────────────────────────────────────
 
-function setupIdPrefix(symbol: string, tradeDate: string): string {
+/**
+ * Builds a deterministic, stable ID for the auto-generated TradeSetup so that
+ * re-running the import is always idempotent.
+ */
+function setupIdFor(symbol: string, tradeDate: string): string {
   return `ibkr-${symbol.toLowerCase()}-${tradeDate.replace(/-/g, '')}`;
-}
-
-/**
- * Builds a deterministic, stable ID for each auto-generated TradeSetup so that
- * re-running the import is idempotent while allowing multiple setups per day.
- */
-function setupIdFor(symbol: string, tradeDate: string, setupIndex: number): string {
-  return `${setupIdPrefix(symbol, tradeDate)}-${String(setupIndex).padStart(2, '0')}`;
-}
-
-interface SetupBatch {
-  setupId: string;
-  direction: 'long' | 'short';
-  status: 'open' | 'closed';
-  records: NormalizedChartMarker[];
-}
-
-/**
- * Split a trading day into flat-to-flat setup batches.
- *
- * This is the best mechanical approximation we can infer from raw executions:
- * when position leaves zero, a setup starts; when position returns to zero, it ends.
- */
-function splitIntoSetupBatches(
-  symbol: string,
-  tradeDate: string,
-  records: NormalizedChartMarker[]
-): SetupBatch[] {
-  if (records.length === 0) return [];
-
-  const sorted = [...records].sort(
-    (a, b) => a.executionTime.getTime() - b.executionTime.getTime()
-  );
-
-  const batches: SetupBatch[] = [];
-  let current: NormalizedChartMarker[] = [];
-  let position = 0;
-  let batchIndex = 1;
-
-  for (const record of sorted) {
-    const delta = record.side === 'BOT' ? record.shares : -record.shares;
-
-    if (current.length === 0) {
-      current = [record];
-      position = delta;
-    } else {
-      current.push(record);
-      position += delta;
-    }
-
-    if (position === 0) {
-      const first = current[0];
-      batches.push({
-        setupId: setupIdFor(symbol, tradeDate, batchIndex++),
-        direction: first.side === 'SLD' ? 'short' : 'long',
-        status: 'closed',
-        records: current,
-      });
-      current = [];
-    }
-  }
-
-  if (current.length > 0) {
-    const first = current[0];
-    batches.push({
-      setupId: setupIdFor(symbol, tradeDate, batchIndex++),
-      direction: first.side === 'SLD' ? 'short' : 'long',
-      status: 'open',
-      records: current,
-    });
-  }
-
-  return batches;
 }
 
 /**
@@ -122,8 +52,7 @@ async function upsertTradeSetup(
   setupId: string,
   symbol: string,
   tradeDate: string,
-  direction: 'long' | 'short',
-  status: 'open' | 'closed'
+  direction: 'long' | 'short'
 ): Promise<void> {
   await prisma.tradeSetup.upsert({
     where: { id: setupId },
@@ -141,7 +70,7 @@ async function upsertTradeSetup(
       riskEntry: '',
       riskStop: '',
       riskTarget: '',
-      status,
+      status: 'closed',
       overallNotes: '',
     },
   });
@@ -187,18 +116,11 @@ export async function clearIbkrImport(
   symbol: string,
   tradeDate: string
 ): Promise<void> {
-  const prefix = setupIdPrefix(symbol, tradeDate);
+  const setupId = setupIdFor(symbol, tradeDate);
 
   await prisma.$transaction([
     prisma.chartMarker.deleteMany({ where: { symbol, tradeDate } }),
-    prisma.tradeSetup.deleteMany({
-      where: {
-        OR: [
-          { id: prefix },
-          { id: { startsWith: `${prefix}-` } },
-        ],
-      },
-    }),
+    prisma.tradeSetup.deleteMany({ where: { id: setupId } }),
   ]);
 }
 
@@ -226,26 +148,13 @@ export async function importIbkrMarkersFile(
   // 1. Chart markers
   const markerResult = await upsertMarkers(records);
 
-  // 2. Execution ledger — auto-split into flat-to-flat setup batches
-  const setupBatches = splitIntoSetupBatches(resolvedSymbol, resolvedDate, records);
+  // 2. Execution ledger — one setup per (symbol, tradeDate)
+  const setupId = setupIdFor(resolvedSymbol, resolvedDate);
+  const firstStarter = records.find((r) => r.executionType === 'starter');
+  const direction: 'long' | 'short' = firstStarter?.side === 'SLD' ? 'short' : 'long';
 
-  const setupIds: string[] = [];
-  let execInserted = 0;
-  let execSkipped = 0;
-
-  for (const batch of setupBatches) {
-    await upsertTradeSetup(
-      batch.setupId,
-      resolvedSymbol,
-      resolvedDate,
-      batch.direction,
-      batch.status
-    );
-    const execResult = await upsertExecutions(batch.setupId, batch.records);
-    setupIds.push(batch.setupId);
-    execInserted += execResult.inserted;
-    execSkipped += execResult.skipped;
-  }
+  await upsertTradeSetup(setupId, resolvedSymbol, resolvedDate, direction);
+  const execResult = await upsertExecutions(setupId, records);
 
   return {
     symbol: resolvedSymbol,
@@ -253,9 +162,8 @@ export async function importIbkrMarkersFile(
     total: records.length,
     inserted: markerResult.inserted,
     skipped: markerResult.skipped,
-    setupIds,
-    setupCount: setupIds.length,
-    execInserted,
-    execSkipped,
+    setupId,
+    execInserted: execResult.inserted,
+    execSkipped: execResult.skipped,
   };
 }

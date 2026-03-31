@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadMarketSession } from '@/lib/marketSession';
-import { loadTradeMarkers, tradingDateYmdToCompact } from '@/lib/tradeMarkers';
+import { prisma } from '@/lib/prisma';
+import type { UnifiedChartMarker } from '@/types/chartMarker';
 
 /**
  * GET /api/chart-data?symbol=QQQ&date=2026-03-27
- * Loads `data/market/{symbol}/{date}.json` and optional `data/trades/{symbol}/{YYYYMMDD}-markers.json`.
+ * Loads market session from filesystem and trade markers from the DB.
  */
 export async function GET(req: NextRequest) {
   const symbol = req.nextUrl.searchParams.get('symbol');
@@ -14,11 +15,22 @@ export async function GET(req: NextRequest) {
   }
 
   const sessionResult = await loadMarketSession(symbol, date);
-  const compact = tradingDateYmdToCompact(date);
-  const tradeResult = await loadTradeMarkers(symbol, compact);
+
+  const dbMarkers = await prisma.chartMarker.findMany({
+    where: { symbol, tradeDate: date },
+    orderBy: { executionTime: 'asc' },
+  });
+
+  const tradeMarkers: UnifiedChartMarker[] = dbMarkers.map((m) => ({
+    time: m.executionTime.toISOString(),
+    price: m.price,
+    shape: m.markerShape as UnifiedChartMarker['shape'],
+    color: m.markerColor,
+    text: m.markerText,
+  }));
 
   return NextResponse.json({
     session: sessionResult.ok ? sessionResult.data : null,
-    tradeMarkers: tradeResult.ok ? tradeResult.data.markers : null,
+    tradeMarkers: tradeMarkers.length > 0 ? tradeMarkers : null,
   });
 }

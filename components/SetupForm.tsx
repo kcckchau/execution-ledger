@@ -19,9 +19,29 @@ import { formatPlannedRiskReward } from '@/lib/plannedRiskReward';
 interface SetupFormProps {
   onLog: (setup: TradeSetup) => void;
   onClose: () => void;
+  /** When provided the form operates in edit mode — calls onSave instead of onLog. */
+  initialSetup?: TradeSetup;
+  onSave?: (setup: TradeSetup) => void;
 }
 
-function makeDefaultForm() {
+function makeDefaultForm(init?: TradeSetup) {
+  if (init) {
+    return {
+      symbol: init.symbol,
+      direction: init.direction,
+      marketContext: init.marketContext,
+      setupType: init.setupType,
+      trigger: init.trigger,
+      invalidation: init.invalidation,
+      decisionTarget: init.decisionTarget,
+      riskEntry: init.riskEntry,
+      riskStop: init.riskStop,
+      riskTarget: init.riskTarget,
+      initialGrade: (init.initialGrade ?? '') as Grade | '',
+      overallNotes: init.overallNotes,
+      setupDate: init.setupDate,
+    };
+  }
   return {
     symbol: '',
     direction: 'long' as Direction,
@@ -50,8 +70,10 @@ const textareaClass =
 const sectionTitleClass =
   'text-[11px] font-semibold uppercase tracking-wider text-zinc-500 border-b border-zinc-800 pb-2';
 
-export default function SetupForm({ onLog, onClose }: SetupFormProps) {
-  const [form, setForm] = useState(makeDefaultForm);
+export default function SetupForm({ onLog, onClose, initialSetup, onSave }: SetupFormProps) {
+  const isEdit = !!initialSetup;
+  const [form, setForm] = useState(() => makeDefaultForm(initialSetup));
+  const [saving, setSaving] = useState(false);
 
   const plannedRR = useMemo(
     () =>
@@ -59,7 +81,7 @@ export default function SetupForm({ onLog, onClose }: SetupFormProps) {
     [form.riskEntry, form.riskStop, form.riskTarget, form.direction]
   );
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (
       !form.symbol.trim() ||
@@ -70,31 +92,55 @@ export default function SetupForm({ onLog, onClose }: SetupFormProps) {
       return;
     }
 
-    const now = new Date().toISOString();
-    onLog({
-      id: crypto.randomUUID(),
-      setupDate: form.setupDate,
-      symbol: form.symbol.trim().toUpperCase(),
-      direction: form.direction,
-      marketContext: form.marketContext,
-      setupType: form.setupType,
-      trigger: form.trigger.trim(),
-      invalidation: form.invalidation.trim(),
-      decisionTarget: form.decisionTarget.trim(),
-      riskEntry: form.riskEntry.trim(),
-      riskStop: form.riskStop.trim(),
-      riskTarget: form.riskTarget.trim(),
-      initialGrade: (form.initialGrade as Grade) || null,
-      status: 'open',
-      overallNotes: form.overallNotes.trim(),
-      review: null,
-      executions: [],
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    setForm(makeDefaultForm());
-    onClose();
+    setSaving(true);
+    try {
+      const now = new Date().toISOString();
+      if (isEdit && initialSetup && onSave) {
+        await onSave({
+          ...initialSetup,
+          setupDate: form.setupDate,
+          symbol: form.symbol.trim().toUpperCase(),
+          direction: form.direction,
+          marketContext: form.marketContext,
+          setupType: form.setupType,
+          trigger: form.trigger.trim(),
+          invalidation: form.invalidation.trim(),
+          decisionTarget: form.decisionTarget.trim(),
+          riskEntry: form.riskEntry.trim(),
+          riskStop: form.riskStop.trim(),
+          riskTarget: form.riskTarget.trim(),
+          initialGrade: (form.initialGrade as Grade) || null,
+          overallNotes: form.overallNotes.trim(),
+          updatedAt: now,
+        });
+      } else {
+        onLog({
+          id: crypto.randomUUID(),
+          setupDate: form.setupDate,
+          symbol: form.symbol.trim().toUpperCase(),
+          direction: form.direction,
+          marketContext: form.marketContext,
+          setupType: form.setupType,
+          trigger: form.trigger.trim(),
+          invalidation: form.invalidation.trim(),
+          decisionTarget: form.decisionTarget.trim(),
+          riskEntry: form.riskEntry.trim(),
+          riskStop: form.riskStop.trim(),
+          riskTarget: form.riskTarget.trim(),
+          initialGrade: (form.initialGrade as Grade) || null,
+          status: 'open',
+          overallNotes: form.overallNotes.trim(),
+          review: null,
+          executions: [],
+          createdAt: now,
+          updatedAt: now,
+        });
+        setForm(makeDefaultForm());
+        onClose();
+      }
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -103,11 +149,12 @@ export default function SetupForm({ onLog, onClose }: SetupFormProps) {
       className="flex flex-col gap-5 rounded-lg border border-zinc-800 bg-zinc-900 p-6"
     >
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-white">New Setup</h2>
+        <h2 className="text-sm font-semibold text-white">{isEdit ? 'Edit Setup' : 'New Setup'}</h2>
         <button
           type="button"
           onClick={onClose}
-          className="text-xs text-zinc-500 transition-colors hover:text-zinc-300"
+          disabled={saving}
+          className="text-xs text-zinc-500 transition-colors hover:text-zinc-300 disabled:opacity-40"
         >
           Cancel
         </button>
@@ -317,9 +364,10 @@ export default function SetupForm({ onLog, onClose }: SetupFormProps) {
       <div className="flex justify-end">
         <button
           type="submit"
-          className="h-9 rounded-md bg-indigo-600 px-5 text-sm font-medium text-white transition-colors hover:bg-indigo-500"
+          disabled={saving}
+          className="h-9 rounded-md bg-indigo-600 px-5 text-sm font-medium text-white transition-colors hover:bg-indigo-500 disabled:opacity-60"
         >
-          Log Setup
+          {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Log Setup'}
         </button>
       </div>
     </form>
