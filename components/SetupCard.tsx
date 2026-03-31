@@ -21,6 +21,7 @@ import ConfirmDialog from './ConfirmDialog';
 
 interface SetupCardProps {
   setup: TradeSetup;
+  showChart?: boolean;
   onAddExecution: (setupId: string, execution: Execution) => void;
   onSaveReview: (setupId: string, review: SetupReview) => void;
   onUpdateStatus: (setupId: string, status: 'open' | 'closed') => void;
@@ -115,6 +116,7 @@ function ExecutionRow({
 
 export default function SetupCard({
   setup,
+  showChart = true,
   onAddExecution,
   onSaveReview,
   onUpdateStatus,
@@ -317,12 +319,14 @@ export default function SetupCard({
           )}
         </div>
 
-        <SetupSessionChart
-          key={`${setup.symbol}-${setup.setupDate}`}
-          symbol={setup.symbol}
-          setupDate={setup.setupDate}
-          executions={setup.executions}
-        />
+        {showChart && (
+          <SetupSessionChart
+            key={`${setup.symbol}-${setup.setupDate}`}
+            symbol={setup.symbol}
+            setupDate={setup.setupDate}
+            executions={setup.executions}
+          />
+        )}
 
         {/* ── Executions ── */}
         <div className="border-t border-zinc-800">

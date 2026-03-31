@@ -92,7 +92,12 @@ export default function SetupLog({
       )}
 
       <div className="flex flex-col gap-4">
-        {setups.map((setup) => (
+        {setups.map((setup, index) => {
+          const chartKey = `${setup.symbol}::${setup.setupDate}`;
+          const showChart =
+            setups.findIndex((s) => `${s.symbol}::${s.setupDate}` === chartKey) === index;
+
+          return (
           <div key={setup.id} className="flex items-start gap-3">
             <div className="pt-[18px] pl-1 shrink-0">
               <input
@@ -106,6 +111,7 @@ export default function SetupLog({
             <div className="min-w-0 flex-1">
               <SetupCard
                 setup={setup}
+                showChart={showChart}
                 onAddExecution={onAddExecution}
                 onSaveReview={onSaveReview}
                 onUpdateStatus={onUpdateStatus}
@@ -116,7 +122,8 @@ export default function SetupLog({
               />
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       <ConfirmDialog

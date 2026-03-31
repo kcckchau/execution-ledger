@@ -6,7 +6,9 @@ export interface SessionSliceJson {
   candles: SessionCandle[];
 }
 
-/** Raw JSON shape: flat `candles` and/or `sessions` with premarket / regular / aftermarket. */
+/** Raw JSON shape: flat `candles` and/or `sessions` with premarket / regular / aftermarket.
+ *  Sessions can be either a `SessionSliceJson` object ({ start, end, candles })
+ *  or a bare array of candles. */
 export interface MarketSessionFileJson {
   symbol: string;
   tradingDate: string;
@@ -15,9 +17,9 @@ export interface MarketSessionFileJson {
   levels: SessionLevels;
   candles?: SessionCandle[];
   sessions?: {
-    premarket?: SessionSliceJson;
-    regular?: SessionSliceJson;
-    aftermarket?: SessionSliceJson;
+    premarket?: SessionSliceJson | SessionCandle[];
+    regular?: SessionSliceJson | SessionCandle[];
+    aftermarket?: SessionSliceJson | SessionCandle[];
   };
 }
 
@@ -47,7 +49,11 @@ export function normalizeMarketSessionFile(raw: MarketSessionFileJson): SessionC
     const order = ['premarket', 'regular', 'aftermarket'] as const;
     for (const key of order) {
       const slice = raw.sessions[key];
-      if (slice?.candles?.length) {
+      if (!slice) continue;
+      // Sessions can be a bare candle array or a { start, end, candles } object
+      if (Array.isArray(slice)) {
+        candles = candles.concat(slice);
+      } else if (slice.candles?.length) {
         candles = candles.concat(slice.candles);
       }
     }

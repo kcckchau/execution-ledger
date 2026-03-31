@@ -99,19 +99,26 @@ export default function DailyDrillDown({
           </p>
         ) : (
           <div className="flex flex-col gap-4">
-            {setups.map((setup) => (
-              <SetupCard
-                key={setup.id}
-                setup={setup}
-                onAddExecution={onAddExecution}
-                onSaveReview={onSaveReview}
-                onUpdateStatus={onUpdateStatus}
-                onDeleteSetup={() => onDeleteSetup(setup.id)}
-                onUpdateSetup={(updated) => onUpdateSetup(setup.id, updated)}
-                onUpdateExecution={(exec) => onUpdateExecution(setup.id, exec)}
-                onDeleteExecution={(execId) => onDeleteExecution(setup.id, execId)}
-              />
-            ))}
+            {setups.map((setup, index) => {
+              const chartKey = `${setup.symbol}::${setup.setupDate}`;
+              const showChart =
+                setups.findIndex((s) => `${s.symbol}::${s.setupDate}` === chartKey) === index;
+
+              return (
+                <SetupCard
+                  key={setup.id}
+                  setup={setup}
+                  showChart={showChart}
+                  onAddExecution={onAddExecution}
+                  onSaveReview={onSaveReview}
+                  onUpdateStatus={onUpdateStatus}
+                  onDeleteSetup={() => onDeleteSetup(setup.id)}
+                  onUpdateSetup={(updated) => onUpdateSetup(setup.id, updated)}
+                  onUpdateExecution={(exec) => onUpdateExecution(setup.id, exec)}
+                  onDeleteExecution={(execId) => onDeleteExecution(setup.id, execId)}
+                />
+              );
+            })}
           </div>
         )}
       </div>
