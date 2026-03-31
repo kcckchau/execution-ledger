@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "import:markers": "tsx scripts/import-markers.ts",
+    "convert:csv": "tsx scripts/convert-ibkr-csv.ts",
+    "import:csv": "sh -c 'csv=\"$1\"; symbol=\"$2\"; date=\"$3\"; compact_date=$(printf %s \"$date\" | tr -d \"-\"); pnpm convert:csv \"$csv\" \"$symbol\" && pnpm import:markers \"$symbol\" \"$date\" \"./data/trades/$symbol/${compact_date}-markers.json\" --replace' --"
   },
   "dependencies": {
     "lightweight-charts": "^5.1.0",
