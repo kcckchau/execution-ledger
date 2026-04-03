@@ -51,6 +51,10 @@ export async function POST(req: NextRequest) {
         status: body.status ?? 'open',
         overallNotes: body.overallNotes ?? '',
         review: body.review ?? undefined,
+        initialRegime: body.initialRegime ?? null,
+        entryRegime:   body.entryRegime   ?? null,
+        transition:    body.transition    ?? null,
+        alignment:     body.alignment     ?? null,
       },
       include: { executions: true },
     });

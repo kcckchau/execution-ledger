@@ -29,6 +29,10 @@ type DbSetup = {
   status: string;
   overallNotes: string;
   review: unknown;
+  initialRegime: string | null;
+  entryRegime: string | null;
+  transition: string | null;
+  alignment: string | null;
   executions: DbExecution[];
   createdAt: Date;
   updatedAt: Date;
@@ -66,6 +70,10 @@ export function mapSetup(s: DbSetup): TradeSetup {
     status: s.status as TradeSetup['status'],
     overallNotes: s.overallNotes,
     review: s.review ? (s.review as SetupReview) : null,
+    initialRegime: (s.initialRegime as TradeSetup['initialRegime']) ?? null,
+    entryRegime:   (s.entryRegime   as TradeSetup['entryRegime'])   ?? null,
+    transition:    (s.transition    as TradeSetup['transition'])    ?? null,
+    alignment:     (s.alignment     as TradeSetup['alignment'])     ?? null,
     executions: s.executions.map(mapExecution),
     createdAt: s.createdAt.toISOString(),
     updatedAt: s.updatedAt.toISOString(),

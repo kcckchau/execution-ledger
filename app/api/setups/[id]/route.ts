@@ -27,6 +27,10 @@ export async function PUT(req: NextRequest, { params }: Params) {
         ...(body.riskStop !== undefined && { riskStop: String(body.riskStop).trim() }),
         ...(body.riskTarget !== undefined && { riskTarget: String(body.riskTarget).trim() }),
         ...(body.initialGrade !== undefined && { initialGrade: body.initialGrade || null }),
+        ...(body.initialRegime !== undefined && { initialRegime: body.initialRegime || null }),
+        ...(body.entryRegime   !== undefined && { entryRegime:   body.entryRegime   || null }),
+        ...(body.transition    !== undefined && { transition:    body.transition    || null }),
+        ...(body.alignment     !== undefined && { alignment:     body.alignment     || null }),
       },
       include: { executions: { orderBy: { executionTime: 'asc' } } },
     });

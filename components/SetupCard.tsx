@@ -5,11 +5,22 @@ import {
   type TradeSetup,
   type Execution,
   type SetupReview,
+  type Regime,
   GRADE_COLORS,
   ACTION_BORDER_COLORS,
   ACTION_LABELS,
   MARKET_CONTEXT_LABELS,
+  SETUP_TYPE_LABELS,
+  REGIME_LABELS,
+  TRANSITION_LABELS,
+  ALIGNMENT_LABELS,
 } from '@/types/setup';
+
+const REGIME_TAG: Record<Regime, string> = {
+  UP:    'bg-emerald-500/10 text-emerald-400 ring-emerald-500/20',
+  DOWN:  'bg-rose-500/10 text-rose-400 ring-rose-500/20',
+  RANGE: 'bg-amber-500/10 text-amber-400 ring-amber-500/20',
+};
 import { formatPlannedRiskReward } from '@/lib/plannedRiskReward';
 import { calcSetupPnl, formatPnl } from '@/lib/pnl';
 import { formatSetupDate } from '@/lib/dateUtils';
@@ -195,30 +206,68 @@ export default function SetupCard({
 
         {/* ── Header ── */}
         <div className="flex items-start justify-between gap-4 px-5 pt-5 pb-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-lg font-bold text-white tracking-tight">
-              {setup.symbol}
-            </span>
-            <span
-              className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ${
-                setup.direction === 'long'
-                  ? 'bg-emerald-500/10 text-emerald-400 ring-emerald-500/25'
-                  : 'bg-rose-500/10 text-rose-400 ring-rose-500/25'
-              }`}
-            >
-              {setup.direction === 'long' ? '↑ Long' : '↓ Short'}
-            </span>
-            <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-zinc-800 text-zinc-400 ring-1 ring-inset ring-zinc-700">
-              {setup.setupType}
-            </span>
-            {setup.initialGrade && (
+          <div className="flex flex-col gap-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-lg font-bold text-white tracking-tight">
+                {setup.symbol}
+              </span>
               <span
                 className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ${
-                  GRADE_COLORS[setup.initialGrade] ?? GRADE_COLORS['C']
+                  setup.direction === 'long'
+                    ? 'bg-emerald-500/10 text-emerald-400 ring-emerald-500/25'
+                    : 'bg-rose-500/10 text-rose-400 ring-rose-500/25'
                 }`}
               >
-                {setup.initialGrade}
+                {setup.direction === 'long' ? '↑ Long' : '↓ Short'}
               </span>
+              <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-zinc-800 text-zinc-400 ring-1 ring-inset ring-zinc-700">
+                {SETUP_TYPE_LABELS[setup.setupType] ?? setup.setupType}
+              </span>
+              {setup.initialGrade && (
+                <span
+                  className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ${
+                    GRADE_COLORS[setup.initialGrade] ?? GRADE_COLORS['C']
+                  }`}
+                >
+                  {setup.initialGrade}
+                </span>
+              )}
+            </div>
+
+            {/* Classification tags — only rendered when at least one field is set */}
+            {(setup.initialRegime || setup.entryRegime ||
+              (setup.transition && setup.transition !== 'NONE') ||
+              setup.alignment) && (
+              <div className="flex flex-wrap items-center gap-1">
+                {setup.initialRegime && (
+                  <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${REGIME_TAG[setup.initialRegime]}`}>
+                    <span className="opacity-50 mr-0.5">i·</span>{REGIME_LABELS[setup.initialRegime]}
+                  </span>
+                )}
+                {setup.entryRegime && (
+                  <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${REGIME_TAG[setup.entryRegime]}`}>
+                    <span className="opacity-50 mr-0.5">e·</span>{REGIME_LABELS[setup.entryRegime]}
+                  </span>
+                )}
+                {setup.transition && setup.transition !== 'NONE' && (
+                  <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${
+                    setup.transition === 'FLIP'
+                      ? 'bg-violet-500/10 text-violet-400 ring-violet-500/20'
+                      : 'bg-orange-500/10 text-orange-400 ring-orange-500/20'
+                  }`}>
+                    {TRANSITION_LABELS[setup.transition]}
+                  </span>
+                )}
+                {setup.alignment && (
+                  <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${
+                    setup.alignment === 'WITH_TREND'
+                      ? 'bg-teal-500/10 text-teal-400 ring-teal-500/20'
+                      : 'bg-orange-500/10 text-orange-400 ring-orange-500/20'
+                  }`}>
+                    {ALIGNMENT_LABELS[setup.alignment]}
+                  </span>
+                )}
+              </div>
             )}
           </div>
 

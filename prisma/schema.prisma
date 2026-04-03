@@ -4,18 +4,44 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
+enum SetupType {
+  VWAP_RECLAIM
+  VWAP_REJECT
+  BREAKOUT
+  BREAKDOWN
+  RANGE
+  FLIP
+}
+
+enum Regime {
+  UP
+  DOWN
+  RANGE
+}
+
+enum Transition {
+  NONE
+  FLIP
+  FAILED_FLIP
+}
+
+enum Alignment {
+  WITH_TREND
+  COUNTER
+}
+
 model TradeSetup {
-  id             String   @id
+  id             String    @id
   setupDate      String
   symbol         String
   direction      String
   marketContext  String
-  setupType      String
+  setupType      SetupType @default(RANGE)
   trigger        String
   invalidation   String
   decisionTarget String
@@ -23,13 +49,18 @@ model TradeSetup {
   riskStop       String
   riskTarget     String
   initialGrade   String?
-  status         String   @default("open")
-  overallNotes   String   @default("")
+  status         String    @default("open")
+  overallNotes   String    @default("")
   /// Stored as JSON: { followedPlan, wentWell, failed, lesson }
   review         Json?
+  /// Trade classification
+  initialRegime  Regime?
+  entryRegime    Regime?
+  transition     Transition?
+  alignment      Alignment?
   executions     Execution[]
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 model Execution {

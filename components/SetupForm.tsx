@@ -7,11 +7,21 @@ import {
   type Grade,
   type Direction,
   type MarketContext,
+  type Regime,
+  type Transition,
+  type Alignment,
   SETUP_TYPES,
+  SETUP_TYPE_LABELS,
   GRADES,
   DIRECTIONS,
   MARKET_CONTEXTS,
   MARKET_CONTEXT_LABELS,
+  REGIMES,
+  REGIME_LABELS,
+  TRANSITIONS,
+  TRANSITION_LABELS,
+  ALIGNMENTS,
+  ALIGNMENT_LABELS,
 } from '@/types/setup';
 import { getTodayInEasternTime } from '@/lib/dateUtils';
 import { formatPlannedRiskReward } from '@/lib/plannedRiskReward';
@@ -40,6 +50,10 @@ function makeDefaultForm(init?: TradeSetup) {
       initialGrade: (init.initialGrade ?? '') as Grade | '',
       overallNotes: init.overallNotes,
       setupDate: init.setupDate,
+      initialRegime: (init.initialRegime ?? '') as Regime | '',
+      entryRegime:   (init.entryRegime   ?? '') as Regime | '',
+      transition:    (init.transition    ?? '') as Transition | '',
+      alignment:     (init.alignment     ?? '') as Alignment | '',
     };
   }
   return {
@@ -56,6 +70,10 @@ function makeDefaultForm(init?: TradeSetup) {
     initialGrade: '' as Grade | '',
     overallNotes: '',
     setupDate: getTodayInEasternTime(),
+    initialRegime: '' as Regime | '',
+    entryRegime:   '' as Regime | '',
+    transition:    '' as Transition | '',
+    alignment:     '' as Alignment | '',
   };
 }
 
@@ -95,6 +113,13 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
     setSaving(true);
     try {
       const now = new Date().toISOString();
+      const classification = {
+        initialRegime: (form.initialRegime as Regime) || null,
+        entryRegime:   (form.entryRegime   as Regime) || null,
+        transition:    (form.transition    as Transition) || null,
+        alignment:     (form.alignment     as Alignment) || null,
+      };
+
       if (isEdit && initialSetup && onSave) {
         await onSave({
           ...initialSetup,
@@ -112,6 +137,7 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
           initialGrade: (form.initialGrade as Grade) || null,
           overallNotes: form.overallNotes.trim(),
           updatedAt: now,
+          ...classification,
         });
       } else {
         onLog({
@@ -134,6 +160,7 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
           executions: [],
           createdAt: now,
           updatedAt: now,
+          ...classification,
         });
         setForm(makeDefaultForm());
         onClose();
@@ -262,7 +289,7 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
             >
               {SETUP_TYPES.map((s) => (
                 <option key={s} value={s}>
-                  {s}
+                  {SETUP_TYPE_LABELS[s]}
                 </option>
               ))}
             </select>
@@ -345,6 +372,67 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
           </span>
           <span className="ml-2 text-zinc-600">(when entry, stop &amp; target are numeric)</span>
         </p>
+      </div>
+
+      {/* Classification */}
+      <div className="flex flex-col gap-3">
+        <h3 className={sectionTitleClass}>
+          Classification <span className="font-normal normal-case tracking-normal text-zinc-600">— optional</span>
+        </h3>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-zinc-400">Initial regime</label>
+            <select
+              value={form.initialRegime}
+              onChange={(e) => setForm((f) => ({ ...f, initialRegime: e.target.value as Regime | '' }))}
+              className={inputClass}
+            >
+              <option value="">—</option>
+              {REGIMES.map((r) => (
+                <option key={r} value={r}>{REGIME_LABELS[r]}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-zinc-400">Entry regime</label>
+            <select
+              value={form.entryRegime}
+              onChange={(e) => setForm((f) => ({ ...f, entryRegime: e.target.value as Regime | '' }))}
+              className={inputClass}
+            >
+              <option value="">—</option>
+              {REGIMES.map((r) => (
+                <option key={r} value={r}>{REGIME_LABELS[r]}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-zinc-400">Transition</label>
+            <select
+              value={form.transition}
+              onChange={(e) => setForm((f) => ({ ...f, transition: e.target.value as Transition | '' }))}
+              className={inputClass}
+            >
+              <option value="">—</option>
+              {TRANSITIONS.map((t) => (
+                <option key={t} value={t}>{TRANSITION_LABELS[t]}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-zinc-400">Alignment</label>
+            <select
+              value={form.alignment}
+              onChange={(e) => setForm((f) => ({ ...f, alignment: e.target.value as Alignment | '' }))}
+              className={inputClass}
+            >
+              <option value="">—</option>
+              {ALIGNMENTS.map((a) => (
+                <option key={a} value={a}>{ALIGNMENT_LABELS[a]}</option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* Notes */}

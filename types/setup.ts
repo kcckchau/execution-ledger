@@ -7,14 +7,49 @@ export const MARKET_CONTEXT_LABELS: Record<MarketContext, string> = {
   range: 'Range',
 };
 
-/** Refined playbook-style setup categories for analysis. */
 export const SETUP_TYPES = [
-  'VWAP Reclaim',
-  'VWAP Reject',
-  'VWAP Breakdown',
-  'ORB Breakout',
-  'Range Fade',
+  'VWAP_RECLAIM',
+  'VWAP_REJECT',
+  'BREAKOUT',
+  'BREAKDOWN',
+  'RANGE',
+  'FLIP',
 ] as const;
+
+export const SETUP_TYPE_LABELS: Record<(typeof SETUP_TYPES)[number], string> = {
+  VWAP_RECLAIM: 'VWAP Reclaim',
+  VWAP_REJECT:  'VWAP Reject',
+  BREAKOUT:     'Breakout',
+  BREAKDOWN:    'Breakdown',
+  RANGE:        'Range',
+  FLIP:         'Flip',
+};
+
+export const REGIMES = ['UP', 'DOWN', 'RANGE'] as const;
+export type Regime = (typeof REGIMES)[number];
+
+export const REGIME_LABELS: Record<Regime, string> = {
+  UP:    'Up',
+  DOWN:  'Down',
+  RANGE: 'Range',
+};
+
+export const TRANSITIONS = ['NONE', 'FLIP', 'FAILED_FLIP'] as const;
+export type Transition = (typeof TRANSITIONS)[number];
+
+export const TRANSITION_LABELS: Record<Transition, string> = {
+  NONE:        'None',
+  FLIP:        'Flip',
+  FAILED_FLIP: 'Failed Flip',
+};
+
+export const ALIGNMENTS = ['WITH_TREND', 'COUNTER'] as const;
+export type Alignment = (typeof ALIGNMENTS)[number];
+
+export const ALIGNMENT_LABELS: Record<Alignment, string> = {
+  WITH_TREND: 'With Trend',
+  COUNTER:    'Counter',
+};
 
 export const GRADES = ['A+', 'A', 'B', 'C', 'D'] as const;
 export const ACTION_TYPES = ['starter', 'add', 'trim', 'exit'] as const;
@@ -73,6 +108,11 @@ export interface TradeSetup {
   executions: Execution[];
   createdAt: string;
   updatedAt: string;
+  /** Trade classification — all optional, set after the fact. */
+  initialRegime: Regime | null;
+  entryRegime:   Regime | null;
+  transition:    Transition | null;
+  alignment:     Alignment | null;
 }
 
 export const GRADE_COLORS: Record<string, string> = {

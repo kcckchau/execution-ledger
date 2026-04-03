@@ -1,0 +1,488 @@
+diff --git a/app/api/setups/[id]/route.ts b/app/api/setups/[id]/route.ts
+index 857edec..5f21449 100644
+--- a/app/api/setups/[id]/route.ts
++++ b/app/api/setups/[id]/route.ts
+@@ -27,6 +27,10 @@ export async function PUT(req: NextRequest, { params }: Params) {
+         ...(body.riskStop !== undefined && { riskStop: String(body.riskStop).trim() }),
+         ...(body.riskTarget !== undefined && { riskTarget: String(body.riskTarget).trim() }),
+         ...(body.initialGrade !== undefined && { initialGrade: body.initialGrade || null }),
++        ...(body.initialRegime !== undefined && { initialRegime: body.initialRegime || null }),
++        ...(body.entryRegime   !== undefined && { entryRegime:   body.entryRegime   || null }),
++        ...(body.transition    !== undefined && { transition:    body.transition    || null }),
++        ...(body.alignment     !== undefined && { alignment:     body.alignment     || null }),
+       },
+       include: { executions: { orderBy: { executionTime: 'asc' } } },
+     });
+diff --git a/app/api/setups/route.ts b/app/api/setups/route.ts
+index 8ba7137..793e67f 100644
+--- a/app/api/setups/route.ts
++++ b/app/api/setups/route.ts
+@@ -51,6 +51,10 @@ export async function POST(req: NextRequest) {
+         status: body.status ?? 'open',
+         overallNotes: body.overallNotes ?? '',
+         review: body.review ?? undefined,
++        initialRegime: body.initialRegime ?? null,
++        entryRegime:   body.entryRegime   ?? null,
++        transition:    body.transition    ?? null,
++        alignment:     body.alignment     ?? null,
+       },
+       include: { executions: true },
+     });
+diff --git a/components/SetupCard.tsx b/components/SetupCard.tsx
+index 2f53d05..1903a7f 100644
+--- a/components/SetupCard.tsx
++++ b/components/SetupCard.tsx
+@@ -5,11 +5,22 @@ import {
+   type TradeSetup,
+   type Execution,
+   type SetupReview,
++  type Regime,
+   GRADE_COLORS,
+   ACTION_BORDER_COLORS,
+   ACTION_LABELS,
+   MARKET_CONTEXT_LABELS,
++  SETUP_TYPE_LABELS,
++  REGIME_LABELS,
++  TRANSITION_LABELS,
++  ALIGNMENT_LABELS,
+ } from '@/types/setup';
++
++const REGIME_TAG: Record<Regime, string> = {
++  UP:    'bg-emerald-500/10 text-emerald-400 ring-emerald-500/20',
++  DOWN:  'bg-rose-500/10 text-rose-400 ring-rose-500/20',
++  RANGE: 'bg-amber-500/10 text-amber-400 ring-amber-500/20',
++};
+ import { formatPlannedRiskReward } from '@/lib/plannedRiskReward';
+ import { calcSetupPnl, formatPnl } from '@/lib/pnl';
+ import { formatSetupDate } from '@/lib/dateUtils';
+@@ -195,30 +206,68 @@ export default function SetupCard({
+ 
+         {/* ── Header ── */}
+         <div className="flex items-start justify-between gap-4 px-5 pt-5 pb-4">
+-          <div className="flex flex-wrap items-center gap-2">
+-            <span className="text-lg font-bold text-white tracking-tight">
+-              {setup.symbol}
+-            </span>
+-            <span
+-              className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ${
+-                setup.direction === 'long'
+-                  ? 'bg-emerald-500/10 text-emerald-400 ring-emerald-500/25'
+-                  : 'bg-rose-500/10 text-rose-400 ring-rose-500/25'
+-              }`}
+-            >
+-              {setup.direction === 'long' ? '↑ Long' : '↓ Short'}
+-            </span>
+-            <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-zinc-800 text-zinc-400 ring-1 ring-inset ring-zinc-700">
+-              {setup.setupType}
+-            </span>
+-            {setup.initialGrade && (
++          <div className="flex flex-col gap-1.5">
++            <div className="flex flex-wrap items-center gap-2">
++              <span className="text-lg font-bold text-white tracking-tight">
++                {setup.symbol}
++              </span>
+               <span
+                 className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ${
+-                  GRADE_COLORS[setup.initialGrade] ?? GRADE_COLORS['C']
++                  setup.direction === 'long'
++                    ? 'bg-emerald-500/10 text-emerald-400 ring-emerald-500/25'
++                    : 'bg-rose-500/10 text-rose-400 ring-rose-500/25'
+                 }`}
+               >
+-                {setup.initialGrade}
++                {setup.direction === 'long' ? '↑ Long' : '↓ Short'}
++              </span>
++              <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-zinc-800 text-zinc-400 ring-1 ring-inset ring-zinc-700">
++                {SETUP_TYPE_LABELS[setup.setupType] ?? setup.setupType}
+               </span>
++              {setup.initialGrade && (
++                <span
++                  className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ${
++                    GRADE_COLORS[setup.initialGrade] ?? GRADE_COLORS['C']
++                  }`}
++                >
++                  {setup.initialGrade}
++                </span>
++              )}
++            </div>
++
++            {/* Classification tags — only rendered when at least one field is set */}
++            {(setup.initialRegime || setup.entryRegime ||
++              (setup.transition && setup.transition !== 'NONE') ||
++              setup.alignment) && (
++              <div className="flex flex-wrap items-center gap-1">
++                {setup.initialRegime && (
++                  <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${REGIME_TAG[setup.initialRegime]}`}>
++                    <span className="opacity-50 mr-0.5">i·</span>{REGIME_LABELS[setup.initialRegime]}
++                  </span>
++                )}
++                {setup.entryRegime && (
++                  <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${REGIME_TAG[setup.entryRegime]}`}>
++                    <span className="opacity-50 mr-0.5">e·</span>{REGIME_LABELS[setup.entryRegime]}
++                  </span>
++                )}
++                {setup.transition && setup.transition !== 'NONE' && (
++                  <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${
++                    setup.transition === 'FLIP'
++                      ? 'bg-violet-500/10 text-violet-400 ring-violet-500/20'
++                      : 'bg-orange-500/10 text-orange-400 ring-orange-500/20'
++                  }`}>
++                    {TRANSITION_LABELS[setup.transition]}
++                  </span>
++                )}
++                {setup.alignment && (
++                  <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${
++                    setup.alignment === 'WITH_TREND'
++                      ? 'bg-teal-500/10 text-teal-400 ring-teal-500/20'
++                      : 'bg-orange-500/10 text-orange-400 ring-orange-500/20'
++                  }`}>
++                    {ALIGNMENT_LABELS[setup.alignment]}
++                  </span>
++                )}
++              </div>
+             )}
+           </div>
+ 
+diff --git a/components/SetupForm.tsx b/components/SetupForm.tsx
+index 301a3be..3256d23 100644
+--- a/components/SetupForm.tsx
++++ b/components/SetupForm.tsx
+@@ -7,11 +7,21 @@ import {
+   type Grade,
+   type Direction,
+   type MarketContext,
++  type Regime,
++  type Transition,
++  type Alignment,
+   SETUP_TYPES,
++  SETUP_TYPE_LABELS,
+   GRADES,
+   DIRECTIONS,
+   MARKET_CONTEXTS,
+   MARKET_CONTEXT_LABELS,
++  REGIMES,
++  REGIME_LABELS,
++  TRANSITIONS,
++  TRANSITION_LABELS,
++  ALIGNMENTS,
++  ALIGNMENT_LABELS,
+ } from '@/types/setup';
+ import { getTodayInEasternTime } from '@/lib/dateUtils';
+ import { formatPlannedRiskReward } from '@/lib/plannedRiskReward';
+@@ -40,6 +50,10 @@ function makeDefaultForm(init?: TradeSetup) {
+       initialGrade: (init.initialGrade ?? '') as Grade | '',
+       overallNotes: init.overallNotes,
+       setupDate: init.setupDate,
++      initialRegime: (init.initialRegime ?? '') as Regime | '',
++      entryRegime:   (init.entryRegime   ?? '') as Regime | '',
++      transition:    (init.transition    ?? '') as Transition | '',
++      alignment:     (init.alignment     ?? '') as Alignment | '',
+     };
+   }
+   return {
+@@ -56,6 +70,10 @@ function makeDefaultForm(init?: TradeSetup) {
+     initialGrade: '' as Grade | '',
+     overallNotes: '',
+     setupDate: getTodayInEasternTime(),
++    initialRegime: '' as Regime | '',
++    entryRegime:   '' as Regime | '',
++    transition:    '' as Transition | '',
++    alignment:     '' as Alignment | '',
+   };
+ }
+ 
+@@ -95,6 +113,13 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
+     setSaving(true);
+     try {
+       const now = new Date().toISOString();
++      const classification = {
++        initialRegime: (form.initialRegime as Regime) || null,
++        entryRegime:   (form.entryRegime   as Regime) || null,
++        transition:    (form.transition    as Transition) || null,
++        alignment:     (form.alignment     as Alignment) || null,
++      };
++
+       if (isEdit && initialSetup && onSave) {
+         await onSave({
+           ...initialSetup,
+@@ -112,6 +137,7 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
+           initialGrade: (form.initialGrade as Grade) || null,
+           overallNotes: form.overallNotes.trim(),
+           updatedAt: now,
++          ...classification,
+         });
+       } else {
+         onLog({
+@@ -134,6 +160,7 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
+           executions: [],
+           createdAt: now,
+           updatedAt: now,
++          ...classification,
+         });
+         setForm(makeDefaultForm());
+         onClose();
+@@ -262,7 +289,7 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
+             >
+               {SETUP_TYPES.map((s) => (
+                 <option key={s} value={s}>
+-                  {s}
++                  {SETUP_TYPE_LABELS[s]}
+                 </option>
+               ))}
+             </select>
+@@ -347,6 +374,67 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
+         </p>
+       </div>
+ 
++      {/* Classification */}
++      <div className="flex flex-col gap-3">
++        <h3 className={sectionTitleClass}>
++          Classification <span className="font-normal normal-case tracking-normal text-zinc-600">— optional</span>
++        </h3>
++        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
++          <div className="flex flex-col gap-1.5">
++            <label className="text-xs font-medium text-zinc-400">Initial regime</label>
++            <select
++              value={form.initialRegime}
++              onChange={(e) => setForm((f) => ({ ...f, initialRegime: e.target.value as Regime | '' }))}
++              className={inputClass}
++            >
++              <option value="">—</option>
++              {REGIMES.map((r) => (
++                <option key={r} value={r}>{REGIME_LABELS[r]}</option>
++              ))}
++            </select>
++          </div>
++          <div className="flex flex-col gap-1.5">
++            <label className="text-xs font-medium text-zinc-400">Entry regime</label>
++            <select
++              value={form.entryRegime}
++              onChange={(e) => setForm((f) => ({ ...f, entryRegime: e.target.value as Regime | '' }))}
++              className={inputClass}
++            >
++              <option value="">—</option>
++              {REGIMES.map((r) => (
++                <option key={r} value={r}>{REGIME_LABELS[r]}</option>
++              ))}
++            </select>
++          </div>
++          <div className="flex flex-col gap-1.5">
++            <label className="text-xs font-medium text-zinc-400">Transition</label>
++            <select
++              value={form.transition}
++              onChange={(e) => setForm((f) => ({ ...f, transition: e.target.value as Transition | '' }))}
++              className={inputClass}
++            >
++              <option value="">—</option>
++              {TRANSITIONS.map((t) => (
++                <option key={t} value={t}>{TRANSITION_LABELS[t]}</option>
++              ))}
++            </select>
++          </div>
++          <div className="flex flex-col gap-1.5">
++            <label className="text-xs font-medium text-zinc-400">Alignment</label>
++            <select
++              value={form.alignment}
++              onChange={(e) => setForm((f) => ({ ...f, alignment: e.target.value as Alignment | '' }))}
++              className={inputClass}
++            >
++              <option value="">—</option>
++              {ALIGNMENTS.map((a) => (
++                <option key={a} value={a}>{ALIGNMENT_LABELS[a]}</option>
++              ))}
++            </select>
++          </div>
++        </div>
++      </div>
++
+       {/* Notes */}
+       <div className="flex flex-col gap-1.5">
+         <label className="text-xs font-medium text-zinc-400">
+diff --git a/lib/import/importIbkrMarkers.ts b/lib/import/importIbkrMarkers.ts
+index 4c682e4..fd7842c 100644
+--- a/lib/import/importIbkrMarkers.ts
++++ b/lib/import/importIbkrMarkers.ts
+@@ -63,7 +63,7 @@ async function upsertTradeSetup(
+       symbol,
+       direction,
+       marketContext: 'range',
+-      setupType: 'VWAP Reclaim',
++      setupType: 'VWAP_RECLAIM',
+       trigger: 'Imported from IBKR',
+       invalidation: '',
+       decisionTarget: '',
+diff --git a/lib/mappers.ts b/lib/mappers.ts
+index f58c233..ccf8c14 100644
+--- a/lib/mappers.ts
++++ b/lib/mappers.ts
+@@ -29,6 +29,10 @@ type DbSetup = {
+   status: string;
+   overallNotes: string;
+   review: unknown;
++  initialRegime: string | null;
++  entryRegime: string | null;
++  transition: string | null;
++  alignment: string | null;
+   executions: DbExecution[];
+   createdAt: Date;
+   updatedAt: Date;
+@@ -66,6 +70,10 @@ export function mapSetup(s: DbSetup): TradeSetup {
+     status: s.status as TradeSetup['status'],
+     overallNotes: s.overallNotes,
+     review: s.review ? (s.review as SetupReview) : null,
++    initialRegime: (s.initialRegime as TradeSetup['initialRegime']) ?? null,
++    entryRegime:   (s.entryRegime   as TradeSetup['entryRegime'])   ?? null,
++    transition:    (s.transition    as TradeSetup['transition'])    ?? null,
++    alignment:     (s.alignment     as TradeSetup['alignment'])     ?? null,
+     executions: s.executions.map(mapExecution),
+     createdAt: s.createdAt.toISOString(),
+     updatedAt: s.updatedAt.toISOString(),
+diff --git a/prisma/schema.prisma b/prisma/schema.prisma
+index f8465ff..85614da 100644
+--- a/prisma/schema.prisma
++++ b/prisma/schema.prisma
+@@ -4,18 +4,44 @@ generator client {
+ }
+ 
+ datasource db {
+-  provider = "postgresql"
+-  url      = env("DATABASE_URL")
++  provider  = "postgresql"
++  url       = env("DATABASE_URL")
+   directUrl = env("DIRECT_URL")
+ }
+ 
++enum SetupType {
++  VWAP_RECLAIM
++  VWAP_REJECT
++  BREAKOUT
++  BREAKDOWN
++  RANGE
++  FLIP
++}
++
++enum Regime {
++  UP
++  DOWN
++  RANGE
++}
++
++enum Transition {
++  NONE
++  FLIP
++  FAILED_FLIP
++}
++
++enum Alignment {
++  WITH_TREND
++  COUNTER
++}
++
+ model TradeSetup {
+-  id             String   @id
++  id             String    @id
+   setupDate      String
+   symbol         String
+   direction      String
+   marketContext  String
+-  setupType      String
++  setupType      SetupType @default(RANGE)
+   trigger        String
+   invalidation   String
+   decisionTarget String
+@@ -23,13 +49,18 @@ model TradeSetup {
+   riskStop       String
+   riskTarget     String
+   initialGrade   String?
+-  status         String   @default("open")
+-  overallNotes   String   @default("")
++  status         String    @default("open")
++  overallNotes   String    @default("")
+   /// Stored as JSON: { followedPlan, wentWell, failed, lesson }
+   review         Json?
++  /// Trade classification
++  initialRegime  Regime?
++  entryRegime    Regime?
++  transition     Transition?
++  alignment      Alignment?
+   executions     Execution[]
+-  createdAt      DateTime @default(now())
+-  updatedAt      DateTime @updatedAt
++  createdAt      DateTime  @default(now())
++  updatedAt      DateTime  @updatedAt
+ }
+ 
+ model Execution {
+diff --git a/types/setup.ts b/types/setup.ts
+index 46bcf11..f6b93e3 100644
+--- a/types/setup.ts
++++ b/types/setup.ts
+@@ -7,15 +7,50 @@ export const MARKET_CONTEXT_LABELS: Record<MarketContext, string> = {
+   range: 'Range',
+ };
+ 
+-/** Refined playbook-style setup categories for analysis. */
+ export const SETUP_TYPES = [
+-  'VWAP Reclaim',
+-  'VWAP Reject',
+-  'VWAP Breakdown',
+-  'ORB Breakout',
+-  'Range Fade',
++  'VWAP_RECLAIM',
++  'VWAP_REJECT',
++  'BREAKOUT',
++  'BREAKDOWN',
++  'RANGE',
++  'FLIP',
+ ] as const;
+ 
++export const SETUP_TYPE_LABELS: Record<(typeof SETUP_TYPES)[number], string> = {
++  VWAP_RECLAIM: 'VWAP Reclaim',
++  VWAP_REJECT:  'VWAP Reject',
++  BREAKOUT:     'Breakout',
++  BREAKDOWN:    'Breakdown',
++  RANGE:        'Range',
++  FLIP:         'Flip',
++};
++
++export const REGIMES = ['UP', 'DOWN', 'RANGE'] as const;
++export type Regime = (typeof REGIMES)[number];
++
++export const REGIME_LABELS: Record<Regime, string> = {
++  UP:    'Up',
++  DOWN:  'Down',
++  RANGE: 'Range',
++};
++
++export const TRANSITIONS = ['NONE', 'FLIP', 'FAILED_FLIP'] as const;
++export type Transition = (typeof TRANSITIONS)[number];
++
++export const TRANSITION_LABELS: Record<Transition, string> = {
++  NONE:        'None',
++  FLIP:        'Flip',
++  FAILED_FLIP: 'Failed Flip',
++};
++
++export const ALIGNMENTS = ['WITH_TREND', 'COUNTER'] as const;
++export type Alignment = (typeof ALIGNMENTS)[number];
++
++export const ALIGNMENT_LABELS: Record<Alignment, string> = {
++  WITH_TREND: 'With Trend',
++  COUNTER:    'Counter',
++};
++
+ export const GRADES = ['A+', 'A', 'B', 'C', 'D'] as const;
+ export const ACTION_TYPES = ['starter', 'add', 'trim', 'exit'] as const;
+ export const DIRECTIONS = ['long', 'short'] as const;
+@@ -73,6 +108,11 @@ export interface TradeSetup {
+   executions: Execution[];
+   createdAt: string;
+   updatedAt: string;
++  /** Trade classification — all optional, set after the fact. */
++  initialRegime: Regime | null;
++  entryRegime:   Regime | null;
++  transition:    Transition | null;
++  alignment:     Alignment | null;
+ }
+ 
+ export const GRADE_COLORS: Record<string, string> = {
