@@ -153,6 +153,29 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
     [form.riskEntry, form.riskStop, form.riskTarget, form.direction]
   );
 
+  // Client-side hints — non-blocking, shown only when a conflict is detected.
+  const hints = useMemo<string[]>(() => {
+    const h: string[] = [];
+    if (
+      form.alignment === 'WITH_TREND' &&
+      form.direction === 'long' &&
+      form.entryRegime === 'DOWN'
+    ) {
+      h.push('With Trend but entry regime is Down — confirm direction bias.');
+    }
+    if (
+      form.alignment === 'WITH_TREND' &&
+      form.direction === 'short' &&
+      form.entryRegime === 'UP'
+    ) {
+      h.push('With Trend but entry regime is Up — confirm direction bias.');
+    }
+    if (form.transition === 'FAILED_FLIP') {
+      h.push('Failed Flip — typically lower expectancy. Size accordingly.');
+    }
+    return h;
+  }, [form.alignment, form.direction, form.entryRegime, form.transition]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (
@@ -336,20 +359,8 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
           </div>
         </div>
 
-        {/* Row 2: Market context + Entry regime */}
+        {/* Row 2: Entry regime + Transition — execution-moment signals */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <label className={labelClass}>Market context</label>
-            <select
-              value={form.marketContext}
-              onChange={(e) => setForm((f) => ({ ...f, marketContext: e.target.value as MarketContext }))}
-              className={inputClass}
-            >
-              {MARKET_CONTEXTS.map((mc) => (
-                <option key={mc} value={mc}>{MARKET_CONTEXT_LABELS[mc]}</option>
-              ))}
-            </select>
-          </div>
           <div className="flex flex-col gap-1.5">
             <label className={labelClass}>Entry regime</label>
             <Seg
@@ -360,19 +371,43 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
               onChange={(v) => setForm((f) => ({ ...f, entryRegime: v }))}
             />
           </div>
-        </div>
-
-        {/* Row 3: Transition + Initial regime — lower priority */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
             <label className={labelClass}>Transition</label>
             <Seg
               value={form.transition}
               options={TRANSITIONS}
-              getLabel={(t) => (t === 'NONE' ? '—' : t === 'FLIP' ? 'Flip' : 'Failed')}
+              getLabel={(t) => (t === 'NONE' ? 'None' : t === 'FLIP' ? 'Flip' : 'Failed')}
               getActiveClass={transitionActive}
               onChange={(v) => setForm((f) => ({ ...f, transition: v }))}
             />
+          </div>
+        </div>
+
+        {/* Hints — non-blocking, only shown when a conflict or caution is detected */}
+        {hints.length > 0 && (
+          <div className="flex flex-col gap-0.5">
+            {hints.map((h) => (
+              <p key={h} className="flex items-start gap-1.5 text-xs text-amber-500/80">
+                <span className="mt-px shrink-0">⚠</span>
+                <span>{h}</span>
+              </p>
+            ))}
+          </div>
+        )}
+
+        {/* Row 3: Market context + Initial regime — background context, lower priority */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <label className={labelDimClass}>Market context</label>
+            <select
+              value={form.marketContext}
+              onChange={(e) => setForm((f) => ({ ...f, marketContext: e.target.value as MarketContext }))}
+              className={inputClass}
+            >
+              {MARKET_CONTEXTS.map((mc) => (
+                <option key={mc} value={mc}>{MARKET_CONTEXT_LABELS[mc]}</option>
+              ))}
+            </select>
           </div>
           <div className="flex flex-col gap-1.5">
             <label className={labelDimClass}>Initial regime</label>
