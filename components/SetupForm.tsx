@@ -17,11 +17,8 @@ import {
   MARKET_CONTEXTS,
   MARKET_CONTEXT_LABELS,
   REGIMES,
-  REGIME_LABELS,
   TRANSITIONS,
-  TRANSITION_LABELS,
   ALIGNMENTS,
-  ALIGNMENT_LABELS,
 } from '@/types/setup';
 import { getTodayInEasternTime } from '@/lib/dateUtils';
 import { formatPlannedRiskReward } from '@/lib/plannedRiskReward';
@@ -77,6 +74,59 @@ function makeDefaultForm(init?: TradeSetup) {
   };
 }
 
+// ── Segmented control ─────────────────────────────────────────────────────────
+
+function Seg<T extends string>({
+  value,
+  options,
+  getLabel,
+  getActiveClass,
+  onChange,
+}: {
+  value: T | '';
+  options: readonly T[];
+  getLabel: (v: T) => string;
+  getActiveClass: (v: T) => string;
+  onChange: (v: T | '') => void;
+}) {
+  return (
+    <div className="flex h-9 overflow-hidden rounded-md border border-zinc-700">
+      {options.map((o) => (
+        <button
+          key={o}
+          type="button"
+          onClick={() => onChange(value === o ? '' : o)}
+          className={`flex-1 truncate px-1.5 text-xs font-medium transition-colors ${
+            value === o
+              ? getActiveClass(o)
+              : 'bg-zinc-800 text-zinc-500 hover:bg-zinc-750 hover:text-zinc-300'
+          }`}
+        >
+          {getLabel(o)}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Active-state color helpers
+function regimeActive(r: Regime): string {
+  if (r === 'UP')   return 'bg-emerald-600/80 text-emerald-100 ring-1 ring-inset ring-emerald-400/30';
+  if (r === 'DOWN') return 'bg-rose-600/80    text-rose-100    ring-1 ring-inset ring-rose-400/30';
+  return                    'bg-amber-600/80  text-amber-100   ring-1 ring-inset ring-amber-400/30';
+}
+function transitionActive(t: Transition): string {
+  if (t === 'FLIP')        return 'bg-violet-600/80 text-violet-100 ring-1 ring-inset ring-violet-400/30';
+  if (t === 'FAILED_FLIP') return 'bg-orange-600/80 text-orange-100 ring-1 ring-inset ring-orange-400/30';
+  return                          'bg-zinc-600      text-zinc-200   ring-1 ring-inset ring-zinc-500/30';
+}
+function alignmentActive(a: Alignment): string {
+  if (a === 'WITH_TREND') return 'bg-teal-600/80   text-teal-100   ring-1 ring-inset ring-teal-400/30';
+  return                         'bg-orange-600/80 text-orange-100 ring-1 ring-inset ring-orange-400/30';
+}
+
+// ── Shared style tokens ───────────────────────────────────────────────────────
+
 const inputClass =
   'h-9 rounded-md border border-zinc-700 bg-zinc-800 px-3 text-sm text-white ' +
   'focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-colors';
@@ -88,14 +138,18 @@ const textareaClass =
 const sectionTitleClass =
   'text-[11px] font-semibold uppercase tracking-wider text-zinc-500 border-b border-zinc-800 pb-2';
 
+const labelClass    = 'text-xs font-medium text-zinc-400';
+const labelDimClass = 'text-xs font-medium text-zinc-500'; // lower-priority fields
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
 export default function SetupForm({ onLog, onClose, initialSetup, onSave }: SetupFormProps) {
   const isEdit = !!initialSetup;
   const [form, setForm] = useState(() => makeDefaultForm(initialSetup));
   const [saving, setSaving] = useState(false);
 
   const plannedRR = useMemo(
-    () =>
-      formatPlannedRiskReward(form.riskEntry, form.riskStop, form.riskTarget, form.direction),
+    () => formatPlannedRiskReward(form.riskEntry, form.riskStop, form.riskTarget, form.direction),
     [form.riskEntry, form.riskStop, form.riskTarget, form.direction]
   );
 
@@ -175,6 +229,7 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
       onSubmit={handleSubmit}
       className="flex flex-col gap-5 rounded-lg border border-zinc-800 bg-zinc-900 p-6"
     >
+      {/* ── Title ── */}
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-white">{isEdit ? 'Edit Setup' : 'New Setup'}</h2>
         <button
@@ -187,10 +242,10 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
         </button>
       </div>
 
-      {/* Identity row */}
+      {/* ── Identity row ── */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-zinc-400">Symbol</label>
+          <label className={labelClass}>Symbol</label>
           <input
             type="text"
             placeholder="AAPL"
@@ -202,7 +257,7 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-zinc-400">Direction</label>
+          <label className={labelClass}>Direction</label>
           <div className="flex h-9 overflow-hidden rounded-md border border-zinc-700">
             {DIRECTIONS.map((d) => (
               <button
@@ -224,9 +279,8 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-zinc-400">
-            Trading Date
-            <span className="ml-1 font-normal text-zinc-600">(ET)</span>
+          <label className={labelClass}>
+            Trading Date <span className="font-normal text-zinc-600">(ET)</span>
           </label>
           <input
             type="date"
@@ -238,65 +292,103 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-zinc-400">
-            Grade <span className="font-normal text-zinc-600">(opt)</span>
-          </label>
+          <label className={labelClass}>Grade</label>
           <select
             value={form.initialGrade}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, initialGrade: e.target.value as Grade | '' }))
-            }
+            onChange={(e) => setForm((f) => ({ ...f, initialGrade: e.target.value as Grade | '' }))}
             className={inputClass}
           >
             <option value="">—</option>
             {GRADES.map((g) => (
-              <option key={g} value={g}>
-                {g}
-              </option>
+              <option key={g} value={g}>{g}</option>
             ))}
           </select>
         </div>
       </div>
 
-      {/* Decision */}
+      {/* ── Decision (includes classification) ── */}
       <div className="flex flex-col gap-3">
         <h3 className={sectionTitleClass}>Decision</h3>
+
+        {/* Row 1: Setup type + Alignment — highest signal pair */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-zinc-400">Market context</label>
-            <select
-              value={form.marketContext}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, marketContext: e.target.value as MarketContext }))
-              }
-              className={inputClass}
-            >
-              {MARKET_CONTEXTS.map((mc) => (
-                <option key={mc} value={mc}>
-                  {MARKET_CONTEXT_LABELS[mc]}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-zinc-400">Setup type</label>
+            <label className={labelClass}>Setup type</label>
             <select
               value={form.setupType}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, setupType: e.target.value as SetupType }))
-              }
+              onChange={(e) => setForm((f) => ({ ...f, setupType: e.target.value as SetupType }))}
               className={inputClass}
             >
               {SETUP_TYPES.map((s) => (
-                <option key={s} value={s}>
-                  {SETUP_TYPE_LABELS[s]}
-                </option>
+                <option key={s} value={s}>{SETUP_TYPE_LABELS[s]}</option>
               ))}
             </select>
           </div>
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>Alignment</label>
+            <Seg
+              value={form.alignment}
+              options={ALIGNMENTS}
+              getLabel={(a) => (a === 'WITH_TREND' ? 'With Trend' : 'Counter')}
+              getActiveClass={alignmentActive}
+              onChange={(v) => setForm((f) => ({ ...f, alignment: v }))}
+            />
+          </div>
         </div>
+
+        {/* Row 2: Market context + Entry regime */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>Market context</label>
+            <select
+              value={form.marketContext}
+              onChange={(e) => setForm((f) => ({ ...f, marketContext: e.target.value as MarketContext }))}
+              className={inputClass}
+            >
+              {MARKET_CONTEXTS.map((mc) => (
+                <option key={mc} value={mc}>{MARKET_CONTEXT_LABELS[mc]}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>Entry regime</label>
+            <Seg
+              value={form.entryRegime}
+              options={REGIMES}
+              getLabel={(r) => (r === 'UP' ? '↑ Up' : r === 'DOWN' ? '↓ Down' : '↔ Range')}
+              getActiveClass={regimeActive}
+              onChange={(v) => setForm((f) => ({ ...f, entryRegime: v }))}
+            />
+          </div>
+        </div>
+
+        {/* Row 3: Transition + Initial regime — lower priority */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>Transition</label>
+            <Seg
+              value={form.transition}
+              options={TRANSITIONS}
+              getLabel={(t) => (t === 'NONE' ? '—' : t === 'FLIP' ? 'Flip' : 'Failed')}
+              getActiveClass={transitionActive}
+              onChange={(v) => setForm((f) => ({ ...f, transition: v }))}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className={labelDimClass}>Initial regime</label>
+            <Seg
+              value={form.initialRegime}
+              options={REGIMES}
+              getLabel={(r) => (r === 'UP' ? '↑ Up' : r === 'DOWN' ? '↓ Down' : '↔ Range')}
+              getActiveClass={regimeActive}
+              onChange={(v) => setForm((f) => ({ ...f, initialRegime: v }))}
+            />
+          </div>
+        </div>
+
+        {/* Trigger / Invalidation / Target */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-zinc-400">Trigger</label>
+          <label className={labelClass}>Trigger</label>
           <input
             type="text"
             placeholder="e.g. reclaim VWAP, break OR high"
@@ -307,7 +399,7 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-zinc-400">Invalidation</label>
+          <label className={labelClass}>Invalidation</label>
           <input
             type="text"
             placeholder="e.g. close below VWAP, take out prior low"
@@ -318,7 +410,7 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-zinc-400">Target (idea)</label>
+          <label className={labelClass}>Target</label>
           <input
             type="text"
             placeholder="e.g. PDH, range high, 2R"
@@ -330,12 +422,12 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
         </div>
       </div>
 
-      {/* Risk plan */}
+      {/* ── Risk plan ── */}
       <div className="flex flex-col gap-3">
         <h3 className={sectionTitleClass}>Risk plan</h3>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-zinc-400">Entry</label>
+            <label className={labelClass}>Entry</label>
             <input
               type="text"
               placeholder="Price or level"
@@ -345,7 +437,7 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-zinc-400">Stop</label>
+            <label className={labelClass}>Stop</label>
             <input
               type="text"
               placeholder="Price or level"
@@ -355,7 +447,7 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-zinc-400">Target (trade)</label>
+            <label className={labelClass}>Target</label>
             <input
               type="text"
               placeholder="Take-profit / exit"
@@ -374,72 +466,9 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
         </p>
       </div>
 
-      {/* Classification */}
-      <div className="flex flex-col gap-3">
-        <h3 className={sectionTitleClass}>
-          Classification <span className="font-normal normal-case tracking-normal text-zinc-600">— optional</span>
-        </h3>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-zinc-400">Initial regime</label>
-            <select
-              value={form.initialRegime}
-              onChange={(e) => setForm((f) => ({ ...f, initialRegime: e.target.value as Regime | '' }))}
-              className={inputClass}
-            >
-              <option value="">—</option>
-              {REGIMES.map((r) => (
-                <option key={r} value={r}>{REGIME_LABELS[r]}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-zinc-400">Entry regime</label>
-            <select
-              value={form.entryRegime}
-              onChange={(e) => setForm((f) => ({ ...f, entryRegime: e.target.value as Regime | '' }))}
-              className={inputClass}
-            >
-              <option value="">—</option>
-              {REGIMES.map((r) => (
-                <option key={r} value={r}>{REGIME_LABELS[r]}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-zinc-400">Transition</label>
-            <select
-              value={form.transition}
-              onChange={(e) => setForm((f) => ({ ...f, transition: e.target.value as Transition | '' }))}
-              className={inputClass}
-            >
-              <option value="">—</option>
-              {TRANSITIONS.map((t) => (
-                <option key={t} value={t}>{TRANSITION_LABELS[t]}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-zinc-400">Alignment</label>
-            <select
-              value={form.alignment}
-              onChange={(e) => setForm((f) => ({ ...f, alignment: e.target.value as Alignment | '' }))}
-              className={inputClass}
-            >
-              <option value="">—</option>
-              {ALIGNMENTS.map((a) => (
-                <option key={a} value={a}>{ALIGNMENT_LABELS[a]}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Notes */}
+      {/* ── Notes ── */}
       <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-medium text-zinc-400">
-          Notes <span className="font-normal text-zinc-600">(optional)</span>
-        </label>
+        <label className={labelDimClass}>Notes</label>
         <textarea
           rows={2}
           placeholder="Extra context, levels to watch, sizing…"
