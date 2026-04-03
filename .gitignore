@@ -45,3 +45,7 @@ lib/generated/
 next-env.d.ts
 
 /lib/generated/prisma
+
+scripts/*.csv
+data/trades/**
+data/market/**
