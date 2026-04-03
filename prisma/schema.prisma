@@ -44,3 +44,24 @@ model Execution {
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 }
+
+model ChartMarker {
+  id             String   @id
+  symbol         String
+  tradeDate      String
+  executionTime  DateTime
+  side           String
+  shares         Float
+  price          Float
+  executionType  String
+  positionEffect String
+  source         String   @default("ibkr")
+  externalId     String
+  markerShape    String
+  markerColor    String
+  markerText     String
+  createdAt      DateTime @default(now())
+
+  @@unique([symbol, tradeDate, externalId])
+  @@index([symbol, tradeDate])
+}

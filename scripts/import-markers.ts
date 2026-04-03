@@ -65,8 +65,7 @@ async function main() {
   console.log(`  Inserted: ${result.inserted}`);
   console.log(`  Skipped : ${result.skipped}`);
   console.log(`\n── Execution ledger ───────────────────────────────────`);
-  console.log(`  Setups detected: ${result.setupCount}`);
-  console.log(`  Setup IDs      : ${result.setupIds.join(', ') || '—'}`);
+  console.log(`  Setup ID       : ${result.setupId || '—'}`);
   console.log(`  Execs inserted: ${result.execInserted}`);
   console.log(`  Execs skipped : ${result.execSkipped}`);
   console.log(`\nImported trades are now visible in the Execution Ledger.`);
