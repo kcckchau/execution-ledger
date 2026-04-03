@@ -1,6 +1,8 @@
 import type { ActionType } from '@/types/setup';
 import type { Execution } from '@/types/setup';
 
+export type SessionType = 'premarket' | 'regular' | 'aftermarket';
+
 export interface SessionCandle {
   time: string;
   open: number;
@@ -9,6 +11,8 @@ export interface SessionCandle {
   close: number;
   volume: number;
   vwap: number;
+  /** Which trading session this candle belongs to (populated when source file uses `sessions`). */
+  session?: SessionType;
 }
 
 export interface SessionLevels {

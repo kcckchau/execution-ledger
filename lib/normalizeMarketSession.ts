@@ -1,4 +1,4 @@
-import type { SessionCandle, SessionChartData, SessionLevels } from '@/types/sessionChart';
+import type { SessionCandle, SessionChartData, SessionLevels, SessionType } from '@/types/sessionChart';
 
 export interface SessionSliceJson {
   start: string;
@@ -51,11 +51,12 @@ export function normalizeMarketSessionFile(raw: MarketSessionFileJson): SessionC
       const slice = raw.sessions[key];
       if (!slice) continue;
       // Sessions can be a bare candle array or a { start, end, candles } object
-      if (Array.isArray(slice)) {
-        candles = candles.concat(slice);
-      } else if (slice.candles?.length) {
-        candles = candles.concat(slice.candles);
-      }
+      const sessionCandles: SessionCandle[] = Array.isArray(slice)
+        ? slice
+        : (slice.candles ?? []);
+      candles = candles.concat(
+        sessionCandles.map((c) => ({ ...c, session: key as SessionType }))
+      );
     }
   }
 

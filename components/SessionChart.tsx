@@ -7,6 +7,7 @@ import {
   createChart,
   createSeriesMarkers,
   CrosshairMode,
+  HistogramSeries,
   LineSeries,
   LineStyle,
   type Logical,
@@ -23,6 +24,12 @@ import type { ActionType } from '@/types/setup';
 const VWAP_COLOR = '#b8bcc4';
 const EMA9_COLOR = '#22d3ee';
 const EMA21_COLOR = '#eab308';
+
+const SESSION_BAND_COLORS = {
+  premarket: 'rgba(250, 204, 21, 0.09)',   // amber tint
+  regular: 'rgba(34, 197, 94, 0.05)',      // faint green
+  aftermarket: 'rgba(139, 92, 246, 0.10)', // violet tint
+} as const;
 
 const ACTION_MARKER_COLORS: Record<ActionType, string> = {
   starter: '#22c55e',
@@ -196,6 +203,41 @@ export default function SessionChart({
         tickMarkFormatter,
       },
     });
+
+    // Session background bands (premarket / regular / aftermarket).
+    const SESSION_BAND_SCALE = 'session-bands';
+    const sessionGroups = {
+      premarket: [] as UTCTimestamp[],
+      regular: [] as UTCTimestamp[],
+      aftermarket: [] as UTCTimestamp[],
+    };
+    for (const c of sorted) {
+      if (c.session === 'premarket') sessionGroups.premarket.push(toUtcTimestamp(c.time));
+      else if (c.session === 'regular') sessionGroups.regular.push(toUtcTimestamp(c.time));
+      else if (c.session === 'aftermarket') sessionGroups.aftermarket.push(toUtcTimestamp(c.time));
+    }
+    const sessionKeys = (['premarket', 'regular', 'aftermarket'] as const).filter(
+      (k) => sessionGroups[k].length > 0
+    );
+    let bandScaleConfigured = false;
+    for (const key of sessionKeys) {
+      const bandData = sessionGroups[key].map((t) => ({ time: t, value: 1 }));
+      const bandSeries = chart.addSeries(HistogramSeries, {
+        color: SESSION_BAND_COLORS[key],
+        priceScaleId: SESSION_BAND_SCALE,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        base: 0,
+      });
+      if (!bandScaleConfigured) {
+        bandSeries.priceScale().applyOptions({
+          visible: false,
+          scaleMargins: { top: 0, bottom: 0 },
+        });
+        bandScaleConfigured = true;
+      }
+      bandSeries.setData(bandData);
+    }
 
     // Lines first so candlesticks draw on top.
     const vwapSeries = chart.addSeries(LineSeries, {
