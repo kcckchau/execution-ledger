@@ -73,7 +73,7 @@ export default function SetupLog({
   return (
     <>
       {/* Filter bar + stats — always visible when there are setups */}
-      <TradeFiltersBar filters={filters} stats={stats} onFiltersChange={setFilters} />
+      <TradeFiltersBar setups={filteredSetups} filters={filters} stats={stats} onFiltersChange={setFilters} />
 
       {/* Bulk action bar — only visible when rows are selected */}
       {selected.size > 0 && (

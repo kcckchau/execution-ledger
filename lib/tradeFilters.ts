@@ -60,6 +60,30 @@ export interface TradeStats {
   avgPnl: number | null;
 }
 
+// ── Grouped stats ─────────────────────────────────────────────────────────────
+
+export interface GroupRow {
+  key: string;
+  stats: TradeStats;
+}
+
+/**
+ * Computes stats for each key in `keys`, filtered to only rows that have
+ * at least one matching trade. Preserves enum order.
+ */
+export function computeGroupedStats(
+  setups: TradeSetup[],
+  getKey: (s: TradeSetup) => string | null | undefined,
+  keys: readonly string[],
+): GroupRow[] {
+  return keys
+    .map((key) => ({
+      key,
+      stats: computeTradeStats(setups.filter((s) => getKey(s) === key)),
+    }))
+    .filter((row) => row.stats.count > 0);
+}
+
 export function computeTradeStats(setups: TradeSetup[]): TradeStats {
   if (setups.length === 0) {
     return { count: 0, totalPnl: 0, winRate: null, avgPnl: null };
