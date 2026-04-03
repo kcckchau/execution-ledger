@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { type TradeSetup, type Execution, type SetupReview } from '@/types/setup';
+import { EMPTY_FILTERS, filterTrades, computeTradeStats, type TradeFilters } from '@/lib/tradeFilters';
 import SetupCard from './SetupCard';
 import ConfirmDialog from './ConfirmDialog';
+import TradeFiltersBar from './TradeFiltersBar';
 
 interface SetupLogProps {
   setups: TradeSetup[];
@@ -28,9 +30,13 @@ export default function SetupLog({
   onUpdateExecution,
   onDeleteExecution,
 }: SetupLogProps) {
+  const [filters, setFilters] = useState<TradeFilters>(EMPTY_FILTERS);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showBulkConfirm, setShowBulkConfirm] = useState(false);
   const [bulkPending, setBulkPending] = useState(false);
+
+  const filteredSetups = useMemo(() => filterTrades(setups, filters), [setups, filters]);
+  const stats = useMemo(() => computeTradeStats(filteredSetups), [filteredSetups]);
 
   function toggleSelect(id: string) {
     setSelected((prev) => {
@@ -66,6 +72,9 @@ export default function SetupLog({
 
   return (
     <>
+      {/* Filter bar + stats — always visible when there are setups */}
+      <TradeFiltersBar filters={filters} stats={stats} onFiltersChange={setFilters} />
+
       {/* Bulk action bar — only visible when rows are selected */}
       {selected.size > 0 && (
         <div className="flex items-center justify-between rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5">
@@ -91,40 +100,46 @@ export default function SetupLog({
         </div>
       )}
 
-      <div className="flex flex-col gap-4">
-        {setups.map((setup, index) => {
-          const chartKey = `${setup.symbol}::${setup.setupDate}`;
-          const showChart =
-            setups.findIndex((s) => `${s.symbol}::${s.setupDate}` === chartKey) === index;
+      {filteredSetups.length === 0 ? (
+        <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 py-8 text-center">
+          <p className="text-sm text-zinc-500">No trades match the current filters.</p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4">
+          {filteredSetups.map((setup, index) => {
+            const chartKey = `${setup.symbol}::${setup.setupDate}`;
+            const showChart =
+              filteredSetups.findIndex((s) => `${s.symbol}::${s.setupDate}` === chartKey) === index;
 
-          return (
-          <div key={setup.id} className="flex items-start gap-3">
-            <div className="pt-[18px] pl-1 shrink-0">
-              <input
-                type="checkbox"
-                checked={selected.has(setup.id)}
-                onChange={() => toggleSelect(setup.id)}
-                title="Select setup"
-                className="h-3.5 w-3.5 cursor-pointer rounded-sm border-zinc-600 accent-indigo-500"
-              />
-            </div>
-            <div className="min-w-0 flex-1">
-              <SetupCard
-                setup={setup}
-                showChart={showChart}
-                onAddExecution={onAddExecution}
-                onSaveReview={onSaveReview}
-                onUpdateStatus={onUpdateStatus}
-                onDeleteSetup={() => onDeleteSetup(setup.id)}
-                onUpdateSetup={(updated) => onUpdateSetup(setup.id, updated)}
-                onUpdateExecution={(exec) => onUpdateExecution(setup.id, exec)}
-                onDeleteExecution={(execId) => onDeleteExecution(setup.id, execId)}
-              />
-            </div>
-          </div>
-          );
-        })}
-      </div>
+            return (
+              <div key={setup.id} className="flex items-start gap-3">
+                <div className="pt-[18px] pl-1 shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={selected.has(setup.id)}
+                    onChange={() => toggleSelect(setup.id)}
+                    title="Select setup"
+                    className="h-3.5 w-3.5 cursor-pointer rounded-sm border-zinc-600 accent-indigo-500"
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <SetupCard
+                    setup={setup}
+                    showChart={showChart}
+                    onAddExecution={onAddExecution}
+                    onSaveReview={onSaveReview}
+                    onUpdateStatus={onUpdateStatus}
+                    onDeleteSetup={() => onDeleteSetup(setup.id)}
+                    onUpdateSetup={(updated) => onUpdateSetup(setup.id, updated)}
+                    onUpdateExecution={(exec) => onUpdateExecution(setup.id, exec)}
+                    onDeleteExecution={(execId) => onDeleteExecution(setup.id, execId)}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <ConfirmDialog
         open={showBulkConfirm}

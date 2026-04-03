@@ -1,0 +1,80 @@
+import { calcSetupPnl } from './pnl';
+import type { TradeSetup } from '@/types/setup';
+
+// ── Filter state ──────────────────────────────────────────────────────────────
+
+export interface TradeFilters {
+  setupType: string[];
+  alignment: string[];
+  transition: string[];
+}
+
+export const EMPTY_FILTERS: TradeFilters = {
+  setupType: [],
+  alignment: [],
+  transition: [],
+};
+
+export function isFiltersEmpty(f: TradeFilters): boolean {
+  return f.setupType.length === 0 && f.alignment.length === 0 && f.transition.length === 0;
+}
+
+export function toggleFilter(
+  filters: TradeFilters,
+  key: keyof TradeFilters,
+  value: string,
+): TradeFilters {
+  const current = filters[key];
+  return {
+    ...filters,
+    [key]: current.includes(value)
+      ? current.filter((v) => v !== value)
+      : [...current, value],
+  };
+}
+
+// ── Filter logic ──────────────────────────────────────────────────────────────
+
+/**
+ * Returns setups that match ALL selected filter categories (AND across categories,
+ * OR within a category). Empty category = no constraint for that category.
+ */
+export function filterTrades(setups: TradeSetup[], filters: TradeFilters): TradeSetup[] {
+  if (isFiltersEmpty(filters)) return setups;
+  return setups.filter((s) => {
+    if (filters.setupType.length > 0 && !filters.setupType.includes(s.setupType)) return false;
+    if (filters.alignment.length > 0 && (!s.alignment || !filters.alignment.includes(s.alignment))) return false;
+    if (filters.transition.length > 0 && (!s.transition || !filters.transition.includes(s.transition))) return false;
+    return true;
+  });
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+
+export interface TradeStats {
+  count: number;
+  totalPnl: number;
+  /** Wins / (wins + losses). null when no closed trades in set. */
+  winRate: number | null;
+  /** totalPnl / count. null when no trades. */
+  avgPnl: number | null;
+}
+
+export function computeTradeStats(setups: TradeSetup[]): TradeStats {
+  if (setups.length === 0) {
+    return { count: 0, totalPnl: 0, winRate: null, avgPnl: null };
+  }
+
+  const pnls = setups.map((s) => calcSetupPnl(s.executions, s.direction).realizedPnl);
+  const totalPnl = pnls.reduce((sum, p) => sum + p, 0);
+  const wins   = pnls.filter((p) => p > 0).length;
+  const losses = pnls.filter((p) => p < 0).length;
+  const denominator = wins + losses;
+
+  return {
+    count: setups.length,
+    totalPnl,
+    winRate: denominator > 0 ? wins / denominator : null,
+    avgPnl: totalPnl / setups.length,
+  };
+}
