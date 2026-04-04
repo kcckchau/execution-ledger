@@ -1,16 +1,14 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import type { DayContext } from '@/types/dayContext';
 import {
   MARKET_CONTEXTS,
   MARKET_CONTEXT_LABELS,
   REGIMES,
   TRANSITIONS,
-  ALIGNMENTS,
   type Regime,
   type Transition,
-  type Alignment,
   type MarketContext,
 } from '@/types/setup';
 
@@ -61,19 +59,24 @@ function Seg<T extends string>({
 
 // ── Color helpers ─────────────────────────────────────────────────────────────
 
+function regimeLabel(r: Regime): string {
+  if (r === 'UP')         return '↑ Up';
+  if (r === 'DOWN')       return '↓ Down';
+  if (r === 'CHOP')       return '~ Chop';
+  if (r === 'TRANSITION') return '⇄ Trans';
+  return '↔ Range';
+}
 function regimeActive(r: Regime): string {
-  if (r === 'UP')   return 'bg-emerald-700/60 text-emerald-200';
-  if (r === 'DOWN') return 'bg-rose-700/60    text-rose-200';
-  return                    'bg-amber-700/60  text-amber-200';
+  if (r === 'UP')         return 'bg-emerald-700/60 text-emerald-200';
+  if (r === 'DOWN')       return 'bg-rose-700/60    text-rose-200';
+  if (r === 'CHOP')       return 'bg-yellow-700/60  text-yellow-200';
+  if (r === 'TRANSITION') return 'bg-violet-700/60  text-violet-200';
+  return                          'bg-amber-700/60  text-amber-200';
 }
 function transitionActive(t: Transition): string {
   if (t === 'FLIP')        return 'bg-violet-700/60 text-violet-200';
   if (t === 'FAILED_FLIP') return 'bg-orange-700/60 text-orange-200';
   return                          'bg-zinc-700      text-zinc-300';
-}
-function alignmentActive(a: Alignment): string {
-  if (a === 'WITH_TREND') return 'bg-teal-700/60   text-teal-200';
-  return                         'bg-orange-700/60 text-orange-200';
 }
 function mktActive(m: MarketContext): string {
   if (m === 'uptrend')   return 'bg-emerald-700/60 text-emerald-200';
@@ -85,15 +88,17 @@ function mktActive(m: MarketContext): string {
 
 export default function DayContextCard({ date, dayContext, onUpdate }: DayContextCardProps) {
   const [saving, setSaving] = useState(false);
+  const [notesVal, setNotesVal] = useState(dayContext?.notes ?? '');
+  const notesRef = useRef(notesVal);
 
   const current: DayContext = dayContext ?? {
     id: '',
     date,
+    dayType: null,
     marketContext: null,
     initialRegime: null,
     entryRegime: null,
     transition: null,
-    alignment: null,
     notes: '',
     createdAt: '',
     updatedAt: '',
@@ -143,21 +148,11 @@ export default function DayContextCard({ date, dayContext, onUpdate }: DayContex
           />
         </Field>
 
-        <Field label="Align">
-          <Seg
-            value={current.alignment}
-            options={ALIGNMENTS}
-            getLabel={(a) => (a === 'WITH_TREND' ? 'With Trend' : 'Counter')}
-            getActiveClass={alignmentActive}
-            onChange={(v) => save({ alignment: v })}
-          />
-        </Field>
-
         <Field label="Open">
           <Seg
             value={current.initialRegime}
             options={REGIMES}
-            getLabel={(r) => (r === 'UP' ? '↑ Up' : r === 'DOWN' ? '↓ Down' : '↔ Range')}
+            getLabel={regimeLabel}
             getActiveClass={regimeActive}
             onChange={(v) => save({ initialRegime: v })}
             dim
@@ -168,7 +163,7 @@ export default function DayContextCard({ date, dayContext, onUpdate }: DayContex
           <Seg
             value={current.entryRegime}
             options={REGIMES}
-            getLabel={(r) => (r === 'UP' ? '↑ Up' : r === 'DOWN' ? '↓ Down' : '↔ Range')}
+            getLabel={regimeLabel}
             getActiveClass={regimeActive}
             onChange={(v) => save({ entryRegime: v })}
             dim
@@ -186,6 +181,23 @@ export default function DayContextCard({ date, dayContext, onUpdate }: DayContex
           />
         </Field>
       </div>
+
+      {/* ── Notes ── */}
+      <textarea
+        rows={2}
+        placeholder="Day notes…"
+        value={notesVal}
+        onChange={(e) => {
+          setNotesVal(e.target.value);
+          notesRef.current = e.target.value;
+        }}
+        onBlur={() => {
+          if (notesRef.current !== (dayContext?.notes ?? '')) {
+            save({ notes: notesRef.current });
+          }
+        }}
+        className="w-full resize-none rounded border border-zinc-800 bg-transparent px-2 py-1.5 text-xs text-zinc-300 placeholder-zinc-700 focus:border-zinc-600 focus:outline-none"
+      />
     </div>
   );
 }

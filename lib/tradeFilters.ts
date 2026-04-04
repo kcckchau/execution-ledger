@@ -42,13 +42,13 @@ export function toggleFilter(
 /**
  * Returns setups that match ALL selected filter categories (AND across categories,
  * OR within a category). Empty category = no constraint for that category.
- * alignment and transition are sourced from each setup's dayContext.
+ * alignment is sourced from TradeSetup directly; transition comes from dayContext.
  */
 export function filterTrades(setups: TradeSetup[], filters: TradeFilters): TradeSetup[] {
   if (isFiltersEmpty(filters)) return setups;
   return setups.filter((s) => {
     if (filters.setupType.length > 0 && !filters.setupType.includes(s.setupType)) return false;
-    const alignment = s.dayContext?.alignment ?? null;
+    const alignment = s.alignment ?? null;
     const transition = s.dayContext?.transition ?? null;
     if (filters.alignment.length > 0 && (!alignment || !filters.alignment.includes(alignment))) return false;
     if (filters.transition.length > 0 && (!transition || !filters.transition.includes(transition))) return false;

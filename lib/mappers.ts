@@ -1,4 +1,16 @@
-import type { TradeSetup, Execution, SetupReview } from '@/types/setup';
+import type {
+  TradeSetup,
+  Execution,
+  SetupReview,
+  TriggerType,
+  Regime,
+  VWAPState,
+  StructureType,
+  Alignment,
+  MistakeTag,
+  SetupType,
+  DirectionEnum,
+} from '@/types/setup';
 import type { DayContext } from '@/types/dayContext';
 
 type DbExecution = {
@@ -19,12 +31,32 @@ type DbSetup = {
   symbol: string;
   direction: string;
   setupType: string;
+  // Layer 1 legacy text
   trigger: string;
   invalidation: string;
   decisionTarget: string;
   riskEntry: string;
   riskStop: string;
   riskTarget: string;
+  // Layer 1 structured
+  triggerType: string | null;
+  entryPrice: number | null;
+  stopPrice: number | null;
+  targetPrice: number | null;
+  // Layer 2
+  trueRegime: string | null;
+  vwapState: string | null;
+  structure: string | null;
+  alignment: string | null;
+  // Layer 3
+  mistakeTags: string[];
+  executionScore: number | null;
+  readScore: number | null;
+  disciplineScore: number | null;
+  bestSetupType: string | null;
+  bestDirection: string | null;
+  shouldTrade: boolean | null;
+  // Meta
   initialGrade: string | null;
   status: string;
   overallNotes: string;
@@ -38,11 +70,11 @@ type DbSetup = {
 type DbDayContext = {
   id: string;
   date: string;
+  dayType: string | null;
   marketContext: string | null;
   initialRegime: string | null;
   entryRegime: string | null;
   transition: string | null;
-  alignment: string | null;
   notes: string;
   createdAt: Date;
   updatedAt: Date;
@@ -66,11 +98,11 @@ export function mapDayContext(d: DbDayContext): DayContext {
   return {
     id: d.id,
     date: d.date,
+    dayType: (d.dayType as DayContext['dayType']) ?? null,
     marketContext: (d.marketContext as DayContext['marketContext']) ?? null,
     initialRegime: (d.initialRegime as DayContext['initialRegime']) ?? null,
     entryRegime: (d.entryRegime as DayContext['entryRegime']) ?? null,
     transition: (d.transition as DayContext['transition']) ?? null,
-    alignment: (d.alignment as DayContext['alignment']) ?? null,
     notes: d.notes,
     createdAt: d.createdAt instanceof Date ? d.createdAt.toISOString() : String(d.createdAt),
     updatedAt: d.updatedAt instanceof Date ? d.updatedAt.toISOString() : String(d.updatedAt),
@@ -84,12 +116,32 @@ export function mapSetup(s: DbSetup, dayContext: DayContext | null = null): Trad
     symbol: s.symbol,
     direction: s.direction as TradeSetup['direction'],
     setupType: s.setupType as TradeSetup['setupType'],
+    // Layer 1 legacy
     trigger: s.trigger,
     invalidation: s.invalidation,
     decisionTarget: s.decisionTarget,
     riskEntry: s.riskEntry,
     riskStop: s.riskStop,
     riskTarget: s.riskTarget,
+    // Layer 1 structured
+    triggerType: (s.triggerType as TriggerType) ?? null,
+    entryPrice: s.entryPrice ?? null,
+    stopPrice: s.stopPrice ?? null,
+    targetPrice: s.targetPrice ?? null,
+    // Layer 2
+    trueRegime: (s.trueRegime as Regime) ?? null,
+    vwapState: (s.vwapState as VWAPState) ?? null,
+    structure: (s.structure as StructureType) ?? null,
+    alignment: (s.alignment as Alignment) ?? null,
+    // Layer 3
+    mistakeTags: (s.mistakeTags as MistakeTag[]) ?? [],
+    executionScore: s.executionScore ?? null,
+    readScore: s.readScore ?? null,
+    disciplineScore: s.disciplineScore ?? null,
+    bestSetupType: (s.bestSetupType as SetupType) ?? null,
+    bestDirection: (s.bestDirection as DirectionEnum) ?? null,
+    shouldTrade: s.shouldTrade ?? null,
+    // Meta
     initialGrade: (s.initialGrade as TradeSetup['initialGrade']) ?? null,
     status: s.status as TradeSetup['status'],
     overallNotes: s.overallNotes,

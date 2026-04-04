@@ -9,19 +9,44 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Existing enums — extended backward-compatibly.
+// Legacy values (already in production data) are kept and marked.
+// ─────────────────────────────────────────────────────────────────────────────
+
 enum SetupType {
-  VWAP_RECLAIM
-  VWAP_REJECT
-  BREAKOUT
-  BREAKDOWN
+  // Legacy values — in production; kept to avoid breaking existing rows.
   RANGE
   FLIP
+  // Core structured setup types
+  VWAP_RECLAIM
+  VWAP_REJECT
+  VWAP_PULLBACK
+  ORB_BREAK
+  SWEEP_FAIL
+  BREAKOUT
+  BREAKDOWN
+  RANGE_RECLAIM
+  RANGE_REJECT
 }
 
 enum Regime {
   UP
   DOWN
   RANGE
+  // New values
+  CHOP
+  TRANSITION
+}
+
+/// Trade-relative alignment (whether the trade direction aligns with the prevailing regime).
+/// NOTE: WITH_TREND / COUNTER are legacy names kept for backward compat.
+/// New records should prefer WITH_TREND for with-regime and COUNTER for counter-regime.
+/// NEUTRAL added for flat or ambiguous regime conditions.
+enum Alignment {
+  WITH_TREND
+  COUNTER
+  NEUTRAL
 }
 
 enum Transition {
@@ -30,51 +55,208 @@ enum Transition {
   FAILED_FLIP
 }
 
-enum Alignment {
-  WITH_TREND
-  COUNTER
+// ─────────────────────────────────────────────────────────────────────────────
+// New enums added for analytics-ready classification
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Used for new structured fields; NOT yet applied to TradeSetup.direction (String for compat).
+enum Direction {
+  LONG
+  SHORT
 }
+
+enum VWAPState {
+  ABOVE_ACCEPT
+  BELOW_ACCEPT
+  REJECTING_FROM_ABOVE
+  REJECTING_FROM_BELOW
+  CHOP_AROUND
+}
+
+enum DayType {
+  TREND
+  CHOP
+  RANGE
+  OPEN_DRIVE
+  OPEN_REJECTION
+  TRANSITION
+}
+
+enum StructureType {
+  HH_HL
+  LH_LL
+  RANGE
+  BREAKOUT_FAIL
+  BREAKDOWN_FAIL
+  REVERSAL
+}
+
+enum TriggerType {
+  VWAP_RECLAIM
+  VWAP_REJECT
+  ORB_BREAK
+  SWEEP_FAIL
+  RANGE_HIGH_REJECT
+  RANGE_LOW_RECLAIM
+  BREAKOUT_CONFIRM
+  BREAKDOWN_CONFIRM
+}
+
+enum MistakeTag {
+  EARLY_ENTRY
+  LATE_ENTRY
+  CHASE
+  COUNTER_TREND
+  NO_CONFIRMATION
+  OVERTRADE
+  WRONG_LEVEL
+  IGNORED_VWAP
+  IGNORED_STRUCTURE
+  BAD_STOP
+  BAD_TARGET
+  SIZE_TOO_BIG
+  EMOTIONAL_TRADE
+  SHOULD_HAVE_SKIPPED
+}
+
+enum OutcomeType {
+  WIN
+  LOSS
+  NEUTRAL
+  STRONG_WIN
+  STRONG_LOSS
+}
+
+enum MissReason {
+  DID_NOT_SEE
+  HESITATION
+  DISTRACTION
+  NO_PLAN
+  LOW_CONFIDENCE
+  EXECUTION_DELAY
+  RISK_LIMIT_REACHED
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TradeSetup — for trades that were executed or actively planned.
+// Structured as three analytical layers.
+// ─────────────────────────────────────────────────────────────────────────────
 
 model TradeSetup {
-  id             String      @id
-  setupDate      String
-  symbol         String
-  direction      String
-  setupType      SetupType   @default(RANGE)
+  id        String    @id
+  /// Stored as YYYY-MM-DD in America/New_York trading-day semantics.
+  /// DO NOT convert to DateTime without a careful timezone-aware migration.
+  setupDate String
+  symbol    String
+  /// @legacy — stored as lowercase "long" | "short" for backward compat.
+  /// Use bestDirection (Direction enum) for new structured fields.
+  /// TODO: migrate to Direction enum once API/UI code is updated.
+  direction String
+
+  setupType SetupType @default(RANGE)
+
+  // ── Layer 1 legacy: free-text planning fields (retained for backward compat) ──
+  /// Free-text trigger description. Structured equivalent: triggerType.
   trigger        String
+  /// Free-text invalidation condition.
   invalidation   String
+  /// Free-text decision target / idea objective.
   decisionTarget String
+  /// Free-text entry level. Numeric equivalent: entryPrice.
   riskEntry      String
+  /// Free-text stop level. Numeric equivalent: stopPrice.
   riskStop       String
+  /// Free-text target level. Numeric equivalent: targetPrice.
   riskTarget     String
-  initialGrade   String?
-  status         String      @default("open")
-  overallNotes   String      @default("")
-  /// Optional free-text name shown in the chart toggle UI (e.g. "Morning VWAP play").
-  /// Falls back to setupType + instance index when null.
-  setupName      String?
-  /// Stored as JSON: { followedPlan, wentWell, failed, lesson }
-  review         Json?
-  executions     Execution[]
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+
+  // ── Layer 1 structured: trade planning ──
+  triggerType TriggerType?
+  entryPrice  Float?
+  stopPrice   Float?
+  targetPrice Float?
+
+  // ── Layer 2: per-trade market reality at/around entry ──
+  /// Market regime at the time this specific trade was entered.
+  /// Distinct from DayContext.initialRegime (day open) and DayContext.entryRegime (session-wide).
+  trueRegime Regime?
+  /// VWAP state at the time of entry.
+  vwapState  VWAPState?
+  /// Price structure observed at entry.
+  structure  StructureType?
+  /// Whether this trade was with or counter to the prevailing regime.
+  /// Trade-relative; this field belongs here, NOT on DayContext.
+  alignment  Alignment?
+
+  // ── Grading / status ──
+  initialGrade String?
+  status       String  @default("open")
+  // TODO: Add a completion lifecycle enum (DRAFT | REVIEWED | COMPLETE) once
+  //       API and UI code no longer depend solely on the "open"/"closed" status string.
+  overallNotes String  @default("")
+  setupName    String?
+
+  // ── Layer 3: reflection ──
+  mistakeTags     MistakeTag[]
+  executionScore  Int?
+  readScore       Int?
+  disciplineScore Int?
+  bestSetupType   SetupType?
+  /// Reflection on best direction as a structured enum.
+  /// The primary `direction` field stays as String — see note above.
+  bestDirection   Direction?
+  shouldTrade     Boolean?
+  /// @legacy JSON review blob: { followedPlan, wentWell, failed, lesson }.
+  /// Retained for backward compat. New structured reflection fields above should be preferred.
+  /// TODO: decompose into typed columns when API/UI review workflow is updated.
+  review          Json?
+
+  executions Execution[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@index([setupDate, setupType])
+  @@index([trueRegime, vwapState])
+  @@index([alignment, shouldTrade])
 }
 
-/// Day-level market context shared by all setups on the same trading date.
-/// Replaces the per-setup marketContext / initialRegime / entryRegime / transition / alignment fields.
+// ─────────────────────────────────────────────────────────────────────────────
+// DayContext — day-wide market character shared across all setups for a date.
+// NOT for per-trade conditions (use TradeSetup Layer 2 for those).
+// ─────────────────────────────────────────────────────────────────────────────
+
 model DayContext {
-  id            String      @id @default(cuid())
-  /// YYYY-MM-DD — primary dimension, one record per calendar trading day.
-  date          String      @unique
+  id   String @id @default(cuid())
+  /// YYYY-MM-DD — one record per calendar trading day.
+  date String @unique
+
+  /// @legacy — free-text market context string (e.g. "uptrend", "range").
+  /// Superseded by dayType enum. Kept for migration safety.
+  /// TODO: drop after backfilling dayType from marketContext values.
   marketContext String?
+  /// Structured day type, replacing the legacy marketContext string.
+  dayType       DayType?
+
+  /// Market regime at the open / early session.
   initialRegime Regime?
+  /// Market regime that prevailed during the active trading session (day-wide aggregate).
+  /// Distinct from TradeSetup.trueRegime which is the regime at a specific trade's entry.
   entryRegime   Regime?
-  transition    Transition?
-  alignment     Alignment?
-  notes         String      @default("")
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+
+  transition Transition?
+
+  /// @deprecated — alignment is trade-relative, not day-wide.
+  /// This column will be removed once API/UI code reads alignment from TradeSetup.alignment.
+  /// TODO: remove in next migration step after updating DayContextCard and filter logic.
+  alignment Alignment?
+
+  notes     String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Execution — unchanged; preserved exactly for backward compat.
+// ─────────────────────────────────────────────────────────────────────────────
 
 model Execution {
   id            String     @id
@@ -88,6 +270,10 @@ model Execution {
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ChartMarker — unchanged; soft FK columns preserved.
+// ─────────────────────────────────────────────────────────────────────────────
 
 model ChartMarker {
   id             String   @id
@@ -104,8 +290,7 @@ model ChartMarker {
   markerShape    String
   markerColor    String
   markerText     String
-  /// Soft FK → Execution.id ("exec-" + externalId). Null for markers imported
-  /// before this column was added (backfilled by migration).
+  /// Soft FK → Execution.id. Null for legacy records imported before this column existed.
   executionId    String?
   /// Soft FK → TradeSetup.id. Set at import time; null for legacy records.
   setupId        String?
@@ -114,4 +299,51 @@ model ChartMarker {
   @@unique([symbol, tradeDate, externalId])
   @@index([symbol, tradeDate])
   @@index([setupId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MarketOpportunity — valid setups that existed regardless of whether a trade
+// was taken. Kept strictly separate from TradeSetup so missed opportunities
+// do not pollute trade analytics.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model MarketOpportunity {
+  id     String   @id @default(cuid())
+  symbol String
+  /// Stored as DateTime (new model; no legacy String convention to preserve here).
+  date   DateTime
+
+  // ── Required market state — no opportunity record without full context ──
+  trueRegime Regime
+  vwapState  VWAPState
+  dayType    DayType
+  structure  StructureType
+
+  // ── Classification ──
+  setupType   SetupType
+  triggerType TriggerType?
+  /// Direction stored as enum — no legacy String concern for this new model.
+  direction   Direction
+  alignment   Alignment?
+
+  // ── Outcome of the opportunity itself (independent of whether trader acted) ──
+  outcome      OutcomeType?
+  maxFavorable Float?
+  maxAdverse   Float?
+
+  // ── Execution decision ──
+  taken      Boolean    @default(false)
+  missReason MissReason?
+  notes      String?
+
+  // ── Quality ──
+  qualityScore Int?
+  isAPlus      Boolean?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([symbol, date])
+  @@index([setupType, trueRegime])
+  @@index([taken, missReason])
 }

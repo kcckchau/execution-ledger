@@ -141,7 +141,7 @@ export default function TradeFiltersBar({
   }
 
   // Grouped breakdown — alignment and transition sourced from day-level context.
-  const alignmentRows  = computeGroupedStats(setups, (s) => s.dayContext?.alignment  ?? null, ALIGNMENTS);
+  const alignmentRows  = computeGroupedStats(setups, (s) => s.alignment ?? null, ALIGNMENTS);
   const transitionRows = computeGroupedStats(setups, (s) => s.dayContext?.transition ?? null, TRANSITIONS);
   const setupTypeRows  = computeGroupedStats(setups, (s) => s.setupType, SETUP_TYPES);
   const hasBreakdown   = stats.count > 0;

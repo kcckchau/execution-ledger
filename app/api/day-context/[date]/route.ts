@@ -25,19 +25,19 @@ export async function PUT(req: NextRequest, { params }: Params) {
       where: { date },
       create: {
         date,
+        dayType: body.dayType ?? null,
         marketContext: body.marketContext ?? null,
         initialRegime: body.initialRegime ?? null,
         entryRegime: body.entryRegime ?? null,
         transition: body.transition ?? null,
-        alignment: body.alignment ?? null,
         notes: body.notes ?? '',
       },
       update: {
+        ...(body.dayType !== undefined && { dayType: body.dayType || null }),
         ...(body.marketContext !== undefined && { marketContext: body.marketContext || null }),
         ...(body.initialRegime !== undefined && { initialRegime: body.initialRegime || null }),
         ...(body.entryRegime !== undefined && { entryRegime: body.entryRegime || null }),
         ...(body.transition !== undefined && { transition: body.transition || null }),
-        ...(body.alignment !== undefined && { alignment: body.alignment || null }),
         ...(body.notes !== undefined && { notes: body.notes }),
       },
     });

@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { type TradeSetup, type Execution, type SetupReview } from '@/types/setup';
 import type { DayContext } from '@/types/dayContext';
 import { EMPTY_FILTERS, filterTrades, computeTradeStats, type TradeFilters } from '@/lib/tradeFilters';
+import { calcSetupPnl } from '@/lib/pnl';
 import SetupCard from './SetupCard';
 import DayContextCard from './DayContextCard';
 import ConfirmDialog from './ConfirmDialog';
@@ -125,14 +126,39 @@ export default function SetupLog({
         </div>
       ) : (
         <div className="flex flex-col gap-6">
-          {dateGroups.map(({ date, setups: groupSetups, dayContext }) => (
+          {dateGroups.map(({ date, setups: groupSetups, dayContext }) => {
+            const dailyPnl = groupSetups.reduce(
+              (sum, s) => sum + calcSetupPnl(s.executions, s.direction).realizedPnl,
+              0,
+            );
+            const pnlSign = dailyPnl > 0 ? '+' : '';
+            const pnlColor =
+              dailyPnl > 0 ? 'text-emerald-400' : dailyPnl < 0 ? 'text-rose-400' : 'text-zinc-500';
+
+            return (
             <div key={date} className="flex flex-col gap-3">
-              {/* Day context bar — once per trading date */}
+              {/* ── Market section ── */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-zinc-600">Market</span>
+                <div className="h-px flex-1 bg-zinc-800" />
+              </div>
               <DayContextCard
                 date={date}
                 dayContext={dayContext}
                 onUpdate={(dc) => onUpdateDayContext(date, dc)}
               />
+
+              {/* ── Trades section ── */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-zinc-600">Trades</span>
+                <span className="text-[10px] text-zinc-600">{groupSetups.length}</span>
+                {dailyPnl !== 0 && (
+                  <span className={`text-[10px] font-medium tabular-nums ${pnlColor}`}>
+                    {pnlSign}{dailyPnl.toFixed(2)}
+                  </span>
+                )}
+                <div className="h-px flex-1 bg-zinc-800" />
+              </div>
 
               {/* Setup cards for this date */}
               {groupSetups.map((setup) => {
@@ -169,7 +195,8 @@ export default function SetupLog({
                 );
               })}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

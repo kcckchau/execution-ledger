@@ -12,15 +12,16 @@ import {
   SETUP_TYPE_LABELS,
   REGIME_LABELS,
   TRANSITION_LABELS,
-  ALIGNMENT_LABELS,
 } from '@/types/setup';
 import type { DayContext } from '@/types/dayContext';
 import { formatPlannedRiskReward } from '@/lib/plannedRiskReward';
 
 const REGIME_TAG: Record<Regime, string> = {
-  UP:    'bg-emerald-500/10 text-emerald-400 ring-emerald-500/20',
-  DOWN:  'bg-rose-500/10 text-rose-400 ring-rose-500/20',
-  RANGE: 'bg-amber-500/10 text-amber-400 ring-amber-500/20',
+  UP:         'bg-emerald-500/10 text-emerald-400 ring-emerald-500/20',
+  DOWN:       'bg-rose-500/10 text-rose-400 ring-rose-500/20',
+  RANGE:      'bg-amber-500/10 text-amber-400 ring-amber-500/20',
+  CHOP:       'bg-yellow-500/10 text-yellow-400 ring-yellow-500/20',
+  TRANSITION: 'bg-violet-500/10 text-violet-400 ring-violet-500/20',
 };
 import { calcSetupPnl, formatPnl } from '@/lib/pnl';
 import { formatSetupDate } from '@/lib/dateUtils';
@@ -129,10 +130,8 @@ function ExecutionRow({
 
 function DayContextTags({ dc }: { dc: DayContext | null }) {
   if (!dc) return null;
-  const { initialRegime, entryRegime, transition, alignment } = dc;
-  if (!initialRegime && !entryRegime && (!transition || transition === 'NONE') && !alignment) {
-    return null;
-  }
+  const { initialRegime, entryRegime, transition } = dc;
+  if (!initialRegime && !entryRegime && (!transition || transition === 'NONE')) return null;
   return (
     <div className="flex flex-wrap items-center gap-1">
       {initialRegime && (
@@ -152,15 +151,6 @@ function DayContextTags({ dc }: { dc: DayContext | null }) {
             : 'bg-orange-500/10 text-orange-400 ring-orange-500/20'
         }`}>
           {TRANSITION_LABELS[transition]}
-        </span>
-      )}
-      {alignment && (
-        <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${
-          alignment === 'WITH_TREND'
-            ? 'bg-teal-500/10 text-teal-400 ring-teal-500/20'
-            : 'bg-orange-500/10 text-orange-400 ring-orange-500/20'
-        }`}>
-          {ALIGNMENT_LABELS[alignment]}
         </span>
       )}
     </div>

@@ -1,488 +1,1819 @@
-diff --git a/app/api/setups/[id]/route.ts b/app/api/setups/[id]/route.ts
-index 857edec..5f21449 100644
---- a/app/api/setups/[id]/route.ts
-+++ b/app/api/setups/[id]/route.ts
-@@ -27,6 +27,10 @@ export async function PUT(req: NextRequest, { params }: Params) {
-         ...(body.riskStop !== undefined && { riskStop: String(body.riskStop).trim() }),
-         ...(body.riskTarget !== undefined && { riskTarget: String(body.riskTarget).trim() }),
-         ...(body.initialGrade !== undefined && { initialGrade: body.initialGrade || null }),
-+        ...(body.initialRegime !== undefined && { initialRegime: body.initialRegime || null }),
-+        ...(body.entryRegime   !== undefined && { entryRegime:   body.entryRegime   || null }),
-+        ...(body.transition    !== undefined && { transition:    body.transition    || null }),
-+        ...(body.alignment     !== undefined && { alignment:     body.alignment     || null }),
+diff --git a/app/api/day-context/[date]/route.ts b/app/api/day-context/[date]/route.ts
+index 8b2edd7..e1f8b0a 100644
+--- a/app/api/day-context/[date]/route.ts
++++ b/app/api/day-context/[date]/route.ts
+@@ -25,19 +25,19 @@ export async function PUT(req: NextRequest, { params }: Params) {
+       where: { date },
+       create: {
+         date,
++        dayType: body.dayType ?? null,
+         marketContext: body.marketContext ?? null,
+         initialRegime: body.initialRegime ?? null,
+         entryRegime: body.entryRegime ?? null,
+         transition: body.transition ?? null,
+-        alignment: body.alignment ?? null,
+         notes: body.notes ?? '',
        },
-       include: { executions: { orderBy: { executionTime: 'asc' } } },
-     });
-diff --git a/app/api/setups/route.ts b/app/api/setups/route.ts
-index 8ba7137..793e67f 100644
---- a/app/api/setups/route.ts
-+++ b/app/api/setups/route.ts
-@@ -51,6 +51,10 @@ export async function POST(req: NextRequest) {
-         status: body.status ?? 'open',
-         overallNotes: body.overallNotes ?? '',
-         review: body.review ?? undefined,
-+        initialRegime: body.initialRegime ?? null,
-+        entryRegime:   body.entryRegime   ?? null,
-+        transition:    body.transition    ?? null,
-+        alignment:     body.alignment     ?? null,
+       update: {
++        ...(body.dayType !== undefined && { dayType: body.dayType || null }),
+         ...(body.marketContext !== undefined && { marketContext: body.marketContext || null }),
+         ...(body.initialRegime !== undefined && { initialRegime: body.initialRegime || null }),
+         ...(body.entryRegime !== undefined && { entryRegime: body.entryRegime || null }),
+         ...(body.transition !== undefined && { transition: body.transition || null }),
+-        ...(body.alignment !== undefined && { alignment: body.alignment || null }),
+         ...(body.notes !== undefined && { notes: body.notes }),
        },
-       include: { executions: true },
      });
-diff --git a/components/SetupCard.tsx b/components/SetupCard.tsx
-index 2f53d05..1903a7f 100644
---- a/components/SetupCard.tsx
-+++ b/components/SetupCard.tsx
-@@ -5,11 +5,22 @@ import {
-   type TradeSetup,
-   type Execution,
-   type SetupReview,
-+  type Regime,
-   GRADE_COLORS,
-   ACTION_BORDER_COLORS,
-   ACTION_LABELS,
-   MARKET_CONTEXT_LABELS,
-+  SETUP_TYPE_LABELS,
-+  REGIME_LABELS,
-+  TRANSITION_LABELS,
-+  ALIGNMENT_LABELS,
- } from '@/types/setup';
-+
-+const REGIME_TAG: Record<Regime, string> = {
-+  UP:    'bg-emerald-500/10 text-emerald-400 ring-emerald-500/20',
-+  DOWN:  'bg-rose-500/10 text-rose-400 ring-rose-500/20',
-+  RANGE: 'bg-amber-500/10 text-amber-400 ring-amber-500/20',
-+};
- import { formatPlannedRiskReward } from '@/lib/plannedRiskReward';
- import { calcSetupPnl, formatPnl } from '@/lib/pnl';
- import { formatSetupDate } from '@/lib/dateUtils';
-@@ -195,30 +206,68 @@ export default function SetupCard({
+diff --git a/components/DailyDrillDown.tsx b/components/DailyDrillDown.tsx
+index f612752..b8fc733 100644
+--- a/components/DailyDrillDown.tsx
++++ b/components/DailyDrillDown.tsx
+@@ -60,49 +60,42 @@ export default function DailyDrillDown({
+   return (
+     <>
+       <div className="flex flex-col gap-4">
+-        {/* ── Day header ── */}
+-        <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
+-          <div>
+-            <h3 className="text-sm font-semibold text-white">{formatSetupDate(date)}</h3>
+-            <p className="mt-0.5 text-xs text-zinc-500">
+-              {setups.length === 0
+-                ? 'No setups'
+-                : `${setups.length} setup${setups.length !== 1 ? 's' : ''}`}
+-            </p>
+-          </div>
+-
+-          <div className="flex items-center gap-4">
+-            {hasPnl && (
+-              <div className="text-right">
+-                <p className="text-[10px] text-zinc-500 uppercase tracking-wider">Daily P&L</p>
+-                <p
+-                  className={`text-base font-bold tabular-nums ${
+-                    totalPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
+-                  }`}
+-                >
+-                  {formatPnl(totalPnl)}
+-                </p>
+-              </div>
+-            )}
+-            {setups.length > 0 && (
+-              <button
+-                type="button"
+-                onClick={() => setShowDeleteDayConfirm(true)}
+-                className="text-xs text-zinc-600 hover:text-rose-400 transition-colors"
+-              >
+-                Delete all
+-              </button>
+-            )}
+-          </div>
++        {/* ── Market section ── */}
++        <div className="flex items-center gap-2">
++          <span className="text-[10px] font-semibold uppercase tracking-widest text-zinc-600">Market</span>
++          <div className="h-px flex-1 bg-zinc-800" />
+         </div>
+-
+-        {/* ── Day context ── */}
+         <DayContextCard
+           date={date}
+           dayContext={setups[0]?.dayContext ?? null}
+           onUpdate={(dc) => onUpdateDayContext(date, dc)}
+         />
  
-         {/* ── Header ── */}
-         <div className="flex items-start justify-between gap-4 px-5 pt-5 pb-4">
--          <div className="flex flex-wrap items-center gap-2">
--            <span className="text-lg font-bold text-white tracking-tight">
--              {setup.symbol}
--            </span>
--            <span
--              className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ${
--                setup.direction === 'long'
--                  ? 'bg-emerald-500/10 text-emerald-400 ring-emerald-500/25'
--                  : 'bg-rose-500/10 text-rose-400 ring-rose-500/25'
--              }`}
--            >
--              {setup.direction === 'long' ? '↑ Long' : '↓ Short'}
--            </span>
--            <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-zinc-800 text-zinc-400 ring-1 ring-inset ring-zinc-700">
--              {setup.setupType}
--            </span>
--            {setup.initialGrade && (
-+          <div className="flex flex-col gap-1.5">
-+            <div className="flex flex-wrap items-center gap-2">
-+              <span className="text-lg font-bold text-white tracking-tight">
-+                {setup.symbol}
-+              </span>
-               <span
-                 className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ${
--                  GRADE_COLORS[setup.initialGrade] ?? GRADE_COLORS['C']
-+                  setup.direction === 'long'
-+                    ? 'bg-emerald-500/10 text-emerald-400 ring-emerald-500/25'
-+                    : 'bg-rose-500/10 text-rose-400 ring-rose-500/25'
-                 }`}
-               >
--                {setup.initialGrade}
-+                {setup.direction === 'long' ? '↑ Long' : '↓ Short'}
-+              </span>
-+              <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-zinc-800 text-zinc-400 ring-1 ring-inset ring-zinc-700">
-+                {SETUP_TYPE_LABELS[setup.setupType] ?? setup.setupType}
-               </span>
-+              {setup.initialGrade && (
-+                <span
-+                  className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ${
-+                    GRADE_COLORS[setup.initialGrade] ?? GRADE_COLORS['C']
-+                  }`}
-+                >
-+                  {setup.initialGrade}
-+                </span>
-+              )}
-+            </div>
++        {/* ── Trades section ── */}
++        <div className="flex items-center gap-2">
++          <span className="text-[10px] font-semibold uppercase tracking-widest text-zinc-600">Trades</span>
++          {setups.length > 0 && (
++            <span className="text-[10px] text-zinc-600">{setups.length}</span>
++          )}
++          {hasPnl && (
++            <span className={`text-[10px] font-medium tabular-nums ${
++              totalPnl > 0 ? 'text-emerald-400' : 'text-rose-400'
++            }`}>
++              {totalPnl > 0 ? '+' : ''}{formatPnl(totalPnl)}
++            </span>
++          )}
++          <div className="h-px flex-1 bg-zinc-800" />
++          {setups.length > 0 && (
++            <button
++              type="button"
++              onClick={() => setShowDeleteDayConfirm(true)}
++              className="text-[10px] text-zinc-700 hover:text-rose-400 transition-colors shrink-0"
++            >
++              Delete all
++            </button>
++          )}
++        </div>
 +
-+            {/* Classification tags — only rendered when at least one field is set */}
-+            {(setup.initialRegime || setup.entryRegime ||
-+              (setup.transition && setup.transition !== 'NONE') ||
-+              setup.alignment) && (
-+              <div className="flex flex-wrap items-center gap-1">
-+                {setup.initialRegime && (
-+                  <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${REGIME_TAG[setup.initialRegime]}`}>
-+                    <span className="opacity-50 mr-0.5">i·</span>{REGIME_LABELS[setup.initialRegime]}
-+                  </span>
-+                )}
-+                {setup.entryRegime && (
-+                  <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${REGIME_TAG[setup.entryRegime]}`}>
-+                    <span className="opacity-50 mr-0.5">e·</span>{REGIME_LABELS[setup.entryRegime]}
-+                  </span>
-+                )}
-+                {setup.transition && setup.transition !== 'NONE' && (
-+                  <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${
-+                    setup.transition === 'FLIP'
-+                      ? 'bg-violet-500/10 text-violet-400 ring-violet-500/20'
-+                      : 'bg-orange-500/10 text-orange-400 ring-orange-500/20'
-+                  }`}>
-+                    {TRANSITION_LABELS[setup.transition]}
-+                  </span>
-+                )}
-+                {setup.alignment && (
-+                  <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${
-+                    setup.alignment === 'WITH_TREND'
-+                      ? 'bg-teal-500/10 text-teal-400 ring-teal-500/20'
-+                      : 'bg-orange-500/10 text-orange-400 ring-orange-500/20'
-+                  }`}>
-+                    {ALIGNMENT_LABELS[setup.alignment]}
-+                  </span>
-+                )}
-+              </div>
-             )}
-           </div>
+         {/* ── Setup cards or empty state ── */}
+         {setups.length === 0 ? (
+           <p className="text-sm text-zinc-600 italic text-center py-6">
+diff --git a/components/DayContextCard.tsx b/components/DayContextCard.tsx
+index 0e58326..7e11ea7 100644
+--- a/components/DayContextCard.tsx
++++ b/components/DayContextCard.tsx
+@@ -1,16 +1,14 @@
+ 'use client';
  
-diff --git a/components/SetupForm.tsx b/components/SetupForm.tsx
-index 301a3be..3256d23 100644
---- a/components/SetupForm.tsx
-+++ b/components/SetupForm.tsx
-@@ -7,11 +7,21 @@ import {
-   type Grade,
-   type Direction,
-   type MarketContext,
-+  type Regime,
-+  type Transition,
-+  type Alignment,
-   SETUP_TYPES,
-+  SETUP_TYPE_LABELS,
-   GRADES,
-   DIRECTIONS,
+-import { useState, useCallback } from 'react';
++import { useState, useCallback, useRef } from 'react';
+ import type { DayContext } from '@/types/dayContext';
+ import {
    MARKET_CONTEXTS,
    MARKET_CONTEXT_LABELS,
-+  REGIMES,
-+  REGIME_LABELS,
-+  TRANSITIONS,
-+  TRANSITION_LABELS,
-+  ALIGNMENTS,
-+  ALIGNMENT_LABELS,
+   REGIMES,
+   TRANSITIONS,
+-  ALIGNMENTS,
+   type Regime,
+   type Transition,
+-  type Alignment,
+   type MarketContext,
  } from '@/types/setup';
- import { getTodayInEasternTime } from '@/lib/dateUtils';
- import { formatPlannedRiskReward } from '@/lib/plannedRiskReward';
-@@ -40,6 +50,10 @@ function makeDefaultForm(init?: TradeSetup) {
-       initialGrade: (init.initialGrade ?? '') as Grade | '',
-       overallNotes: init.overallNotes,
-       setupDate: init.setupDate,
-+      initialRegime: (init.initialRegime ?? '') as Regime | '',
-+      entryRegime:   (init.entryRegime   ?? '') as Regime | '',
-+      transition:    (init.transition    ?? '') as Transition | '',
-+      alignment:     (init.alignment     ?? '') as Alignment | '',
-     };
-   }
-   return {
-@@ -56,6 +70,10 @@ function makeDefaultForm(init?: TradeSetup) {
-     initialGrade: '' as Grade | '',
-     overallNotes: '',
-     setupDate: getTodayInEasternTime(),
-+    initialRegime: '' as Regime | '',
-+    entryRegime:   '' as Regime | '',
-+    transition:    '' as Transition | '',
-+    alignment:     '' as Alignment | '',
-   };
+ 
+@@ -61,20 +59,25 @@ function Seg<T extends string>({
+ 
+ // ── Color helpers ─────────────────────────────────────────────────────────────
+ 
++function regimeLabel(r: Regime): string {
++  if (r === 'UP')         return '↑ Up';
++  if (r === 'DOWN')       return '↓ Down';
++  if (r === 'CHOP')       return '~ Chop';
++  if (r === 'TRANSITION') return '⇄ Trans';
++  return '↔ Range';
++}
+ function regimeActive(r: Regime): string {
+-  if (r === 'UP')   return 'bg-emerald-700/60 text-emerald-200';
+-  if (r === 'DOWN') return 'bg-rose-700/60    text-rose-200';
+-  return                    'bg-amber-700/60  text-amber-200';
++  if (r === 'UP')         return 'bg-emerald-700/60 text-emerald-200';
++  if (r === 'DOWN')       return 'bg-rose-700/60    text-rose-200';
++  if (r === 'CHOP')       return 'bg-yellow-700/60  text-yellow-200';
++  if (r === 'TRANSITION') return 'bg-violet-700/60  text-violet-200';
++  return                          'bg-amber-700/60  text-amber-200';
  }
+ function transitionActive(t: Transition): string {
+   if (t === 'FLIP')        return 'bg-violet-700/60 text-violet-200';
+   if (t === 'FAILED_FLIP') return 'bg-orange-700/60 text-orange-200';
+   return                          'bg-zinc-700      text-zinc-300';
+ }
+-function alignmentActive(a: Alignment): string {
+-  if (a === 'WITH_TREND') return 'bg-teal-700/60   text-teal-200';
+-  return                         'bg-orange-700/60 text-orange-200';
+-}
+ function mktActive(m: MarketContext): string {
+   if (m === 'uptrend')   return 'bg-emerald-700/60 text-emerald-200';
+   if (m === 'downtrend') return 'bg-rose-700/60    text-rose-200';
+@@ -85,15 +88,17 @@ function mktActive(m: MarketContext): string {
  
-@@ -95,6 +113,13 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
-     setSaving(true);
-     try {
-       const now = new Date().toISOString();
-+      const classification = {
-+        initialRegime: (form.initialRegime as Regime) || null,
-+        entryRegime:   (form.entryRegime   as Regime) || null,
-+        transition:    (form.transition    as Transition) || null,
-+        alignment:     (form.alignment     as Alignment) || null,
-+      };
-+
-       if (isEdit && initialSetup && onSave) {
-         await onSave({
-           ...initialSetup,
-@@ -112,6 +137,7 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
-           initialGrade: (form.initialGrade as Grade) || null,
-           overallNotes: form.overallNotes.trim(),
-           updatedAt: now,
-+          ...classification,
-         });
-       } else {
-         onLog({
-@@ -134,6 +160,7 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
-           executions: [],
-           createdAt: now,
-           updatedAt: now,
-+          ...classification,
-         });
-         setForm(makeDefaultForm());
-         onClose();
-@@ -262,7 +289,7 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
-             >
-               {SETUP_TYPES.map((s) => (
-                 <option key={s} value={s}>
--                  {s}
-+                  {SETUP_TYPE_LABELS[s]}
-                 </option>
-               ))}
-             </select>
-@@ -347,6 +374,67 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
-         </p>
+ export default function DayContextCard({ date, dayContext, onUpdate }: DayContextCardProps) {
+   const [saving, setSaving] = useState(false);
++  const [notesVal, setNotesVal] = useState(dayContext?.notes ?? '');
++  const notesRef = useRef(notesVal);
+ 
+   const current: DayContext = dayContext ?? {
+     id: '',
+     date,
++    dayType: null,
+     marketContext: null,
+     initialRegime: null,
+     entryRegime: null,
+     transition: null,
+-    alignment: null,
+     notes: '',
+     createdAt: '',
+     updatedAt: '',
+@@ -143,21 +148,11 @@ export default function DayContextCard({ date, dayContext, onUpdate }: DayContex
+           />
+         </Field>
+ 
+-        <Field label="Align">
+-          <Seg
+-            value={current.alignment}
+-            options={ALIGNMENTS}
+-            getLabel={(a) => (a === 'WITH_TREND' ? 'With Trend' : 'Counter')}
+-            getActiveClass={alignmentActive}
+-            onChange={(v) => save({ alignment: v })}
+-          />
+-        </Field>
+-
+         <Field label="Open">
+           <Seg
+             value={current.initialRegime}
+             options={REGIMES}
+-            getLabel={(r) => (r === 'UP' ? '↑ Up' : r === 'DOWN' ? '↓ Down' : '↔ Range')}
++            getLabel={regimeLabel}
+             getActiveClass={regimeActive}
+             onChange={(v) => save({ initialRegime: v })}
+             dim
+@@ -168,7 +163,7 @@ export default function DayContextCard({ date, dayContext, onUpdate }: DayContex
+           <Seg
+             value={current.entryRegime}
+             options={REGIMES}
+-            getLabel={(r) => (r === 'UP' ? '↑ Up' : r === 'DOWN' ? '↓ Down' : '↔ Range')}
++            getLabel={regimeLabel}
+             getActiveClass={regimeActive}
+             onChange={(v) => save({ entryRegime: v })}
+             dim
+@@ -186,6 +181,23 @@ export default function DayContextCard({ date, dayContext, onUpdate }: DayContex
+           />
+         </Field>
        </div>
- 
-+      {/* Classification */}
-+      <div className="flex flex-col gap-3">
-+        <h3 className={sectionTitleClass}>
-+          Classification <span className="font-normal normal-case tracking-normal text-zinc-600">— optional</span>
-+        </h3>
-+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-+          <div className="flex flex-col gap-1.5">
-+            <label className="text-xs font-medium text-zinc-400">Initial regime</label>
-+            <select
-+              value={form.initialRegime}
-+              onChange={(e) => setForm((f) => ({ ...f, initialRegime: e.target.value as Regime | '' }))}
-+              className={inputClass}
-+            >
-+              <option value="">—</option>
-+              {REGIMES.map((r) => (
-+                <option key={r} value={r}>{REGIME_LABELS[r]}</option>
-+              ))}
-+            </select>
-+          </div>
-+          <div className="flex flex-col gap-1.5">
-+            <label className="text-xs font-medium text-zinc-400">Entry regime</label>
-+            <select
-+              value={form.entryRegime}
-+              onChange={(e) => setForm((f) => ({ ...f, entryRegime: e.target.value as Regime | '' }))}
-+              className={inputClass}
-+            >
-+              <option value="">—</option>
-+              {REGIMES.map((r) => (
-+                <option key={r} value={r}>{REGIME_LABELS[r]}</option>
-+              ))}
-+            </select>
-+          </div>
-+          <div className="flex flex-col gap-1.5">
-+            <label className="text-xs font-medium text-zinc-400">Transition</label>
-+            <select
-+              value={form.transition}
-+              onChange={(e) => setForm((f) => ({ ...f, transition: e.target.value as Transition | '' }))}
-+              className={inputClass}
-+            >
-+              <option value="">—</option>
-+              {TRANSITIONS.map((t) => (
-+                <option key={t} value={t}>{TRANSITION_LABELS[t]}</option>
-+              ))}
-+            </select>
-+          </div>
-+          <div className="flex flex-col gap-1.5">
-+            <label className="text-xs font-medium text-zinc-400">Alignment</label>
-+            <select
-+              value={form.alignment}
-+              onChange={(e) => setForm((f) => ({ ...f, alignment: e.target.value as Alignment | '' }))}
-+              className={inputClass}
-+            >
-+              <option value="">—</option>
-+              {ALIGNMENTS.map((a) => (
-+                <option key={a} value={a}>{ALIGNMENT_LABELS[a]}</option>
-+              ))}
-+            </select>
-+          </div>
-+        </div>
-+      </div>
 +
-       {/* Notes */}
-       <div className="flex flex-col gap-1.5">
-         <label className="text-xs font-medium text-zinc-400">
-diff --git a/lib/import/importIbkrMarkers.ts b/lib/import/importIbkrMarkers.ts
-index 4c682e4..fd7842c 100644
---- a/lib/import/importIbkrMarkers.ts
-+++ b/lib/import/importIbkrMarkers.ts
-@@ -63,7 +63,7 @@ async function upsertTradeSetup(
-       symbol,
-       direction,
-       marketContext: 'range',
--      setupType: 'VWAP Reclaim',
-+      setupType: 'VWAP_RECLAIM',
-       trigger: 'Imported from IBKR',
-       invalidation: '',
-       decisionTarget: '',
++      {/* ── Notes ── */}
++      <textarea
++        rows={2}
++        placeholder="Day notes…"
++        value={notesVal}
++        onChange={(e) => {
++          setNotesVal(e.target.value);
++          notesRef.current = e.target.value;
++        }}
++        onBlur={() => {
++          if (notesRef.current !== (dayContext?.notes ?? '')) {
++            save({ notes: notesRef.current });
++          }
++        }}
++        className="w-full resize-none rounded border border-zinc-800 bg-transparent px-2 py-1.5 text-xs text-zinc-300 placeholder-zinc-700 focus:border-zinc-600 focus:outline-none"
++      />
+     </div>
+   );
+ }
+diff --git a/components/SetupCard.tsx b/components/SetupCard.tsx
+index d3314a1..d4d2977 100644
+--- a/components/SetupCard.tsx
++++ b/components/SetupCard.tsx
+@@ -12,15 +12,16 @@ import {
+   SETUP_TYPE_LABELS,
+   REGIME_LABELS,
+   TRANSITION_LABELS,
+-  ALIGNMENT_LABELS,
+ } from '@/types/setup';
+ import type { DayContext } from '@/types/dayContext';
+ import { formatPlannedRiskReward } from '@/lib/plannedRiskReward';
+ 
+ const REGIME_TAG: Record<Regime, string> = {
+-  UP:    'bg-emerald-500/10 text-emerald-400 ring-emerald-500/20',
+-  DOWN:  'bg-rose-500/10 text-rose-400 ring-rose-500/20',
+-  RANGE: 'bg-amber-500/10 text-amber-400 ring-amber-500/20',
++  UP:         'bg-emerald-500/10 text-emerald-400 ring-emerald-500/20',
++  DOWN:       'bg-rose-500/10 text-rose-400 ring-rose-500/20',
++  RANGE:      'bg-amber-500/10 text-amber-400 ring-amber-500/20',
++  CHOP:       'bg-yellow-500/10 text-yellow-400 ring-yellow-500/20',
++  TRANSITION: 'bg-violet-500/10 text-violet-400 ring-violet-500/20',
+ };
+ import { calcSetupPnl, formatPnl } from '@/lib/pnl';
+ import { formatSetupDate } from '@/lib/dateUtils';
+@@ -129,10 +130,8 @@ function ExecutionRow({
+ 
+ function DayContextTags({ dc }: { dc: DayContext | null }) {
+   if (!dc) return null;
+-  const { initialRegime, entryRegime, transition, alignment } = dc;
+-  if (!initialRegime && !entryRegime && (!transition || transition === 'NONE') && !alignment) {
+-    return null;
+-  }
++  const { initialRegime, entryRegime, transition } = dc;
++  if (!initialRegime && !entryRegime && (!transition || transition === 'NONE')) return null;
+   return (
+     <div className="flex flex-wrap items-center gap-1">
+       {initialRegime && (
+@@ -154,15 +153,6 @@ function DayContextTags({ dc }: { dc: DayContext | null }) {
+           {TRANSITION_LABELS[transition]}
+         </span>
+       )}
+-      {alignment && (
+-        <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${
+-          alignment === 'WITH_TREND'
+-            ? 'bg-teal-500/10 text-teal-400 ring-teal-500/20'
+-            : 'bg-orange-500/10 text-orange-400 ring-orange-500/20'
+-        }`}>
+-          {ALIGNMENT_LABELS[alignment]}
+-        </span>
+-      )}
+     </div>
+   );
+ }
+diff --git a/components/SetupForm.tsx b/components/SetupForm.tsx
+index 237c40f..afd0b32 100644
+--- a/components/SetupForm.tsx
++++ b/components/SetupForm.tsx
+@@ -131,6 +131,24 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
+           riskEntry: form.riskEntry.trim(),
+           riskStop: form.riskStop.trim(),
+           riskTarget: form.riskTarget.trim(),
++          // Layer 1 structured (not editable in form yet)
++          triggerType: null,
++          entryPrice: null,
++          stopPrice: null,
++          targetPrice: null,
++          // Layer 2 (not editable in form yet)
++          trueRegime: null,
++          vwapState: null,
++          structure: null,
++          alignment: null,
++          // Layer 3 (not editable in form yet)
++          mistakeTags: [],
++          executionScore: null,
++          readScore: null,
++          disciplineScore: null,
++          bestSetupType: null,
++          bestDirection: null,
++          shouldTrade: null,
+           initialGrade: (form.initialGrade as Grade) || null,
+           status: 'open',
+           overallNotes: form.overallNotes.trim(),
+diff --git a/components/SetupLog.tsx b/components/SetupLog.tsx
+index 6a35f08..c04562c 100644
+--- a/components/SetupLog.tsx
++++ b/components/SetupLog.tsx
+@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
+ import { type TradeSetup, type Execution, type SetupReview } from '@/types/setup';
+ import type { DayContext } from '@/types/dayContext';
+ import { EMPTY_FILTERS, filterTrades, computeTradeStats, type TradeFilters } from '@/lib/tradeFilters';
++import { calcSetupPnl } from '@/lib/pnl';
+ import SetupCard from './SetupCard';
+ import DayContextCard from './DayContextCard';
+ import ConfirmDialog from './ConfirmDialog';
+@@ -125,15 +126,40 @@ export default function SetupLog({
+         </div>
+       ) : (
+         <div className="flex flex-col gap-6">
+-          {dateGroups.map(({ date, setups: groupSetups, dayContext }) => (
++          {dateGroups.map(({ date, setups: groupSetups, dayContext }) => {
++            const dailyPnl = groupSetups.reduce(
++              (sum, s) => sum + calcSetupPnl(s.executions, s.direction).realizedPnl,
++              0,
++            );
++            const pnlSign = dailyPnl > 0 ? '+' : '';
++            const pnlColor =
++              dailyPnl > 0 ? 'text-emerald-400' : dailyPnl < 0 ? 'text-rose-400' : 'text-zinc-500';
++
++            return (
+             <div key={date} className="flex flex-col gap-3">
+-              {/* Day context bar — once per trading date */}
++              {/* ── Market section ── */}
++              <div className="flex items-center gap-2">
++                <span className="text-[10px] font-semibold uppercase tracking-widest text-zinc-600">Market</span>
++                <div className="h-px flex-1 bg-zinc-800" />
++              </div>
+               <DayContextCard
+                 date={date}
+                 dayContext={dayContext}
+                 onUpdate={(dc) => onUpdateDayContext(date, dc)}
+               />
+ 
++              {/* ── Trades section ── */}
++              <div className="flex items-center gap-2">
++                <span className="text-[10px] font-semibold uppercase tracking-widest text-zinc-600">Trades</span>
++                <span className="text-[10px] text-zinc-600">{groupSetups.length}</span>
++                {dailyPnl !== 0 && (
++                  <span className={`text-[10px] font-medium tabular-nums ${pnlColor}`}>
++                    {pnlSign}{dailyPnl.toFixed(2)}
++                  </span>
++                )}
++                <div className="h-px flex-1 bg-zinc-800" />
++              </div>
++
+               {/* Setup cards for this date */}
+               {groupSetups.map((setup) => {
+                 const chartKey = `${setup.symbol}::${setup.setupDate}`;
+@@ -169,7 +195,8 @@ export default function SetupLog({
+                 );
+               })}
+             </div>
+-          ))}
++            );
++          })}
+         </div>
+       )}
+ 
+diff --git a/components/TradeFiltersBar.tsx b/components/TradeFiltersBar.tsx
+index 5fba496..f355e48 100644
+--- a/components/TradeFiltersBar.tsx
++++ b/components/TradeFiltersBar.tsx
+@@ -141,7 +141,7 @@ export default function TradeFiltersBar({
+   }
+ 
+   // Grouped breakdown — alignment and transition sourced from day-level context.
+-  const alignmentRows  = computeGroupedStats(setups, (s) => s.dayContext?.alignment  ?? null, ALIGNMENTS);
++  const alignmentRows  = computeGroupedStats(setups, (s) => s.alignment ?? null, ALIGNMENTS);
+   const transitionRows = computeGroupedStats(setups, (s) => s.dayContext?.transition ?? null, TRANSITIONS);
+   const setupTypeRows  = computeGroupedStats(setups, (s) => s.setupType, SETUP_TYPES);
+   const hasBreakdown   = stats.count > 0;
+diff --git a/diff b/diff
+index 28c7454..00f3cca 100644
+--- a/diff
++++ b/diff
+@@ -1,488 +0,0 @@
+-diff --git a/app/api/setups/[id]/route.ts b/app/api/setups/[id]/route.ts
+-index 857edec..5f21449 100644
+---- a/app/api/setups/[id]/route.ts
+-+++ b/app/api/setups/[id]/route.ts
+-@@ -27,6 +27,10 @@ export async function PUT(req: NextRequest, { params }: Params) {
+-         ...(body.riskStop !== undefined && { riskStop: String(body.riskStop).trim() }),
+-         ...(body.riskTarget !== undefined && { riskTarget: String(body.riskTarget).trim() }),
+-         ...(body.initialGrade !== undefined && { initialGrade: body.initialGrade || null }),
+-+        ...(body.initialRegime !== undefined && { initialRegime: body.initialRegime || null }),
+-+        ...(body.entryRegime   !== undefined && { entryRegime:   body.entryRegime   || null }),
+-+        ...(body.transition    !== undefined && { transition:    body.transition    || null }),
+-+        ...(body.alignment     !== undefined && { alignment:     body.alignment     || null }),
+-       },
+-       include: { executions: { orderBy: { executionTime: 'asc' } } },
+-     });
+-diff --git a/app/api/setups/route.ts b/app/api/setups/route.ts
+-index 8ba7137..793e67f 100644
+---- a/app/api/setups/route.ts
+-+++ b/app/api/setups/route.ts
+-@@ -51,6 +51,10 @@ export async function POST(req: NextRequest) {
+-         status: body.status ?? 'open',
+-         overallNotes: body.overallNotes ?? '',
+-         review: body.review ?? undefined,
+-+        initialRegime: body.initialRegime ?? null,
+-+        entryRegime:   body.entryRegime   ?? null,
+-+        transition:    body.transition    ?? null,
+-+        alignment:     body.alignment     ?? null,
+-       },
+-       include: { executions: true },
+-     });
+-diff --git a/components/SetupCard.tsx b/components/SetupCard.tsx
+-index 2f53d05..1903a7f 100644
+---- a/components/SetupCard.tsx
+-+++ b/components/SetupCard.tsx
+-@@ -5,11 +5,22 @@ import {
+-   type TradeSetup,
+-   type Execution,
+-   type SetupReview,
+-+  type Regime,
+-   GRADE_COLORS,
+-   ACTION_BORDER_COLORS,
+-   ACTION_LABELS,
+-   MARKET_CONTEXT_LABELS,
+-+  SETUP_TYPE_LABELS,
+-+  REGIME_LABELS,
+-+  TRANSITION_LABELS,
+-+  ALIGNMENT_LABELS,
+- } from '@/types/setup';
+-+
+-+const REGIME_TAG: Record<Regime, string> = {
+-+  UP:    'bg-emerald-500/10 text-emerald-400 ring-emerald-500/20',
+-+  DOWN:  'bg-rose-500/10 text-rose-400 ring-rose-500/20',
+-+  RANGE: 'bg-amber-500/10 text-amber-400 ring-amber-500/20',
+-+};
+- import { formatPlannedRiskReward } from '@/lib/plannedRiskReward';
+- import { calcSetupPnl, formatPnl } from '@/lib/pnl';
+- import { formatSetupDate } from '@/lib/dateUtils';
+-@@ -195,30 +206,68 @@ export default function SetupCard({
+- 
+-         {/* ── Header ── */}
+-         <div className="flex items-start justify-between gap-4 px-5 pt-5 pb-4">
+--          <div className="flex flex-wrap items-center gap-2">
+--            <span className="text-lg font-bold text-white tracking-tight">
+--              {setup.symbol}
+--            </span>
+--            <span
+--              className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ${
+--                setup.direction === 'long'
+--                  ? 'bg-emerald-500/10 text-emerald-400 ring-emerald-500/25'
+--                  : 'bg-rose-500/10 text-rose-400 ring-rose-500/25'
+--              }`}
+--            >
+--              {setup.direction === 'long' ? '↑ Long' : '↓ Short'}
+--            </span>
+--            <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-zinc-800 text-zinc-400 ring-1 ring-inset ring-zinc-700">
+--              {setup.setupType}
+--            </span>
+--            {setup.initialGrade && (
+-+          <div className="flex flex-col gap-1.5">
+-+            <div className="flex flex-wrap items-center gap-2">
+-+              <span className="text-lg font-bold text-white tracking-tight">
+-+                {setup.symbol}
+-+              </span>
+-               <span
+-                 className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ${
+--                  GRADE_COLORS[setup.initialGrade] ?? GRADE_COLORS['C']
+-+                  setup.direction === 'long'
+-+                    ? 'bg-emerald-500/10 text-emerald-400 ring-emerald-500/25'
+-+                    : 'bg-rose-500/10 text-rose-400 ring-rose-500/25'
+-                 }`}
+-               >
+--                {setup.initialGrade}
+-+                {setup.direction === 'long' ? '↑ Long' : '↓ Short'}
+-+              </span>
+-+              <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-zinc-800 text-zinc-400 ring-1 ring-inset ring-zinc-700">
+-+                {SETUP_TYPE_LABELS[setup.setupType] ?? setup.setupType}
+-               </span>
+-+              {setup.initialGrade && (
+-+                <span
+-+                  className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ${
+-+                    GRADE_COLORS[setup.initialGrade] ?? GRADE_COLORS['C']
+-+                  }`}
+-+                >
+-+                  {setup.initialGrade}
+-+                </span>
+-+              )}
+-+            </div>
+-+
+-+            {/* Classification tags — only rendered when at least one field is set */}
+-+            {(setup.initialRegime || setup.entryRegime ||
+-+              (setup.transition && setup.transition !== 'NONE') ||
+-+              setup.alignment) && (
+-+              <div className="flex flex-wrap items-center gap-1">
+-+                {setup.initialRegime && (
+-+                  <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${REGIME_TAG[setup.initialRegime]}`}>
+-+                    <span className="opacity-50 mr-0.5">i·</span>{REGIME_LABELS[setup.initialRegime]}
+-+                  </span>
+-+                )}
+-+                {setup.entryRegime && (
+-+                  <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${REGIME_TAG[setup.entryRegime]}`}>
+-+                    <span className="opacity-50 mr-0.5">e·</span>{REGIME_LABELS[setup.entryRegime]}
+-+                  </span>
+-+                )}
+-+                {setup.transition && setup.transition !== 'NONE' && (
+-+                  <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${
+-+                    setup.transition === 'FLIP'
+-+                      ? 'bg-violet-500/10 text-violet-400 ring-violet-500/20'
+-+                      : 'bg-orange-500/10 text-orange-400 ring-orange-500/20'
+-+                  }`}>
+-+                    {TRANSITION_LABELS[setup.transition]}
+-+                  </span>
+-+                )}
+-+                {setup.alignment && (
+-+                  <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${
+-+                    setup.alignment === 'WITH_TREND'
+-+                      ? 'bg-teal-500/10 text-teal-400 ring-teal-500/20'
+-+                      : 'bg-orange-500/10 text-orange-400 ring-orange-500/20'
+-+                  }`}>
+-+                    {ALIGNMENT_LABELS[setup.alignment]}
+-+                  </span>
+-+                )}
+-+              </div>
+-             )}
+-           </div>
+- 
+-diff --git a/components/SetupForm.tsx b/components/SetupForm.tsx
+-index 301a3be..3256d23 100644
+---- a/components/SetupForm.tsx
+-+++ b/components/SetupForm.tsx
+-@@ -7,11 +7,21 @@ import {
+-   type Grade,
+-   type Direction,
+-   type MarketContext,
+-+  type Regime,
+-+  type Transition,
+-+  type Alignment,
+-   SETUP_TYPES,
+-+  SETUP_TYPE_LABELS,
+-   GRADES,
+-   DIRECTIONS,
+-   MARKET_CONTEXTS,
+-   MARKET_CONTEXT_LABELS,
+-+  REGIMES,
+-+  REGIME_LABELS,
+-+  TRANSITIONS,
+-+  TRANSITION_LABELS,
+-+  ALIGNMENTS,
+-+  ALIGNMENT_LABELS,
+- } from '@/types/setup';
+- import { getTodayInEasternTime } from '@/lib/dateUtils';
+- import { formatPlannedRiskReward } from '@/lib/plannedRiskReward';
+-@@ -40,6 +50,10 @@ function makeDefaultForm(init?: TradeSetup) {
+-       initialGrade: (init.initialGrade ?? '') as Grade | '',
+-       overallNotes: init.overallNotes,
+-       setupDate: init.setupDate,
+-+      initialRegime: (init.initialRegime ?? '') as Regime | '',
+-+      entryRegime:   (init.entryRegime   ?? '') as Regime | '',
+-+      transition:    (init.transition    ?? '') as Transition | '',
+-+      alignment:     (init.alignment     ?? '') as Alignment | '',
+-     };
+-   }
+-   return {
+-@@ -56,6 +70,10 @@ function makeDefaultForm(init?: TradeSetup) {
+-     initialGrade: '' as Grade | '',
+-     overallNotes: '',
+-     setupDate: getTodayInEasternTime(),
+-+    initialRegime: '' as Regime | '',
+-+    entryRegime:   '' as Regime | '',
+-+    transition:    '' as Transition | '',
+-+    alignment:     '' as Alignment | '',
+-   };
+- }
+- 
+-@@ -95,6 +113,13 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
+-     setSaving(true);
+-     try {
+-       const now = new Date().toISOString();
+-+      const classification = {
+-+        initialRegime: (form.initialRegime as Regime) || null,
+-+        entryRegime:   (form.entryRegime   as Regime) || null,
+-+        transition:    (form.transition    as Transition) || null,
+-+        alignment:     (form.alignment     as Alignment) || null,
+-+      };
+-+
+-       if (isEdit && initialSetup && onSave) {
+-         await onSave({
+-           ...initialSetup,
+-@@ -112,6 +137,7 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
+-           initialGrade: (form.initialGrade as Grade) || null,
+-           overallNotes: form.overallNotes.trim(),
+-           updatedAt: now,
+-+          ...classification,
+-         });
+-       } else {
+-         onLog({
+-@@ -134,6 +160,7 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
+-           executions: [],
+-           createdAt: now,
+-           updatedAt: now,
+-+          ...classification,
+-         });
+-         setForm(makeDefaultForm());
+-         onClose();
+-@@ -262,7 +289,7 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
+-             >
+-               {SETUP_TYPES.map((s) => (
+-                 <option key={s} value={s}>
+--                  {s}
+-+                  {SETUP_TYPE_LABELS[s]}
+-                 </option>
+-               ))}
+-             </select>
+-@@ -347,6 +374,67 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
+-         </p>
+-       </div>
+- 
+-+      {/* Classification */}
+-+      <div className="flex flex-col gap-3">
+-+        <h3 className={sectionTitleClass}>
+-+          Classification <span className="font-normal normal-case tracking-normal text-zinc-600">— optional</span>
+-+        </h3>
+-+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+-+          <div className="flex flex-col gap-1.5">
+-+            <label className="text-xs font-medium text-zinc-400">Initial regime</label>
+-+            <select
+-+              value={form.initialRegime}
+-+              onChange={(e) => setForm((f) => ({ ...f, initialRegime: e.target.value as Regime | '' }))}
+-+              className={inputClass}
+-+            >
+-+              <option value="">—</option>
+-+              {REGIMES.map((r) => (
+-+                <option key={r} value={r}>{REGIME_LABELS[r]}</option>
+-+              ))}
+-+            </select>
+-+          </div>
+-+          <div className="flex flex-col gap-1.5">
+-+            <label className="text-xs font-medium text-zinc-400">Entry regime</label>
+-+            <select
+-+              value={form.entryRegime}
+-+              onChange={(e) => setForm((f) => ({ ...f, entryRegime: e.target.value as Regime | '' }))}
+-+              className={inputClass}
+-+            >
+-+              <option value="">—</option>
+-+              {REGIMES.map((r) => (
+-+                <option key={r} value={r}>{REGIME_LABELS[r]}</option>
+-+              ))}
+-+            </select>
+-+          </div>
+-+          <div className="flex flex-col gap-1.5">
+-+            <label className="text-xs font-medium text-zinc-400">Transition</label>
+-+            <select
+-+              value={form.transition}
+-+              onChange={(e) => setForm((f) => ({ ...f, transition: e.target.value as Transition | '' }))}
+-+              className={inputClass}
+-+            >
+-+              <option value="">—</option>
+-+              {TRANSITIONS.map((t) => (
+-+                <option key={t} value={t}>{TRANSITION_LABELS[t]}</option>
+-+              ))}
+-+            </select>
+-+          </div>
+-+          <div className="flex flex-col gap-1.5">
+-+            <label className="text-xs font-medium text-zinc-400">Alignment</label>
+-+            <select
+-+              value={form.alignment}
+-+              onChange={(e) => setForm((f) => ({ ...f, alignment: e.target.value as Alignment | '' }))}
+-+              className={inputClass}
+-+            >
+-+              <option value="">—</option>
+-+              {ALIGNMENTS.map((a) => (
+-+                <option key={a} value={a}>{ALIGNMENT_LABELS[a]}</option>
+-+              ))}
+-+            </select>
+-+          </div>
+-+        </div>
+-+      </div>
+-+
+-       {/* Notes */}
+-       <div className="flex flex-col gap-1.5">
+-         <label className="text-xs font-medium text-zinc-400">
+-diff --git a/lib/import/importIbkrMarkers.ts b/lib/import/importIbkrMarkers.ts
+-index 4c682e4..fd7842c 100644
+---- a/lib/import/importIbkrMarkers.ts
+-+++ b/lib/import/importIbkrMarkers.ts
+-@@ -63,7 +63,7 @@ async function upsertTradeSetup(
+-       symbol,
+-       direction,
+-       marketContext: 'range',
+--      setupType: 'VWAP Reclaim',
+-+      setupType: 'VWAP_RECLAIM',
+-       trigger: 'Imported from IBKR',
+-       invalidation: '',
+-       decisionTarget: '',
+-diff --git a/lib/mappers.ts b/lib/mappers.ts
+-index f58c233..ccf8c14 100644
+---- a/lib/mappers.ts
+-+++ b/lib/mappers.ts
+-@@ -29,6 +29,10 @@ type DbSetup = {
+-   status: string;
+-   overallNotes: string;
+-   review: unknown;
+-+  initialRegime: string | null;
+-+  entryRegime: string | null;
+-+  transition: string | null;
+-+  alignment: string | null;
+-   executions: DbExecution[];
+-   createdAt: Date;
+-   updatedAt: Date;
+-@@ -66,6 +70,10 @@ export function mapSetup(s: DbSetup): TradeSetup {
+-     status: s.status as TradeSetup['status'],
+-     overallNotes: s.overallNotes,
+-     review: s.review ? (s.review as SetupReview) : null,
+-+    initialRegime: (s.initialRegime as TradeSetup['initialRegime']) ?? null,
+-+    entryRegime:   (s.entryRegime   as TradeSetup['entryRegime'])   ?? null,
+-+    transition:    (s.transition    as TradeSetup['transition'])    ?? null,
+-+    alignment:     (s.alignment     as TradeSetup['alignment'])     ?? null,
+-     executions: s.executions.map(mapExecution),
+-     createdAt: s.createdAt.toISOString(),
+-     updatedAt: s.updatedAt.toISOString(),
+-diff --git a/prisma/schema.prisma b/prisma/schema.prisma
+-index f8465ff..85614da 100644
+---- a/prisma/schema.prisma
+-+++ b/prisma/schema.prisma
+-@@ -4,18 +4,44 @@ generator client {
+- }
+- 
+- datasource db {
+--  provider = "postgresql"
+--  url      = env("DATABASE_URL")
+-+  provider  = "postgresql"
+-+  url       = env("DATABASE_URL")
+-   directUrl = env("DIRECT_URL")
+- }
+- 
+-+enum SetupType {
+-+  VWAP_RECLAIM
+-+  VWAP_REJECT
+-+  BREAKOUT
+-+  BREAKDOWN
+-+  RANGE
+-+  FLIP
+-+}
+-+
+-+enum Regime {
+-+  UP
+-+  DOWN
+-+  RANGE
+-+}
+-+
+-+enum Transition {
+-+  NONE
+-+  FLIP
+-+  FAILED_FLIP
+-+}
+-+
+-+enum Alignment {
+-+  WITH_TREND
+-+  COUNTER
+-+}
+-+
+- model TradeSetup {
+--  id             String   @id
+-+  id             String    @id
+-   setupDate      String
+-   symbol         String
+-   direction      String
+-   marketContext  String
+--  setupType      String
+-+  setupType      SetupType @default(RANGE)
+-   trigger        String
+-   invalidation   String
+-   decisionTarget String
+-@@ -23,13 +49,18 @@ model TradeSetup {
+-   riskStop       String
+-   riskTarget     String
+-   initialGrade   String?
+--  status         String   @default("open")
+--  overallNotes   String   @default("")
+-+  status         String    @default("open")
+-+  overallNotes   String    @default("")
+-   /// Stored as JSON: { followedPlan, wentWell, failed, lesson }
+-   review         Json?
+-+  /// Trade classification
+-+  initialRegime  Regime?
+-+  entryRegime    Regime?
+-+  transition     Transition?
+-+  alignment      Alignment?
+-   executions     Execution[]
+--  createdAt      DateTime @default(now())
+--  updatedAt      DateTime @updatedAt
+-+  createdAt      DateTime  @default(now())
+-+  updatedAt      DateTime  @updatedAt
+- }
+- 
+- model Execution {
+-diff --git a/types/setup.ts b/types/setup.ts
+-index 46bcf11..f6b93e3 100644
+---- a/types/setup.ts
+-+++ b/types/setup.ts
+-@@ -7,15 +7,50 @@ export const MARKET_CONTEXT_LABELS: Record<MarketContext, string> = {
+-   range: 'Range',
+- };
+- 
+--/** Refined playbook-style setup categories for analysis. */
+- export const SETUP_TYPES = [
+--  'VWAP Reclaim',
+--  'VWAP Reject',
+--  'VWAP Breakdown',
+--  'ORB Breakout',
+--  'Range Fade',
+-+  'VWAP_RECLAIM',
+-+  'VWAP_REJECT',
+-+  'BREAKOUT',
+-+  'BREAKDOWN',
+-+  'RANGE',
+-+  'FLIP',
+- ] as const;
+- 
+-+export const SETUP_TYPE_LABELS: Record<(typeof SETUP_TYPES)[number], string> = {
+-+  VWAP_RECLAIM: 'VWAP Reclaim',
+-+  VWAP_REJECT:  'VWAP Reject',
+-+  BREAKOUT:     'Breakout',
+-+  BREAKDOWN:    'Breakdown',
+-+  RANGE:        'Range',
+-+  FLIP:         'Flip',
+-+};
+-+
+-+export const REGIMES = ['UP', 'DOWN', 'RANGE'] as const;
+-+export type Regime = (typeof REGIMES)[number];
+-+
+-+export const REGIME_LABELS: Record<Regime, string> = {
+-+  UP:    'Up',
+-+  DOWN:  'Down',
+-+  RANGE: 'Range',
+-+};
+-+
+-+export const TRANSITIONS = ['NONE', 'FLIP', 'FAILED_FLIP'] as const;
+-+export type Transition = (typeof TRANSITIONS)[number];
+-+
+-+export const TRANSITION_LABELS: Record<Transition, string> = {
+-+  NONE:        'None',
+-+  FLIP:        'Flip',
+-+  FAILED_FLIP: 'Failed Flip',
+-+};
+-+
+-+export const ALIGNMENTS = ['WITH_TREND', 'COUNTER'] as const;
+-+export type Alignment = (typeof ALIGNMENTS)[number];
+-+
+-+export const ALIGNMENT_LABELS: Record<Alignment, string> = {
+-+  WITH_TREND: 'With Trend',
+-+  COUNTER:    'Counter',
+-+};
+-+
+- export const GRADES = ['A+', 'A', 'B', 'C', 'D'] as const;
+- export const ACTION_TYPES = ['starter', 'add', 'trim', 'exit'] as const;
+- export const DIRECTIONS = ['long', 'short'] as const;
+-@@ -73,6 +108,11 @@ export interface TradeSetup {
+-   executions: Execution[];
+-   createdAt: string;
+-   updatedAt: string;
+-+  /** Trade classification — all optional, set after the fact. */
+-+  initialRegime: Regime | null;
+-+  entryRegime:   Regime | null;
+-+  transition:    Transition | null;
+-+  alignment:     Alignment | null;
+- }
+- 
+- export const GRADE_COLORS: Record<string, string> = {
 diff --git a/lib/mappers.ts b/lib/mappers.ts
-index f58c233..ccf8c14 100644
+index f36c47f..f6cfdee 100644
 --- a/lib/mappers.ts
 +++ b/lib/mappers.ts
-@@ -29,6 +29,10 @@ type DbSetup = {
+@@ -1,4 +1,16 @@
+-import type { TradeSetup, Execution, SetupReview } from '@/types/setup';
++import type {
++  TradeSetup,
++  Execution,
++  SetupReview,
++  TriggerType,
++  Regime,
++  VWAPState,
++  StructureType,
++  Alignment,
++  MistakeTag,
++  SetupType,
++  DirectionEnum,
++} from '@/types/setup';
+ import type { DayContext } from '@/types/dayContext';
+ 
+ type DbExecution = {
+@@ -19,12 +31,32 @@ type DbSetup = {
+   symbol: string;
+   direction: string;
+   setupType: string;
++  // Layer 1 legacy text
+   trigger: string;
+   invalidation: string;
+   decisionTarget: string;
+   riskEntry: string;
+   riskStop: string;
+   riskTarget: string;
++  // Layer 1 structured
++  triggerType: string | null;
++  entryPrice: number | null;
++  stopPrice: number | null;
++  targetPrice: number | null;
++  // Layer 2
++  trueRegime: string | null;
++  vwapState: string | null;
++  structure: string | null;
++  alignment: string | null;
++  // Layer 3
++  mistakeTags: string[];
++  executionScore: number | null;
++  readScore: number | null;
++  disciplineScore: number | null;
++  bestSetupType: string | null;
++  bestDirection: string | null;
++  shouldTrade: boolean | null;
++  // Meta
+   initialGrade: string | null;
    status: string;
    overallNotes: string;
-   review: unknown;
-+  initialRegime: string | null;
-+  entryRegime: string | null;
-+  transition: string | null;
-+  alignment: string | null;
-   executions: DbExecution[];
+@@ -38,11 +70,11 @@ type DbSetup = {
+ type DbDayContext = {
+   id: string;
+   date: string;
++  dayType: string | null;
+   marketContext: string | null;
+   initialRegime: string | null;
+   entryRegime: string | null;
+   transition: string | null;
+-  alignment: string | null;
+   notes: string;
    createdAt: Date;
    updatedAt: Date;
-@@ -66,6 +70,10 @@ export function mapSetup(s: DbSetup): TradeSetup {
+@@ -66,11 +98,11 @@ export function mapDayContext(d: DbDayContext): DayContext {
+   return {
+     id: d.id,
+     date: d.date,
++    dayType: (d.dayType as DayContext['dayType']) ?? null,
+     marketContext: (d.marketContext as DayContext['marketContext']) ?? null,
+     initialRegime: (d.initialRegime as DayContext['initialRegime']) ?? null,
+     entryRegime: (d.entryRegime as DayContext['entryRegime']) ?? null,
+     transition: (d.transition as DayContext['transition']) ?? null,
+-    alignment: (d.alignment as DayContext['alignment']) ?? null,
+     notes: d.notes,
+     createdAt: d.createdAt instanceof Date ? d.createdAt.toISOString() : String(d.createdAt),
+     updatedAt: d.updatedAt instanceof Date ? d.updatedAt.toISOString() : String(d.updatedAt),
+@@ -84,12 +116,32 @@ export function mapSetup(s: DbSetup, dayContext: DayContext | null = null): Trad
+     symbol: s.symbol,
+     direction: s.direction as TradeSetup['direction'],
+     setupType: s.setupType as TradeSetup['setupType'],
++    // Layer 1 legacy
+     trigger: s.trigger,
+     invalidation: s.invalidation,
+     decisionTarget: s.decisionTarget,
+     riskEntry: s.riskEntry,
+     riskStop: s.riskStop,
+     riskTarget: s.riskTarget,
++    // Layer 1 structured
++    triggerType: (s.triggerType as TriggerType) ?? null,
++    entryPrice: s.entryPrice ?? null,
++    stopPrice: s.stopPrice ?? null,
++    targetPrice: s.targetPrice ?? null,
++    // Layer 2
++    trueRegime: (s.trueRegime as Regime) ?? null,
++    vwapState: (s.vwapState as VWAPState) ?? null,
++    structure: (s.structure as StructureType) ?? null,
++    alignment: (s.alignment as Alignment) ?? null,
++    // Layer 3
++    mistakeTags: (s.mistakeTags as MistakeTag[]) ?? [],
++    executionScore: s.executionScore ?? null,
++    readScore: s.readScore ?? null,
++    disciplineScore: s.disciplineScore ?? null,
++    bestSetupType: (s.bestSetupType as SetupType) ?? null,
++    bestDirection: (s.bestDirection as DirectionEnum) ?? null,
++    shouldTrade: s.shouldTrade ?? null,
++    // Meta
+     initialGrade: (s.initialGrade as TradeSetup['initialGrade']) ?? null,
      status: s.status as TradeSetup['status'],
      overallNotes: s.overallNotes,
-     review: s.review ? (s.review as SetupReview) : null,
-+    initialRegime: (s.initialRegime as TradeSetup['initialRegime']) ?? null,
-+    entryRegime:   (s.entryRegime   as TradeSetup['entryRegime'])   ?? null,
-+    transition:    (s.transition    as TradeSetup['transition'])    ?? null,
-+    alignment:     (s.alignment     as TradeSetup['alignment'])     ?? null,
-     executions: s.executions.map(mapExecution),
-     createdAt: s.createdAt.toISOString(),
-     updatedAt: s.updatedAt.toISOString(),
+diff --git a/lib/tradeFilters.ts b/lib/tradeFilters.ts
+index 5606b7f..6dbfadc 100644
+--- a/lib/tradeFilters.ts
++++ b/lib/tradeFilters.ts
+@@ -42,13 +42,13 @@ export function toggleFilter(
+ /**
+  * Returns setups that match ALL selected filter categories (AND across categories,
+  * OR within a category). Empty category = no constraint for that category.
+- * alignment and transition are sourced from each setup's dayContext.
++ * alignment is sourced from TradeSetup directly; transition comes from dayContext.
+  */
+ export function filterTrades(setups: TradeSetup[], filters: TradeFilters): TradeSetup[] {
+   if (isFiltersEmpty(filters)) return setups;
+   return setups.filter((s) => {
+     if (filters.setupType.length > 0 && !filters.setupType.includes(s.setupType)) return false;
+-    const alignment = s.dayContext?.alignment ?? null;
++    const alignment = s.alignment ?? null;
+     const transition = s.dayContext?.transition ?? null;
+     if (filters.alignment.length > 0 && (!alignment || !filters.alignment.includes(alignment))) return false;
+     if (filters.transition.length > 0 && (!transition || !filters.transition.includes(transition))) return false;
 diff --git a/prisma/schema.prisma b/prisma/schema.prisma
-index f8465ff..85614da 100644
+index 8e002ad..0b52b89 100644
 --- a/prisma/schema.prisma
 +++ b/prisma/schema.prisma
-@@ -4,18 +4,44 @@ generator client {
- }
- 
- datasource db {
--  provider = "postgresql"
--  url      = env("DATABASE_URL")
-+  provider  = "postgresql"
-+  url       = env("DATABASE_URL")
+@@ -9,19 +9,44 @@ datasource db {
    directUrl = env("DIRECT_URL")
  }
  
-+enum SetupType {
-+  VWAP_RECLAIM
-+  VWAP_REJECT
-+  BREAKOUT
-+  BREAKDOWN
++// ─────────────────────────────────────────────────────────────────────────────
++// Existing enums — extended backward-compatibly.
++// Legacy values (already in production data) are kept and marked.
++// ─────────────────────────────────────────────────────────────────────────────
++
+ enum SetupType {
++  // Legacy values — in production; kept to avoid breaking existing rows.
 +  RANGE
 +  FLIP
++  // Core structured setup types
+   VWAP_RECLAIM
+   VWAP_REJECT
++  VWAP_PULLBACK
++  ORB_BREAK
++  SWEEP_FAIL
+   BREAKOUT
+   BREAKDOWN
+-  RANGE
+-  FLIP
++  RANGE_RECLAIM
++  RANGE_REJECT
+ }
+ 
+ enum Regime {
+   UP
+   DOWN
+   RANGE
++  // New values
++  CHOP
++  TRANSITION
 +}
 +
-+enum Regime {
-+  UP
-+  DOWN
-+  RANGE
-+}
-+
-+enum Transition {
-+  NONE
-+  FLIP
-+  FAILED_FLIP
-+}
-+
++/// Trade-relative alignment (whether the trade direction aligns with the prevailing regime).
++/// NOTE: WITH_TREND / COUNTER are legacy names kept for backward compat.
++/// New records should prefer WITH_TREND for with-regime and COUNTER for counter-regime.
++/// NEUTRAL added for flat or ambiguous regime conditions.
 +enum Alignment {
 +  WITH_TREND
 +  COUNTER
-+}
-+
- model TradeSetup {
--  id             String   @id
-+  id             String    @id
-   setupDate      String
-   symbol         String
-   direction      String
-   marketContext  String
--  setupType      String
-+  setupType      SetupType @default(RANGE)
-   trigger        String
-   invalidation   String
-   decisionTarget String
-@@ -23,13 +49,18 @@ model TradeSetup {
-   riskStop       String
-   riskTarget     String
-   initialGrade   String?
--  status         String   @default("open")
--  overallNotes   String   @default("")
-+  status         String    @default("open")
-+  overallNotes   String    @default("")
-   /// Stored as JSON: { followedPlan, wentWell, failed, lesson }
-   review         Json?
-+  /// Trade classification
-+  initialRegime  Regime?
-+  entryRegime    Regime?
-+  transition     Transition?
-+  alignment      Alignment?
-   executions     Execution[]
--  createdAt      DateTime @default(now())
--  updatedAt      DateTime @updatedAt
-+  createdAt      DateTime  @default(now())
-+  updatedAt      DateTime  @updatedAt
++  NEUTRAL
  }
  
+ enum Transition {
+@@ -30,52 +55,209 @@ enum Transition {
+   FAILED_FLIP
+ }
+ 
+-enum Alignment {
+-  WITH_TREND
+-  COUNTER
++// ─────────────────────────────────────────────────────────────────────────────
++// New enums added for analytics-ready classification
++// ─────────────────────────────────────────────────────────────────────────────
++
++/// Used for new structured fields; NOT yet applied to TradeSetup.direction (String for compat).
++enum Direction {
++  LONG
++  SHORT
++}
++
++enum VWAPState {
++  ABOVE_ACCEPT
++  BELOW_ACCEPT
++  REJECTING_FROM_ABOVE
++  REJECTING_FROM_BELOW
++  CHOP_AROUND
++}
++
++enum DayType {
++  TREND
++  CHOP
++  RANGE
++  OPEN_DRIVE
++  OPEN_REJECTION
++  TRANSITION
++}
++
++enum StructureType {
++  HH_HL
++  LH_LL
++  RANGE
++  BREAKOUT_FAIL
++  BREAKDOWN_FAIL
++  REVERSAL
++}
++
++enum TriggerType {
++  VWAP_RECLAIM
++  VWAP_REJECT
++  ORB_BREAK
++  SWEEP_FAIL
++  RANGE_HIGH_REJECT
++  RANGE_LOW_RECLAIM
++  BREAKOUT_CONFIRM
++  BREAKDOWN_CONFIRM
++}
++
++enum MistakeTag {
++  EARLY_ENTRY
++  LATE_ENTRY
++  CHASE
++  COUNTER_TREND
++  NO_CONFIRMATION
++  OVERTRADE
++  WRONG_LEVEL
++  IGNORED_VWAP
++  IGNORED_STRUCTURE
++  BAD_STOP
++  BAD_TARGET
++  SIZE_TOO_BIG
++  EMOTIONAL_TRADE
++  SHOULD_HAVE_SKIPPED
++}
++
++enum OutcomeType {
++  WIN
++  LOSS
++  NEUTRAL
++  STRONG_WIN
++  STRONG_LOSS
++}
++
++enum MissReason {
++  DID_NOT_SEE
++  HESITATION
++  DISTRACTION
++  NO_PLAN
++  LOW_CONFIDENCE
++  EXECUTION_DELAY
++  RISK_LIMIT_REACHED
+ }
+ 
++// ─────────────────────────────────────────────────────────────────────────────
++// TradeSetup — for trades that were executed or actively planned.
++// Structured as three analytical layers.
++// ─────────────────────────────────────────────────────────────────────────────
++
+ model TradeSetup {
+-  id             String      @id
+-  setupDate      String
+-  symbol         String
+-  direction      String
+-  setupType      SetupType   @default(RANGE)
++  id        String    @id
++  /// Stored as YYYY-MM-DD in America/New_York trading-day semantics.
++  /// DO NOT convert to DateTime without a careful timezone-aware migration.
++  setupDate String
++  symbol    String
++  /// @legacy — stored as lowercase "long" | "short" for backward compat.
++  /// Use bestDirection (Direction enum) for new structured fields.
++  /// TODO: migrate to Direction enum once API/UI code is updated.
++  direction String
++
++  setupType SetupType @default(RANGE)
++
++  // ── Layer 1 legacy: free-text planning fields (retained for backward compat) ──
++  /// Free-text trigger description. Structured equivalent: triggerType.
+   trigger        String
++  /// Free-text invalidation condition.
+   invalidation   String
++  /// Free-text decision target / idea objective.
+   decisionTarget String
++  /// Free-text entry level. Numeric equivalent: entryPrice.
+   riskEntry      String
++  /// Free-text stop level. Numeric equivalent: stopPrice.
+   riskStop       String
++  /// Free-text target level. Numeric equivalent: targetPrice.
+   riskTarget     String
+-  initialGrade   String?
+-  status         String      @default("open")
+-  overallNotes   String      @default("")
+-  /// Optional free-text name shown in the chart toggle UI (e.g. "Morning VWAP play").
+-  /// Falls back to setupType + instance index when null.
+-  setupName      String?
+-  /// Stored as JSON: { followedPlan, wentWell, failed, lesson }
+-  review         Json?
+-  executions     Execution[]
+-  createdAt      DateTime    @default(now())
+-  updatedAt      DateTime    @updatedAt
+-}
+-
+-/// Day-level market context shared by all setups on the same trading date.
+-/// Replaces the per-setup marketContext / initialRegime / entryRegime / transition / alignment fields.
++
++  // ── Layer 1 structured: trade planning ──
++  triggerType TriggerType?
++  entryPrice  Float?
++  stopPrice   Float?
++  targetPrice Float?
++
++  // ── Layer 2: per-trade market reality at/around entry ──
++  /// Market regime at the time this specific trade was entered.
++  /// Distinct from DayContext.initialRegime (day open) and DayContext.entryRegime (session-wide).
++  trueRegime Regime?
++  /// VWAP state at the time of entry.
++  vwapState  VWAPState?
++  /// Price structure observed at entry.
++  structure  StructureType?
++  /// Whether this trade was with or counter to the prevailing regime.
++  /// Trade-relative; this field belongs here, NOT on DayContext.
++  alignment  Alignment?
++
++  // ── Grading / status ──
++  initialGrade String?
++  status       String  @default("open")
++  // TODO: Add a completion lifecycle enum (DRAFT | REVIEWED | COMPLETE) once
++  //       API and UI code no longer depend solely on the "open"/"closed" status string.
++  overallNotes String  @default("")
++  setupName    String?
++
++  // ── Layer 3: reflection ──
++  mistakeTags     MistakeTag[]
++  executionScore  Int?
++  readScore       Int?
++  disciplineScore Int?
++  bestSetupType   SetupType?
++  /// Reflection on best direction as a structured enum.
++  /// The primary `direction` field stays as String — see note above.
++  bestDirection   Direction?
++  shouldTrade     Boolean?
++  /// @legacy JSON review blob: { followedPlan, wentWell, failed, lesson }.
++  /// Retained for backward compat. New structured reflection fields above should be preferred.
++  /// TODO: decompose into typed columns when API/UI review workflow is updated.
++  review          Json?
++
++  executions Execution[]
++  createdAt  DateTime    @default(now())
++  updatedAt  DateTime    @updatedAt
++
++  @@index([setupDate, setupType])
++  @@index([trueRegime, vwapState])
++  @@index([alignment, shouldTrade])
++}
++
++// ─────────────────────────────────────────────────────────────────────────────
++// DayContext — day-wide market character shared across all setups for a date.
++// NOT for per-trade conditions (use TradeSetup Layer 2 for those).
++// ─────────────────────────────────────────────────────────────────────────────
++
+ model DayContext {
+-  id            String      @id @default(cuid())
+-  /// YYYY-MM-DD — primary dimension, one record per calendar trading day.
+-  date          String      @unique
++  id   String @id @default(cuid())
++  /// YYYY-MM-DD — one record per calendar trading day.
++  date String @unique
++
++  /// @legacy — free-text market context string (e.g. "uptrend", "range").
++  /// Superseded by dayType enum. Kept for migration safety.
++  /// TODO: drop after backfilling dayType from marketContext values.
+   marketContext String?
++  /// Structured day type, replacing the legacy marketContext string.
++  dayType       DayType?
++
++  /// Market regime at the open / early session.
+   initialRegime Regime?
++  /// Market regime that prevailed during the active trading session (day-wide aggregate).
++  /// Distinct from TradeSetup.trueRegime which is the regime at a specific trade's entry.
+   entryRegime   Regime?
+-  transition    Transition?
+-  alignment     Alignment?
+-  notes         String      @default("")
+-  createdAt     DateTime    @default(now())
+-  updatedAt     DateTime    @updatedAt
++
++  transition Transition?
++
++  /// @deprecated — alignment is trade-relative, not day-wide.
++  /// This column will be removed once API/UI code reads alignment from TradeSetup.alignment.
++  /// TODO: remove in next migration step after updating DayContextCard and filter logic.
++  alignment Alignment?
++
++  notes     String   @default("")
++  createdAt DateTime @default(now())
++  updatedAt DateTime @updatedAt
+ }
+ 
++// ─────────────────────────────────────────────────────────────────────────────
++// Execution — unchanged; preserved exactly for backward compat.
++// ─────────────────────────────────────────────────────────────────────────────
++
  model Execution {
+   id            String     @id
+   setupId       String
+@@ -89,6 +271,10 @@ model Execution {
+   updatedAt     DateTime   @updatedAt
+ }
+ 
++// ─────────────────────────────────────────────────────────────────────────────
++// ChartMarker — unchanged; soft FK columns preserved.
++// ─────────────────────────────────────────────────────────────────────────────
++
+ model ChartMarker {
+   id             String   @id
+   symbol         String
+@@ -104,8 +290,7 @@ model ChartMarker {
+   markerShape    String
+   markerColor    String
+   markerText     String
+-  /// Soft FK → Execution.id ("exec-" + externalId). Null for markers imported
+-  /// before this column was added (backfilled by migration).
++  /// Soft FK → Execution.id. Null for legacy records imported before this column existed.
+   executionId    String?
+   /// Soft FK → TradeSetup.id. Set at import time; null for legacy records.
+   setupId        String?
+@@ -115,3 +300,50 @@ model ChartMarker {
+   @@index([symbol, tradeDate])
+   @@index([setupId])
+ }
++
++// ─────────────────────────────────────────────────────────────────────────────
++// MarketOpportunity — valid setups that existed regardless of whether a trade
++// was taken. Kept strictly separate from TradeSetup so missed opportunities
++// do not pollute trade analytics.
++// ─────────────────────────────────────────────────────────────────────────────
++
++model MarketOpportunity {
++  id     String   @id @default(cuid())
++  symbol String
++  /// Stored as DateTime (new model; no legacy String convention to preserve here).
++  date   DateTime
++
++  // ── Required market state — no opportunity record without full context ──
++  trueRegime Regime
++  vwapState  VWAPState
++  dayType    DayType
++  structure  StructureType
++
++  // ── Classification ──
++  setupType   SetupType
++  triggerType TriggerType?
++  /// Direction stored as enum — no legacy String concern for this new model.
++  direction   Direction
++  alignment   Alignment?
++
++  // ── Outcome of the opportunity itself (independent of whether trader acted) ──
++  outcome      OutcomeType?
++  maxFavorable Float?
++  maxAdverse   Float?
++
++  // ── Execution decision ──
++  taken      Boolean    @default(false)
++  missReason MissReason?
++  notes      String?
++
++  // ── Quality ──
++  qualityScore Int?
++  isAPlus      Boolean?
++
++  createdAt DateTime @default(now())
++  updatedAt DateTime @updatedAt
++
++  @@index([symbol, date])
++  @@index([setupType, trueRegime])
++  @@index([taken, missReason])
++}
+diff --git a/types/dayContext.ts b/types/dayContext.ts
+index a44794f..b854c0c 100644
+--- a/types/dayContext.ts
++++ b/types/dayContext.ts
+@@ -1,16 +1,19 @@
+-import type { MarketContext, Regime, Transition, Alignment } from './setup';
++import type { MarketContext, Regime, Transition, DayType } from './setup';
+ 
+ /** Day-level market context shared by all setups on the same trading date. */
+ export interface DayContext {
+   id: string;
+   /** YYYY-MM-DD trading day. */
+   date: string;
++  /** Structured day classification. Preferred over legacy marketContext. */
++  dayType: DayType | null;
++  /** @legacy String-based context retained for migration safety. Prefer dayType. */
+   marketContext: MarketContext | null;
+   initialRegime: Regime | null;
+   /** Market regime during the active session (distinct from the open regime). */
+   entryRegime: Regime | null;
+   transition: Transition | null;
+-  alignment: Alignment | null;
++  // alignment removed — trade-relative; now lives on TradeSetup.alignment
+   notes: string;
+   createdAt: string;
+   updatedAt: string;
 diff --git a/types/setup.ts b/types/setup.ts
-index 46bcf11..f6b93e3 100644
+index 54a28aa..0180e29 100644
 --- a/types/setup.ts
 +++ b/types/setup.ts
-@@ -7,15 +7,50 @@ export const MARKET_CONTEXT_LABELS: Record<MarketContext, string> = {
-   range: 'Range',
+@@ -1,39 +1,59 @@
++// ── Legacy string-based market context (kept for backward compat) ─────────────
+ export const MARKET_CONTEXTS = ['uptrend', 'downtrend', 'range'] as const;
+ export type MarketContext = (typeof MARKET_CONTEXTS)[number];
+ 
+ export const MARKET_CONTEXT_LABELS: Record<MarketContext, string> = {
+-  uptrend: 'Uptrend',
++  uptrend:   'Uptrend',
+   downtrend: 'Downtrend',
+-  range: 'Range',
++  range:     'Range',
  };
  
--/** Refined playbook-style setup categories for analysis. */
++// ── Setup type ────────────────────────────────────────────────────────────────
  export const SETUP_TYPES = [
--  'VWAP Reclaim',
--  'VWAP Reject',
--  'VWAP Breakdown',
--  'ORB Breakout',
--  'Range Fade',
-+  'VWAP_RECLAIM',
-+  'VWAP_REJECT',
-+  'BREAKOUT',
-+  'BREAKDOWN',
-+  'RANGE',
-+  'FLIP',
++  // Original values (kept for legacy data)
+   'VWAP_RECLAIM',
+   'VWAP_REJECT',
+   'BREAKOUT',
+   'BREAKDOWN',
+   'RANGE',
+   'FLIP',
++  // New analytical values
++  'VWAP_PULLBACK',
++  'ORB_BREAK',
++  'SWEEP_FAIL',
++  'RANGE_RECLAIM',
++  'RANGE_REJECT',
  ] as const;
  
-+export const SETUP_TYPE_LABELS: Record<(typeof SETUP_TYPES)[number], string> = {
-+  VWAP_RECLAIM: 'VWAP Reclaim',
-+  VWAP_REJECT:  'VWAP Reject',
-+  BREAKOUT:     'Breakout',
-+  BREAKDOWN:    'Breakdown',
-+  RANGE:        'Range',
-+  FLIP:         'Flip',
+-export const SETUP_TYPE_LABELS: Record<(typeof SETUP_TYPES)[number], string> = {
+-  VWAP_RECLAIM: 'VWAP Reclaim',
+-  VWAP_REJECT:  'VWAP Reject',
+-  BREAKOUT:     'Breakout',
+-  BREAKDOWN:    'Breakdown',
+-  RANGE:        'Range',
+-  FLIP:         'Flip',
++export type SetupType = (typeof SETUP_TYPES)[number];
++
++export const SETUP_TYPE_LABELS: Record<SetupType, string> = {
++  VWAP_RECLAIM:  'VWAP Reclaim',
++  VWAP_REJECT:   'VWAP Reject',
++  BREAKOUT:      'Breakout',
++  BREAKDOWN:     'Breakdown',
++  RANGE:         'Range',
++  FLIP:          'Flip',
++  VWAP_PULLBACK: 'VWAP Pullback',
++  ORB_BREAK:     'ORB Break',
++  SWEEP_FAIL:    'Sweep Fail',
++  RANGE_RECLAIM: 'Range Reclaim',
++  RANGE_REJECT:  'Range Reject',
+ };
+ 
+-export const REGIMES = ['UP', 'DOWN', 'RANGE'] as const;
++// ── Regime ────────────────────────────────────────────────────────────────────
++export const REGIMES = ['UP', 'DOWN', 'RANGE', 'CHOP', 'TRANSITION'] as const;
+ export type Regime = (typeof REGIMES)[number];
+ 
+ export const REGIME_LABELS: Record<Regime, string> = {
+-  UP:    'Up',
+-  DOWN:  'Down',
+-  RANGE: 'Range',
++  UP:         'Up',
++  DOWN:       'Down',
++  RANGE:      'Range',
++  CHOP:       'Chop',
++  TRANSITION: 'Transition',
+ };
+ 
++// ── Transition ────────────────────────────────────────────────────────────────
+ export const TRANSITIONS = ['NONE', 'FLIP', 'FAILED_FLIP'] as const;
+ export type Transition = (typeof TRANSITIONS)[number];
+ 
+@@ -43,24 +63,202 @@ export const TRANSITION_LABELS: Record<Transition, string> = {
+   FAILED_FLIP: 'Failed Flip',
+ };
+ 
+-export const ALIGNMENTS = ['WITH_TREND', 'COUNTER'] as const;
++// ── Alignment ─────────────────────────────────────────────────────────────────
++/** Trade-relative alignment. Lives on TradeSetup, not DayContext. */
++export const ALIGNMENTS = [
++  'WITH_TREND', // legacy value
++  'WITH',       // canonical new value
++  'COUNTER',
++  'NEUTRAL',
++] as const;
+ export type Alignment = (typeof ALIGNMENTS)[number];
+ 
+ export const ALIGNMENT_LABELS: Record<Alignment, string> = {
+   WITH_TREND: 'With Trend',
++  WITH:       'With',
+   COUNTER:    'Counter',
++  NEUTRAL:    'Neutral',
 +};
 +
-+export const REGIMES = ['UP', 'DOWN', 'RANGE'] as const;
-+export type Regime = (typeof REGIMES)[number];
++// ── Day type ──────────────────────────────────────────────────────────────────
++export const DAY_TYPES = [
++  'TREND',
++  'CHOP',
++  'RANGE',
++  'OPEN_DRIVE',
++  'OPEN_REJECTION',
++  'TRANSITION',
++] as const;
++export type DayType = (typeof DAY_TYPES)[number];
 +
-+export const REGIME_LABELS: Record<Regime, string> = {
-+  UP:    'Up',
-+  DOWN:  'Down',
-+  RANGE: 'Range',
++export const DAY_TYPE_LABELS: Record<DayType, string> = {
++  TREND:          'Trend',
++  CHOP:           'Chop',
++  RANGE:          'Range',
++  OPEN_DRIVE:     'Open Drive',
++  OPEN_REJECTION: 'Open Rejection',
++  TRANSITION:     'Transition',
 +};
 +
-+export const TRANSITIONS = ['NONE', 'FLIP', 'FAILED_FLIP'] as const;
-+export type Transition = (typeof TRANSITIONS)[number];
++// ── VWAP state ────────────────────────────────────────────────────────────────
++export const VWAP_STATES = [
++  'ABOVE_ACCEPT',
++  'BELOW_ACCEPT',
++  'REJECTING_FROM_ABOVE',
++  'REJECTING_FROM_BELOW',
++  'CHOP_AROUND',
++] as const;
++export type VWAPState = (typeof VWAP_STATES)[number];
 +
-+export const TRANSITION_LABELS: Record<Transition, string> = {
-+  NONE:        'None',
-+  FLIP:        'Flip',
-+  FAILED_FLIP: 'Failed Flip',
++export const VWAP_STATE_LABELS: Record<VWAPState, string> = {
++  ABOVE_ACCEPT:          'Above / Accept',
++  BELOW_ACCEPT:          'Below / Accept',
++  REJECTING_FROM_ABOVE:  'Reject From Above',
++  REJECTING_FROM_BELOW:  'Reject From Below',
++  CHOP_AROUND:           'Chop Around',
 +};
 +
-+export const ALIGNMENTS = ['WITH_TREND', 'COUNTER'] as const;
-+export type Alignment = (typeof ALIGNMENTS)[number];
++// ── Structure type ────────────────────────────────────────────────────────────
++export const STRUCTURE_TYPES = [
++  'HH_HL',
++  'LH_LL',
++  'RANGE',
++  'BREAKOUT_FAIL',
++  'BREAKDOWN_FAIL',
++  'REVERSAL',
++] as const;
++export type StructureType = (typeof STRUCTURE_TYPES)[number];
 +
-+export const ALIGNMENT_LABELS: Record<Alignment, string> = {
-+  WITH_TREND: 'With Trend',
-+  COUNTER:    'Counter',
++export const STRUCTURE_TYPE_LABELS: Record<StructureType, string> = {
++  HH_HL:         'HH/HL',
++  LH_LL:         'LH/LL',
++  RANGE:         'Range',
++  BREAKOUT_FAIL: 'Breakout Fail',
++  BREAKDOWN_FAIL:'Breakdown Fail',
++  REVERSAL:      'Reversal',
+ };
+ 
++// ── Trigger type ──────────────────────────────────────────────────────────────
++export const TRIGGER_TYPES = [
++  'VWAP_RECLAIM',
++  'VWAP_REJECT',
++  'ORB_BREAK',
++  'SWEEP_FAIL',
++  'RANGE_HIGH_REJECT',
++  'RANGE_LOW_RECLAIM',
++  'BREAKOUT_CONFIRM',
++  'BREAKDOWN_CONFIRM',
++] as const;
++export type TriggerType = (typeof TRIGGER_TYPES)[number];
++
++export const TRIGGER_TYPE_LABELS: Record<TriggerType, string> = {
++  VWAP_RECLAIM:      'VWAP Reclaim',
++  VWAP_REJECT:       'VWAP Reject',
++  ORB_BREAK:         'ORB Break',
++  SWEEP_FAIL:        'Sweep Fail',
++  RANGE_HIGH_REJECT: 'Range High Reject',
++  RANGE_LOW_RECLAIM: 'Range Low Reclaim',
++  BREAKOUT_CONFIRM:  'Breakout Confirm',
++  BREAKDOWN_CONFIRM: 'Breakdown Confirm',
 +};
 +
++// ── Mistake tag ───────────────────────────────────────────────────────────────
++export const MISTAKE_TAGS = [
++  'EARLY_ENTRY',
++  'LATE_ENTRY',
++  'CHASE',
++  'COUNTER_TREND',
++  'NO_CONFIRMATION',
++  'OVERTRADE',
++  'WRONG_LEVEL',
++  'IGNORED_VWAP',
++  'IGNORED_STRUCTURE',
++  'BAD_STOP',
++  'BAD_TARGET',
++  'SIZE_TOO_BIG',
++  'EMOTIONAL_TRADE',
++  'SHOULD_HAVE_SKIPPED',
++] as const;
++export type MistakeTag = (typeof MISTAKE_TAGS)[number];
++
++export const MISTAKE_TAG_LABELS: Record<MistakeTag, string> = {
++  EARLY_ENTRY:         'Early Entry',
++  LATE_ENTRY:          'Late Entry',
++  CHASE:               'Chase',
++  COUNTER_TREND:       'Counter Trend',
++  NO_CONFIRMATION:     'No Confirmation',
++  OVERTRADE:           'Overtrade',
++  WRONG_LEVEL:         'Wrong Level',
++  IGNORED_VWAP:        'Ignored VWAP',
++  IGNORED_STRUCTURE:   'Ignored Structure',
++  BAD_STOP:            'Bad Stop',
++  BAD_TARGET:          'Bad Target',
++  SIZE_TOO_BIG:        'Size Too Big',
++  EMOTIONAL_TRADE:     'Emotional Trade',
++  SHOULD_HAVE_SKIPPED: 'Should Have Skipped',
++};
++
++// ── Outcome type ──────────────────────────────────────────────────────────────
++export const OUTCOME_TYPES = [
++  'WIN',
++  'LOSS',
++  'NEUTRAL',
++  'STRONG_WIN',
++  'STRONG_LOSS',
++] as const;
++export type OutcomeType = (typeof OUTCOME_TYPES)[number];
++
++export const OUTCOME_TYPE_LABELS: Record<OutcomeType, string> = {
++  WIN:         'Win',
++  LOSS:        'Loss',
++  NEUTRAL:     'Neutral',
++  STRONG_WIN:  'Strong Win',
++  STRONG_LOSS: 'Strong Loss',
++};
++
++// ── Miss reason ───────────────────────────────────────────────────────────────
++export const MISS_REASONS = [
++  'DID_NOT_SEE',
++  'HESITATION',
++  'DISTRACTION',
++  'NO_PLAN',
++  'LOW_CONFIDENCE',
++  'EXECUTION_DELAY',
++  'RISK_LIMIT_REACHED',
++] as const;
++export type MissReason = (typeof MISS_REASONS)[number];
++
++export const MISS_REASON_LABELS: Record<MissReason, string> = {
++  DID_NOT_SEE:        'Did Not See',
++  HESITATION:         'Hesitation',
++  DISTRACTION:        'Distraction',
++  NO_PLAN:            'No Plan',
++  LOW_CONFIDENCE:     'Low Confidence',
++  EXECUTION_DELAY:    'Execution Delay',
++  RISK_LIMIT_REACHED: 'Risk Limit Reached',
++};
++
++// ── Direction (new structured enum, uppercase) ────────────────────────────────
++/** Uppercase direction enum used in MarketOpportunity and TradeSetup reflection. */
++export const DIRECTION_ENUM_VALUES = ['LONG', 'SHORT'] as const;
++export type DirectionEnum = (typeof DIRECTION_ENUM_VALUES)[number];
++
++export const DIRECTION_ENUM_LABELS: Record<DirectionEnum, string> = {
++  LONG:  'Long',
++  SHORT: 'Short',
++};
++
++// ── Legacy direction (lowercase, used in TradeSetup.direction) ────────────────
  export const GRADES = ['A+', 'A', 'B', 'C', 'D'] as const;
  export const ACTION_TYPES = ['starter', 'add', 'trim', 'exit'] as const;
  export const DIRECTIONS = ['long', 'short'] as const;
-@@ -73,6 +108,11 @@ export interface TradeSetup {
-   executions: Execution[];
-   createdAt: string;
-   updatedAt: string;
-+  /** Trade classification — all optional, set after the fact. */
-+  initialRegime: Regime | null;
-+  entryRegime:   Regime | null;
-+  transition:    Transition | null;
-+  alignment:     Alignment | null;
+ 
+-export type SetupType = (typeof SETUP_TYPES)[number];
+ export type Grade = (typeof GRADES)[number];
+ export type ActionType = (typeof ACTION_TYPES)[number];
+-export type Direction = (typeof DIRECTIONS)[number];
++export type Direction = (typeof DIRECTIONS)[number]; // legacy lowercase
+ export type SetupStatus = 'open' | 'closed';
+ 
++// ── Sub-models ────────────────────────────────────────────────────────────────
+ export interface Execution {
+   id: string;
+   setupId: string;
+@@ -80,31 +278,66 @@ export interface SetupReview {
+   lesson: string;
  }
  
++// ── TradeSetup ────────────────────────────────────────────────────────────────
+ export interface TradeSetup {
+   id: string;
+   /** Trading day in YYYY-MM-DD format, anchored to America/New_York. */
+   setupDate: string;
+   symbol: string;
++  /** Legacy lowercase direction string ('long' | 'short'). */
+   direction: Direction;
+   setupType: SetupType;
+-  /** What must happen to enter (e.g. reclaim VWAP, break ORH). */
++
++  // ── Layer 1: intent / plan ─────────────────────────────────────────────────
++  /** What must happen to enter (legacy text field). */
+   trigger: string;
+-  /** What voids the idea (e.g. lose VWAP, take out prior low). */
++  /** What voids the idea (legacy text field). */
+   invalidation: string;
+-  /** Planned objective in the idea phase (e.g. PDH, 2R). */
++  /** Planned objective in the idea phase (legacy text field). */
+   decisionTarget: string;
+-  /** Planned entry level (numeric or text). */
++  /** Planned entry level (legacy text field). */
+   riskEntry: string;
+-  /** Planned stop (numeric or text). */
++  /** Planned stop (legacy text field). */
+   riskStop: string;
+-  /** Planned take-profit / exit objective for the risk plan (numeric or text). */
++  /** Planned take-profit / exit objective (legacy text field). */
+   riskTarget: string;
++  /** Structured trigger classification. */
++  triggerType: TriggerType | null;
++  /** Structured numeric entry level. */
++  entryPrice: number | null;
++  /** Structured numeric stop level. */
++  stopPrice: number | null;
++  /** Structured numeric target level. */
++  targetPrice: number | null;
++
++  // ── Layer 2: market reality at entry ──────────────────────────────────────
++  /** Actual regime at the time of this specific trade. */
++  trueRegime: Regime | null;
++  vwapState: VWAPState | null;
++  structure: StructureType | null;
++  /** Trade-relative alignment (distinct from day-wide context). */
++  alignment: Alignment | null;
++
++  // ── Layer 3: reflection ───────────────────────────────────────────────────
++  mistakeTags: MistakeTag[];
++  executionScore: number | null;
++  readScore: number | null;
++  disciplineScore: number | null;
++  /** What was the best setup available in hindsight. */
++  bestSetupType: SetupType | null;
++  /** What was the best direction in hindsight. */
++  bestDirection: DirectionEnum | null;
++  /** Whether this trade should have been taken at all. */
++  shouldTrade: boolean | null;
++
++  // ── Meta ──────────────────────────────────────────────────────────────────
+   initialGrade: Grade | null;
+   status: SetupStatus;
+   /** Optional extra context (does not replace structured fields). */
+   overallNotes: string;
+   /** Optional human-readable name shown in chart toggle UI. */
+   setupName: string | null;
++  /** Legacy JSON review blob. */
+   review: SetupReview | null;
+   executions: Execution[];
+   createdAt: string;
+@@ -113,31 +346,32 @@ export interface TradeSetup {
+   dayContext: import('./dayContext').DayContext | null;
+ }
+ 
++// ── UI helpers ────────────────────────────────────────────────────────────────
  export const GRADE_COLORS: Record<string, string> = {
+   'A+': 'bg-emerald-500/10 text-emerald-400 ring-emerald-500/25',
+-  A: 'bg-blue-500/10 text-blue-400 ring-blue-500/25',
+-  B: 'bg-amber-500/10 text-amber-400 ring-amber-500/25',
+-  C: 'bg-zinc-700/50 text-zinc-400 ring-zinc-600/50',
+-  D: 'bg-red-500/10 text-red-400 ring-red-500/25',
++  A:   'bg-blue-500/10 text-blue-400 ring-blue-500/25',
++  B:   'bg-amber-500/10 text-amber-400 ring-amber-500/25',
++  C:   'bg-zinc-700/50 text-zinc-400 ring-zinc-600/50',
++  D:   'bg-red-500/10 text-red-400 ring-red-500/25',
+ };
+ 
+ export const ACTION_DOT_COLORS: Record<ActionType, string> = {
+   starter: 'bg-blue-500',
+-  add: 'bg-emerald-500',
+-  trim: 'bg-amber-500',
+-  exit: 'bg-rose-500',
++  add:     'bg-emerald-500',
++  trim:    'bg-amber-500',
++  exit:    'bg-rose-500',
+ };
+ 
+ export const ACTION_BORDER_COLORS: Record<ActionType, string> = {
+   starter: 'border-l-blue-400',
+-  add: 'border-l-emerald-500',
+-  trim: 'border-l-amber-400',
+-  exit: 'border-l-rose-500',
++  add:     'border-l-emerald-500',
++  trim:    'border-l-amber-400',
++  exit:    'border-l-rose-500',
+ };
+ 
+ export const ACTION_LABELS: Record<ActionType, string> = {
+   starter: 'Starter',
+-  add: 'Add',
+-  trim: 'Trim',
+-  exit: 'Exit',
++  add:     'Add',
++  trim:    'Trim',
++  exit:    'Exit',
+ };

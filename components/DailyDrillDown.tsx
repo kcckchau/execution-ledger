@@ -60,48 +60,41 @@ export default function DailyDrillDown({
   return (
     <>
       <div className="flex flex-col gap-4">
-        {/* ── Day header ── */}
-        <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
-          <div>
-            <h3 className="text-sm font-semibold text-white">{formatSetupDate(date)}</h3>
-            <p className="mt-0.5 text-xs text-zinc-500">
-              {setups.length === 0
-                ? 'No setups'
-                : `${setups.length} setup${setups.length !== 1 ? 's' : ''}`}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-4">
-            {hasPnl && (
-              <div className="text-right">
-                <p className="text-[10px] text-zinc-500 uppercase tracking-wider">Daily P&L</p>
-                <p
-                  className={`text-base font-bold tabular-nums ${
-                    totalPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                  }`}
-                >
-                  {formatPnl(totalPnl)}
-                </p>
-              </div>
-            )}
-            {setups.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setShowDeleteDayConfirm(true)}
-                className="text-xs text-zinc-600 hover:text-rose-400 transition-colors"
-              >
-                Delete all
-              </button>
-            )}
-          </div>
+        {/* ── Market section ── */}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-widest text-zinc-600">Market</span>
+          <div className="h-px flex-1 bg-zinc-800" />
         </div>
-
-        {/* ── Day context ── */}
         <DayContextCard
           date={date}
           dayContext={setups[0]?.dayContext ?? null}
           onUpdate={(dc) => onUpdateDayContext(date, dc)}
         />
+
+        {/* ── Trades section ── */}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-widest text-zinc-600">Trades</span>
+          {setups.length > 0 && (
+            <span className="text-[10px] text-zinc-600">{setups.length}</span>
+          )}
+          {hasPnl && (
+            <span className={`text-[10px] font-medium tabular-nums ${
+              totalPnl > 0 ? 'text-emerald-400' : 'text-rose-400'
+            }`}>
+              {totalPnl > 0 ? '+' : ''}{formatPnl(totalPnl)}
+            </span>
+          )}
+          <div className="h-px flex-1 bg-zinc-800" />
+          {setups.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowDeleteDayConfirm(true)}
+              className="text-[10px] text-zinc-700 hover:text-rose-400 transition-colors shrink-0"
+            >
+              Delete all
+            </button>
+          )}
+        </div>
 
         {/* ── Setup cards or empty state ── */}
         {setups.length === 0 ? (
