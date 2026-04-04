@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import { type TradeSetup, type Execution, type SetupReview } from '@/types/setup';
+import type { DayContext } from '@/types/dayContext';
 import { calcSetupPnl, formatPnl } from '@/lib/pnl';
 import { formatSetupDate } from '@/lib/dateUtils';
 import SetupCard from './SetupCard';
+import DayContextCard from './DayContextCard';
 import ConfirmDialog from './ConfirmDialog';
 
 interface DailyDrillDownProps {
@@ -18,6 +20,7 @@ interface DailyDrillDownProps {
   onUpdateSetup: (id: string, updated: TradeSetup) => Promise<void>;
   onUpdateExecution: (setupId: string, exec: Execution) => Promise<void>;
   onDeleteExecution: (setupId: string, execId: string) => Promise<void>;
+  onUpdateDayContext: (date: string, dc: DayContext) => void;
 }
 
 export default function DailyDrillDown({
@@ -31,6 +34,7 @@ export default function DailyDrillDown({
   onUpdateSetup,
   onUpdateExecution,
   onDeleteExecution,
+  onUpdateDayContext,
 }: DailyDrillDownProps) {
   const [showDeleteDayConfirm, setShowDeleteDayConfirm] = useState(false);
   const [deleteDayPending, setDeleteDayPending] = useState(false);
@@ -91,6 +95,13 @@ export default function DailyDrillDown({
             )}
           </div>
         </div>
+
+        {/* ── Day context ── */}
+        <DayContextCard
+          date={date}
+          dayContext={setups[0]?.dayContext ?? null}
+          onUpdate={(dc) => onUpdateDayContext(date, dc)}
+        />
 
         {/* ── Setup cards or empty state ── */}
         {setups.length === 0 ? (

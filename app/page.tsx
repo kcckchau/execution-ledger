@@ -298,6 +298,7 @@ export default function Home() {
                 onUpdateSetup={updateSetup}
                 onUpdateExecution={updateExecution}
                 onDeleteExecution={deleteExecution}
+                onUpdateDayContext={updateDayContext}
               />
             )}
           </>
