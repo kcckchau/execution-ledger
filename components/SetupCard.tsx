@@ -9,19 +9,19 @@ import {
   GRADE_COLORS,
   ACTION_BORDER_COLORS,
   ACTION_LABELS,
-  MARKET_CONTEXT_LABELS,
   SETUP_TYPE_LABELS,
   REGIME_LABELS,
   TRANSITION_LABELS,
   ALIGNMENT_LABELS,
 } from '@/types/setup';
+import type { DayContext } from '@/types/dayContext';
+import { formatPlannedRiskReward } from '@/lib/plannedRiskReward';
 
 const REGIME_TAG: Record<Regime, string> = {
   UP:    'bg-emerald-500/10 text-emerald-400 ring-emerald-500/20',
   DOWN:  'bg-rose-500/10 text-rose-400 ring-rose-500/20',
   RANGE: 'bg-amber-500/10 text-amber-400 ring-amber-500/20',
 };
-import { formatPlannedRiskReward } from '@/lib/plannedRiskReward';
 import { calcSetupPnl, formatPnl } from '@/lib/pnl';
 import { formatSetupDate } from '@/lib/dateUtils';
 import ExecutionForm from './ExecutionForm';
@@ -121,6 +121,48 @@ function ExecutionRow({
           Delete
         </button>
       </div>
+    </div>
+  );
+}
+
+// ── Day-level classification tags ────────────────────────────────────────────
+
+function DayContextTags({ dc }: { dc: DayContext | null }) {
+  if (!dc) return null;
+  const { initialRegime, entryRegime, transition, alignment } = dc;
+  if (!initialRegime && !entryRegime && (!transition || transition === 'NONE') && !alignment) {
+    return null;
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {initialRegime && (
+        <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${REGIME_TAG[initialRegime]}`}>
+          <span className="opacity-50 mr-0.5">i·</span>{REGIME_LABELS[initialRegime]}
+        </span>
+      )}
+      {entryRegime && (
+        <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${REGIME_TAG[entryRegime]}`}>
+          <span className="opacity-50 mr-0.5">s·</span>{REGIME_LABELS[entryRegime]}
+        </span>
+      )}
+      {transition && transition !== 'NONE' && (
+        <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${
+          transition === 'FLIP'
+            ? 'bg-violet-500/10 text-violet-400 ring-violet-500/20'
+            : 'bg-orange-500/10 text-orange-400 ring-orange-500/20'
+        }`}>
+          {TRANSITION_LABELS[transition]}
+        </span>
+      )}
+      {alignment && (
+        <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${
+          alignment === 'WITH_TREND'
+            ? 'bg-teal-500/10 text-teal-400 ring-teal-500/20'
+            : 'bg-orange-500/10 text-orange-400 ring-orange-500/20'
+        }`}>
+          {ALIGNMENT_LABELS[alignment]}
+        </span>
+      )}
     </div>
   );
 }
@@ -234,41 +276,8 @@ export default function SetupCard({
               )}
             </div>
 
-            {/* Classification tags — only rendered when at least one field is set */}
-            {(setup.initialRegime || setup.entryRegime ||
-              (setup.transition && setup.transition !== 'NONE') ||
-              setup.alignment) && (
-              <div className="flex flex-wrap items-center gap-1">
-                {setup.initialRegime && (
-                  <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${REGIME_TAG[setup.initialRegime]}`}>
-                    <span className="opacity-50 mr-0.5">i·</span>{REGIME_LABELS[setup.initialRegime]}
-                  </span>
-                )}
-                {setup.entryRegime && (
-                  <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${REGIME_TAG[setup.entryRegime]}`}>
-                    <span className="opacity-50 mr-0.5">e·</span>{REGIME_LABELS[setup.entryRegime]}
-                  </span>
-                )}
-                {setup.transition && setup.transition !== 'NONE' && (
-                  <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${
-                    setup.transition === 'FLIP'
-                      ? 'bg-violet-500/10 text-violet-400 ring-violet-500/20'
-                      : 'bg-orange-500/10 text-orange-400 ring-orange-500/20'
-                  }`}>
-                    {TRANSITION_LABELS[setup.transition]}
-                  </span>
-                )}
-                {setup.alignment && (
-                  <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${
-                    setup.alignment === 'WITH_TREND'
-                      ? 'bg-teal-500/10 text-teal-400 ring-teal-500/20'
-                      : 'bg-orange-500/10 text-orange-400 ring-orange-500/20'
-                  }`}>
-                    {ALIGNMENT_LABELS[setup.alignment]}
-                  </span>
-                )}
-              </div>
-            )}
+            {/* Day-level classification tags sourced from setup.dayContext */}
+            <DayContextTags dc={setup.dayContext} />
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
@@ -302,12 +311,6 @@ export default function SetupCard({
               Decision
             </p>
             <dl className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2">
-              <div className="flex gap-2">
-                <dt className="shrink-0 text-zinc-500">Context</dt>
-                <dd className="text-zinc-200">
-                  {MARKET_CONTEXT_LABELS[setup.marketContext]}
-                </dd>
-              </div>
               <div className="flex gap-2 sm:col-span-2">
                 <dt className="shrink-0 text-zinc-500">Setup</dt>
                 <dd className="text-zinc-200">{setup.setupType}</dd>

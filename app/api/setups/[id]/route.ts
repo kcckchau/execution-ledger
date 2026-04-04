@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { mapSetup } from '@/lib/mappers';
+import { mapSetup, mapDayContext } from '@/lib/mappers';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -18,7 +18,6 @@ export async function PUT(req: NextRequest, { params }: Params) {
         ...(body.symbol !== undefined && { symbol: String(body.symbol).trim().toUpperCase() }),
         ...(body.setupDate !== undefined && { setupDate: body.setupDate }),
         ...(body.direction !== undefined && { direction: body.direction }),
-        ...(body.marketContext !== undefined && { marketContext: body.marketContext }),
         ...(body.setupType !== undefined && { setupType: body.setupType }),
         ...(body.trigger !== undefined && { trigger: String(body.trigger).trim() }),
         ...(body.invalidation !== undefined && { invalidation: String(body.invalidation).trim() }),
@@ -27,14 +26,14 @@ export async function PUT(req: NextRequest, { params }: Params) {
         ...(body.riskStop !== undefined && { riskStop: String(body.riskStop).trim() }),
         ...(body.riskTarget !== undefined && { riskTarget: String(body.riskTarget).trim() }),
         ...(body.initialGrade !== undefined && { initialGrade: body.initialGrade || null }),
-        ...(body.initialRegime !== undefined && { initialRegime: body.initialRegime || null }),
-        ...(body.entryRegime   !== undefined && { entryRegime:   body.entryRegime   || null }),
-        ...(body.transition    !== undefined && { transition:    body.transition    || null }),
-        ...(body.alignment     !== undefined && { alignment:     body.alignment     || null }),
+        ...(body.setupName !== undefined && { setupName: body.setupName || null }),
       },
       include: { executions: { orderBy: { executionTime: 'asc' } } },
     });
-    return NextResponse.json(mapSetup(row));
+
+    // Return setup enriched with day context.
+    const dayCtx = await prisma.dayContext.findUnique({ where: { date: row.setupDate } });
+    return NextResponse.json(mapSetup(row, dayCtx ? mapDayContext(dayCtx) : null));
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unexpected error';
     return NextResponse.json({ error: message }, { status: 500 });

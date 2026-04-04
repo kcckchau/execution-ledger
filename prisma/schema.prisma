@@ -36,12 +36,11 @@ enum Alignment {
 }
 
 model TradeSetup {
-  id             String    @id
+  id             String      @id
   setupDate      String
   symbol         String
   direction      String
-  marketContext  String
-  setupType      SetupType @default(RANGE)
+  setupType      SetupType   @default(RANGE)
   trigger        String
   invalidation   String
   decisionTarget String
@@ -49,18 +48,32 @@ model TradeSetup {
   riskStop       String
   riskTarget     String
   initialGrade   String?
-  status         String    @default("open")
-  overallNotes   String    @default("")
+  status         String      @default("open")
+  overallNotes   String      @default("")
+  /// Optional free-text name shown in the chart toggle UI (e.g. "Morning VWAP play").
+  /// Falls back to setupType + instance index when null.
+  setupName      String?
   /// Stored as JSON: { followedPlan, wentWell, failed, lesson }
   review         Json?
-  /// Trade classification
-  initialRegime  Regime?
-  entryRegime    Regime?
-  transition     Transition?
-  alignment      Alignment?
   executions     Execution[]
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+}
+
+/// Day-level market context shared by all setups on the same trading date.
+/// Replaces the per-setup marketContext / initialRegime / entryRegime / transition / alignment fields.
+model DayContext {
+  id            String      @id @default(cuid())
+  /// YYYY-MM-DD — primary dimension, one record per calendar trading day.
+  date          String      @unique
+  marketContext String?
+  initialRegime Regime?
+  entryRegime   Regime?
+  transition    Transition?
+  alignment     Alignment?
+  notes         String      @default("")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 }
 
 model Execution {

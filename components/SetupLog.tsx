@@ -2,8 +2,10 @@
 
 import { useState, useMemo } from 'react';
 import { type TradeSetup, type Execution, type SetupReview } from '@/types/setup';
+import type { DayContext } from '@/types/dayContext';
 import { EMPTY_FILTERS, filterTrades, computeTradeStats, type TradeFilters } from '@/lib/tradeFilters';
 import SetupCard from './SetupCard';
+import DayContextCard from './DayContextCard';
 import ConfirmDialog from './ConfirmDialog';
 import TradeFiltersBar from './TradeFiltersBar';
 
@@ -17,6 +19,7 @@ interface SetupLogProps {
   onUpdateSetup: (id: string, updated: TradeSetup) => Promise<void>;
   onUpdateExecution: (setupId: string, exec: Execution) => Promise<void>;
   onDeleteExecution: (setupId: string, execId: string) => Promise<void>;
+  onUpdateDayContext: (date: string, dc: DayContext) => void;
 }
 
 export default function SetupLog({
@@ -29,6 +32,7 @@ export default function SetupLog({
   onUpdateSetup,
   onUpdateExecution,
   onDeleteExecution,
+  onUpdateDayContext,
 }: SetupLogProps) {
   const [filters, setFilters] = useState<TradeFilters>(EMPTY_FILTERS);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -37,6 +41,21 @@ export default function SetupLog({
 
   const filteredSetups = useMemo(() => filterTrades(setups, filters), [setups, filters]);
   const stats = useMemo(() => computeTradeStats(filteredSetups), [filteredSetups]);
+
+  // Group filtered setups by date for DayContextCard rendering.
+  const dateGroups = useMemo(() => {
+    const groups: Array<{ date: string; setups: TradeSetup[]; dayContext: DayContext | null }> = [];
+    let currentDate = '';
+    for (const setup of filteredSetups) {
+      if (setup.setupDate !== currentDate) {
+        currentDate = setup.setupDate;
+        groups.push({ date: currentDate, setups: [setup], dayContext: setup.dayContext });
+      } else {
+        groups[groups.length - 1].setups.push(setup);
+      }
+    }
+    return groups;
+  }, [filteredSetups]);
 
   function toggleSelect(id: string) {
     setSelected((prev) => {
@@ -105,39 +124,52 @@ export default function SetupLog({
           <p className="text-sm text-zinc-500">No trades match the current filters.</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
-          {filteredSetups.map((setup, index) => {
-            const chartKey = `${setup.symbol}::${setup.setupDate}`;
-            const showChart =
-              filteredSetups.findIndex((s) => `${s.symbol}::${s.setupDate}` === chartKey) === index;
+        <div className="flex flex-col gap-6">
+          {dateGroups.map(({ date, setups: groupSetups, dayContext }) => (
+            <div key={date} className="flex flex-col gap-3">
+              {/* Day context bar — once per trading date */}
+              <DayContextCard
+                date={date}
+                dayContext={dayContext}
+                onUpdate={(dc) => onUpdateDayContext(date, dc)}
+              />
 
-            return (
-              <div key={setup.id} className="flex items-start gap-3">
-                <div className="pt-[18px] pl-1 shrink-0">
-                  <input
-                    type="checkbox"
-                    checked={selected.has(setup.id)}
-                    onChange={() => toggleSelect(setup.id)}
-                    title="Select setup"
-                    className="h-3.5 w-3.5 cursor-pointer rounded-sm border-zinc-600 accent-indigo-500"
-                  />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <SetupCard
-                    setup={setup}
-                    showChart={showChart}
-                    onAddExecution={onAddExecution}
-                    onSaveReview={onSaveReview}
-                    onUpdateStatus={onUpdateStatus}
-                    onDeleteSetup={() => onDeleteSetup(setup.id)}
-                    onUpdateSetup={(updated) => onUpdateSetup(setup.id, updated)}
-                    onUpdateExecution={(exec) => onUpdateExecution(setup.id, exec)}
-                    onDeleteExecution={(execId) => onDeleteExecution(setup.id, execId)}
-                  />
-                </div>
-              </div>
-            );
-          })}
+              {/* Setup cards for this date */}
+              {groupSetups.map((setup) => {
+                const chartKey = `${setup.symbol}::${setup.setupDate}`;
+                const globalIndex = filteredSetups.indexOf(setup);
+                const showChart =
+                  filteredSetups.findIndex((s) => `${s.symbol}::${s.setupDate}` === chartKey) === globalIndex;
+
+                return (
+                  <div key={setup.id} className="flex items-start gap-3">
+                    <div className="pt-[18px] pl-1 shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(setup.id)}
+                        onChange={() => toggleSelect(setup.id)}
+                        title="Select setup"
+                        className="h-3.5 w-3.5 cursor-pointer rounded-sm border-zinc-600 accent-indigo-500"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <SetupCard
+                        setup={setup}
+                        showChart={showChart}
+                        onAddExecution={onAddExecution}
+                        onSaveReview={onSaveReview}
+                        onUpdateStatus={onUpdateStatus}
+                        onDeleteSetup={() => onDeleteSetup(setup.id)}
+                        onUpdateSetup={(updated) => onUpdateSetup(setup.id, updated)}
+                        onUpdateExecution={(exec) => onUpdateExecution(setup.id, exec)}
+                        onDeleteExecution={(execId) => onDeleteExecution(setup.id, execId)}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
         </div>
       )}
 

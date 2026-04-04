@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { type TradeSetup, type Execution, type SetupReview } from '@/types/setup';
+import type { DayContext } from '@/types/dayContext';
 import { calcSetupPnl, formatPnl } from '@/lib/pnl';
 import SetupForm from '@/components/SetupForm';
 import SetupLog from '@/components/SetupLog';
@@ -136,6 +137,12 @@ export default function Home() {
         ),
       );
     }
+  }
+
+  function updateDayContext(date: string, dc: DayContext) {
+    setSetups((prev) =>
+      prev.map((s) => (s.setupDate === date ? { ...s, dayContext: dc } : s)),
+    );
   }
 
   async function deleteExecution(setupId: string, execId: string) {
@@ -305,6 +312,7 @@ export default function Home() {
             onUpdateSetup={updateSetup}
             onUpdateExecution={updateExecution}
             onDeleteExecution={deleteExecution}
+            onUpdateDayContext={updateDayContext}
           />
         )}
       </main>

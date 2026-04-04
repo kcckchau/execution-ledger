@@ -6,19 +6,10 @@ import {
   type SetupType,
   type Grade,
   type Direction,
-  type MarketContext,
-  type Regime,
-  type Transition,
-  type Alignment,
   SETUP_TYPES,
   SETUP_TYPE_LABELS,
   GRADES,
   DIRECTIONS,
-  MARKET_CONTEXTS,
-  MARKET_CONTEXT_LABELS,
-  REGIMES,
-  TRANSITIONS,
-  ALIGNMENTS,
 } from '@/types/setup';
 import { getTodayInEasternTime } from '@/lib/dateUtils';
 import { formatPlannedRiskReward } from '@/lib/plannedRiskReward';
@@ -36,7 +27,6 @@ function makeDefaultForm(init?: TradeSetup) {
     return {
       symbol: init.symbol,
       direction: init.direction,
-      marketContext: init.marketContext,
       setupType: init.setupType,
       trigger: init.trigger,
       invalidation: init.invalidation,
@@ -47,16 +37,12 @@ function makeDefaultForm(init?: TradeSetup) {
       initialGrade: (init.initialGrade ?? '') as Grade | '',
       overallNotes: init.overallNotes,
       setupDate: init.setupDate,
-      initialRegime: (init.initialRegime ?? '') as Regime | '',
-      entryRegime:   (init.entryRegime   ?? '') as Regime | '',
-      transition:    (init.transition    ?? '') as Transition | '',
-      alignment:     (init.alignment     ?? '') as Alignment | '',
+      setupName: init.setupName ?? '',
     };
   }
   return {
     symbol: '',
     direction: 'long' as Direction,
-    marketContext: 'range' as MarketContext,
     setupType: SETUP_TYPES[0] as SetupType,
     trigger: '',
     invalidation: '',
@@ -67,62 +53,8 @@ function makeDefaultForm(init?: TradeSetup) {
     initialGrade: '' as Grade | '',
     overallNotes: '',
     setupDate: getTodayInEasternTime(),
-    initialRegime: '' as Regime | '',
-    entryRegime:   '' as Regime | '',
-    transition:    '' as Transition | '',
-    alignment:     '' as Alignment | '',
+    setupName: '',
   };
-}
-
-// ── Segmented control ─────────────────────────────────────────────────────────
-
-function Seg<T extends string>({
-  value,
-  options,
-  getLabel,
-  getActiveClass,
-  onChange,
-}: {
-  value: T | '';
-  options: readonly T[];
-  getLabel: (v: T) => string;
-  getActiveClass: (v: T) => string;
-  onChange: (v: T | '') => void;
-}) {
-  return (
-    <div className="flex h-9 overflow-hidden rounded-md border border-zinc-700">
-      {options.map((o) => (
-        <button
-          key={o}
-          type="button"
-          onClick={() => onChange(value === o ? '' : o)}
-          className={`flex-1 truncate px-1.5 text-xs font-medium transition-colors ${
-            value === o
-              ? getActiveClass(o)
-              : 'bg-zinc-800 text-zinc-500 hover:bg-zinc-750 hover:text-zinc-300'
-          }`}
-        >
-          {getLabel(o)}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-// Active-state color helpers
-function regimeActive(r: Regime): string {
-  if (r === 'UP')   return 'bg-emerald-600/80 text-emerald-100 ring-1 ring-inset ring-emerald-400/30';
-  if (r === 'DOWN') return 'bg-rose-600/80    text-rose-100    ring-1 ring-inset ring-rose-400/30';
-  return                    'bg-amber-600/80  text-amber-100   ring-1 ring-inset ring-amber-400/30';
-}
-function transitionActive(t: Transition): string {
-  if (t === 'FLIP')        return 'bg-violet-600/80 text-violet-100 ring-1 ring-inset ring-violet-400/30';
-  if (t === 'FAILED_FLIP') return 'bg-orange-600/80 text-orange-100 ring-1 ring-inset ring-orange-400/30';
-  return                          'bg-zinc-600      text-zinc-200   ring-1 ring-inset ring-zinc-500/30';
-}
-function alignmentActive(a: Alignment): string {
-  if (a === 'WITH_TREND') return 'bg-teal-600/80   text-teal-100   ring-1 ring-inset ring-teal-400/30';
-  return                         'bg-orange-600/80 text-orange-100 ring-1 ring-inset ring-orange-400/30';
 }
 
 // ── Shared style tokens ───────────────────────────────────────────────────────
@@ -139,7 +71,7 @@ const sectionTitleClass =
   'text-[11px] font-semibold uppercase tracking-wider text-zinc-500 border-b border-zinc-800 pb-2';
 
 const labelClass    = 'text-xs font-medium text-zinc-400';
-const labelDimClass = 'text-xs font-medium text-zinc-500'; // lower-priority fields
+const labelDimClass = 'text-xs font-medium text-zinc-500';
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -152,29 +84,6 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
     () => formatPlannedRiskReward(form.riskEntry, form.riskStop, form.riskTarget, form.direction),
     [form.riskEntry, form.riskStop, form.riskTarget, form.direction]
   );
-
-  // Client-side hints — non-blocking, shown only when a conflict is detected.
-  const hints = useMemo<string[]>(() => {
-    const h: string[] = [];
-    if (
-      form.alignment === 'WITH_TREND' &&
-      form.direction === 'long' &&
-      form.entryRegime === 'DOWN'
-    ) {
-      h.push('With Trend but entry regime is Down — confirm direction bias.');
-    }
-    if (
-      form.alignment === 'WITH_TREND' &&
-      form.direction === 'short' &&
-      form.entryRegime === 'UP'
-    ) {
-      h.push('With Trend but entry regime is Up — confirm direction bias.');
-    }
-    if (form.transition === 'FAILED_FLIP') {
-      h.push('Failed Flip — typically lower expectancy. Size accordingly.');
-    }
-    return h;
-  }, [form.alignment, form.direction, form.entryRegime, form.transition]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -190,12 +99,6 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
     setSaving(true);
     try {
       const now = new Date().toISOString();
-      const classification = {
-        initialRegime: (form.initialRegime as Regime) || null,
-        entryRegime:   (form.entryRegime   as Regime) || null,
-        transition:    (form.transition    as Transition) || null,
-        alignment:     (form.alignment     as Alignment) || null,
-      };
 
       if (isEdit && initialSetup && onSave) {
         await onSave({
@@ -203,7 +106,6 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
           setupDate: form.setupDate,
           symbol: form.symbol.trim().toUpperCase(),
           direction: form.direction,
-          marketContext: form.marketContext,
           setupType: form.setupType,
           trigger: form.trigger.trim(),
           invalidation: form.invalidation.trim(),
@@ -213,8 +115,8 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
           riskTarget: form.riskTarget.trim(),
           initialGrade: (form.initialGrade as Grade) || null,
           overallNotes: form.overallNotes.trim(),
+          setupName: form.setupName.trim() || null,
           updatedAt: now,
-          ...classification,
         });
       } else {
         onLog({
@@ -222,7 +124,6 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
           setupDate: form.setupDate,
           symbol: form.symbol.trim().toUpperCase(),
           direction: form.direction,
-          marketContext: form.marketContext,
           setupType: form.setupType,
           trigger: form.trigger.trim(),
           invalidation: form.invalidation.trim(),
@@ -233,11 +134,12 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
           initialGrade: (form.initialGrade as Grade) || null,
           status: 'open',
           overallNotes: form.overallNotes.trim(),
+          setupName: form.setupName.trim() || null,
           review: null,
           executions: [],
           createdAt: now,
           updatedAt: now,
-          ...classification,
+          dayContext: null,
         });
         setForm(makeDefaultForm());
         onClose();
@@ -329,99 +231,23 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
         </div>
       </div>
 
-      {/* ── Decision (includes classification) ── */}
+      {/* ── Decision ── */}
       <div className="flex flex-col gap-3">
         <h3 className={sectionTitleClass}>Decision</h3>
 
-        {/* Row 1: Setup type + Alignment — highest signal pair */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <label className={labelClass}>Setup type</label>
-            <select
-              value={form.setupType}
-              onChange={(e) => setForm((f) => ({ ...f, setupType: e.target.value as SetupType }))}
-              className={inputClass}
-            >
-              {SETUP_TYPES.map((s) => (
-                <option key={s} value={s}>{SETUP_TYPE_LABELS[s]}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className={labelClass}>Alignment</label>
-            <Seg
-              value={form.alignment}
-              options={ALIGNMENTS}
-              getLabel={(a) => (a === 'WITH_TREND' ? 'With Trend' : 'Counter')}
-              getActiveClass={alignmentActive}
-              onChange={(v) => setForm((f) => ({ ...f, alignment: v }))}
-            />
-          </div>
-        </div>
-
-        {/* Row 2: Entry regime + Transition — execution-moment signals */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <label className={labelClass}>Entry regime</label>
-            <Seg
-              value={form.entryRegime}
-              options={REGIMES}
-              getLabel={(r) => (r === 'UP' ? '↑ Up' : r === 'DOWN' ? '↓ Down' : '↔ Range')}
-              getActiveClass={regimeActive}
-              onChange={(v) => setForm((f) => ({ ...f, entryRegime: v }))}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className={labelClass}>Transition</label>
-            <Seg
-              value={form.transition}
-              options={TRANSITIONS}
-              getLabel={(t) => (t === 'NONE' ? 'None' : t === 'FLIP' ? 'Flip' : 'Failed')}
-              getActiveClass={transitionActive}
-              onChange={(v) => setForm((f) => ({ ...f, transition: v }))}
-            />
-          </div>
-        </div>
-
-        {/* Hints — non-blocking, only shown when a conflict or caution is detected */}
-        {hints.length > 0 && (
-          <div className="flex flex-col gap-0.5">
-            {hints.map((h) => (
-              <p key={h} className="flex items-start gap-1.5 text-xs text-amber-500/80">
-                <span className="mt-px shrink-0">⚠</span>
-                <span>{h}</span>
-              </p>
+        <div className="flex flex-col gap-1.5">
+          <label className={labelClass}>Setup type</label>
+          <select
+            value={form.setupType}
+            onChange={(e) => setForm((f) => ({ ...f, setupType: e.target.value as SetupType }))}
+            className={inputClass}
+          >
+            {SETUP_TYPES.map((s) => (
+              <option key={s} value={s}>{SETUP_TYPE_LABELS[s]}</option>
             ))}
-          </div>
-        )}
-
-        {/* Row 3: Market context + Initial regime — background context, lower priority */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <label className={labelDimClass}>Market context</label>
-            <select
-              value={form.marketContext}
-              onChange={(e) => setForm((f) => ({ ...f, marketContext: e.target.value as MarketContext }))}
-              className={inputClass}
-            >
-              {MARKET_CONTEXTS.map((mc) => (
-                <option key={mc} value={mc}>{MARKET_CONTEXT_LABELS[mc]}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className={labelDimClass}>Initial regime</label>
-            <Seg
-              value={form.initialRegime}
-              options={REGIMES}
-              getLabel={(r) => (r === 'UP' ? '↑ Up' : r === 'DOWN' ? '↓ Down' : '↔ Range')}
-              getActiveClass={regimeActive}
-              onChange={(v) => setForm((f) => ({ ...f, initialRegime: v }))}
-            />
-          </div>
+          </select>
         </div>
 
-        {/* Trigger / Invalidation / Target */}
         <div className="flex flex-col gap-1.5">
           <label className={labelClass}>Trigger</label>
           <input
@@ -501,16 +327,28 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
         </p>
       </div>
 
-      {/* ── Notes ── */}
-      <div className="flex flex-col gap-1.5">
-        <label className={labelDimClass}>Notes</label>
-        <textarea
-          rows={2}
-          placeholder="Extra context, levels to watch, sizing…"
-          value={form.overallNotes}
-          onChange={(e) => setForm((f) => ({ ...f, overallNotes: e.target.value }))}
-          className={textareaClass}
-        />
+      {/* ── Notes + optional name ── */}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1.5">
+          <label className={labelDimClass}>Name <span className="text-zinc-600 font-normal">(optional — shown in chart toggle)</span></label>
+          <input
+            type="text"
+            placeholder="e.g. Morning VWAP play"
+            value={form.setupName}
+            onChange={(e) => setForm((f) => ({ ...f, setupName: e.target.value }))}
+            className={inputClass}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label className={labelDimClass}>Notes</label>
+          <textarea
+            rows={2}
+            placeholder="Extra context, levels to watch, sizing…"
+            value={form.overallNotes}
+            onChange={(e) => setForm((f) => ({ ...f, overallNotes: e.target.value }))}
+            className={textareaClass}
+          />
+        </div>
       </div>
 
       <div className="flex justify-end">

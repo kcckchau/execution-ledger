@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { mapSetup } from '@/lib/mappers';
+import { mapSetup, mapDayContext } from '@/lib/mappers';
 
 export async function GET() {
   try {
@@ -8,7 +8,15 @@ export async function GET() {
       include: { executions: { orderBy: { executionTime: 'asc' } } },
       orderBy: [{ setupDate: 'desc' }, { createdAt: 'asc' }],
     });
-    return NextResponse.json(rows.map(mapSetup));
+
+    // Fetch day contexts for all unique dates in a single query.
+    const dates = [...new Set(rows.map((r) => r.setupDate))];
+    const dayContextRows = dates.length > 0
+      ? await prisma.dayContext.findMany({ where: { date: { in: dates } } })
+      : [];
+    const dayContextMap = new Map(dayContextRows.map((d) => [d.date, mapDayContext(d)]));
+
+    return NextResponse.json(rows.map((r) => mapSetup(r, dayContextMap.get(r.setupDate) ?? null)));
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unexpected error';
     return NextResponse.json({ error: message }, { status: 500 });
@@ -39,7 +47,6 @@ export async function POST(req: NextRequest) {
         setupDate: body.setupDate,
         symbol: body.symbol,
         direction: body.direction,
-        marketContext: body.marketContext,
         setupType: body.setupType,
         trigger: body.trigger,
         invalidation: body.invalidation,
@@ -50,15 +57,18 @@ export async function POST(req: NextRequest) {
         initialGrade: body.initialGrade ?? null,
         status: body.status ?? 'open',
         overallNotes: body.overallNotes ?? '',
+        setupName: body.setupName ?? null,
         review: body.review ?? undefined,
-        initialRegime: body.initialRegime ?? null,
-        entryRegime:   body.entryRegime   ?? null,
-        transition:    body.transition    ?? null,
-        alignment:     body.alignment     ?? null,
       },
       include: { executions: true },
     });
-    return NextResponse.json(mapSetup(row), { status: 201 });
+
+    // Fetch the day context for this setup's date.
+    const dayCtx = await prisma.dayContext.findUnique({ where: { date: row.setupDate } });
+    return NextResponse.json(
+      mapSetup(row, dayCtx ? mapDayContext(dayCtx) : null),
+      { status: 201 }
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unexpected error';
     return NextResponse.json({ error: message }, { status: 500 });

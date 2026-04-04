@@ -62,7 +62,6 @@ async function upsertTradeSetup(
       setupDate: tradeDate,
       symbol,
       direction,
-      marketContext: 'range',
       setupType: 'VWAP_RECLAIM',
       trigger: 'Imported from IBKR',
       invalidation: '',

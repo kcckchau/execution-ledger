@@ -86,7 +86,6 @@ export interface TradeSetup {
   setupDate: string;
   symbol: string;
   direction: Direction;
-  marketContext: MarketContext;
   setupType: SetupType;
   /** What must happen to enter (e.g. reclaim VWAP, break ORH). */
   trigger: string;
@@ -104,15 +103,14 @@ export interface TradeSetup {
   status: SetupStatus;
   /** Optional extra context (does not replace structured fields). */
   overallNotes: string;
+  /** Optional human-readable name shown in chart toggle UI. */
+  setupName: string | null;
   review: SetupReview | null;
   executions: Execution[];
   createdAt: string;
   updatedAt: string;
-  /** Trade classification — all optional, set after the fact. */
-  initialRegime: Regime | null;
-  entryRegime:   Regime | null;
-  transition:    Transition | null;
-  alignment:     Alignment | null;
+  /** Day-level market context. Null when no DayContext has been saved for this date. */
+  dayContext: import('./dayContext').DayContext | null;
 }
 
 export const GRADE_COLORS: Record<string, string> = {

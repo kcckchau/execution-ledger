@@ -140,10 +140,10 @@ export default function TradeFiltersBar({
     });
   }
 
-  // Grouped breakdown — computed from filtered setups
-  const alignmentRows  = computeGroupedStats(setups, (s) => s.alignment,  ALIGNMENTS);
-  const transitionRows = computeGroupedStats(setups, (s) => s.transition, TRANSITIONS);
-  const setupTypeRows  = computeGroupedStats(setups, (s) => s.setupType,  SETUP_TYPES);
+  // Grouped breakdown — alignment and transition sourced from day-level context.
+  const alignmentRows  = computeGroupedStats(setups, (s) => s.dayContext?.alignment  ?? null, ALIGNMENTS);
+  const transitionRows = computeGroupedStats(setups, (s) => s.dayContext?.transition ?? null, TRANSITIONS);
+  const setupTypeRows  = computeGroupedStats(setups, (s) => s.setupType, SETUP_TYPES);
   const hasBreakdown   = stats.count > 0;
 
   return (
