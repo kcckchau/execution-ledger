@@ -27,13 +27,11 @@ import { calcSetupPnl, formatPnl } from '@/lib/pnl';
 import { formatSetupDate } from '@/lib/dateUtils';
 import ExecutionForm from './ExecutionForm';
 import ReviewPanel from './ReviewPanel';
-import SetupSessionChart from './SetupSessionChart';
 import SetupForm from './SetupForm';
 import ConfirmDialog from './ConfirmDialog';
 
 interface SetupCardProps {
   setup: TradeSetup;
-  showChart?: boolean;
   onAddExecution: (setupId: string, execution: Execution) => void;
   onSaveReview: (setupId: string, review: SetupReview) => void;
   onUpdateStatus: (setupId: string, status: 'open' | 'closed') => void;
@@ -159,7 +157,6 @@ function DayContextTags({ dc }: { dc: DayContext | null }) {
 
 export default function SetupCard({
   setup,
-  showChart = true,
   onAddExecution,
   onSaveReview,
   onUpdateStatus,
@@ -255,6 +252,11 @@ export default function SetupCard({
               <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-zinc-800 text-zinc-400 ring-1 ring-inset ring-zinc-700">
                 {SETUP_TYPE_LABELS[setup.setupType] ?? setup.setupType}
               </span>
+              {setup.setupName && (
+                <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-indigo-500/10 text-indigo-300 ring-1 ring-inset ring-indigo-500/25">
+                  {setup.setupName}
+                </span>
+              )}
               {setup.initialGrade && (
                 <span
                   className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ${
@@ -360,15 +362,6 @@ export default function SetupCard({
             <p className="text-xs leading-relaxed text-zinc-500">{setup.overallNotes}</p>
           )}
         </div>
-
-        {showChart && (
-          <SetupSessionChart
-            key={`${setup.symbol}-${setup.setupDate}`}
-            symbol={setup.symbol}
-            setupDate={setup.setupDate}
-            executions={setup.executions}
-          />
-        )}
 
         {/* ── Executions ── */}
         <div className="border-t border-zinc-800">

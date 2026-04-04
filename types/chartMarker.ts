@@ -46,6 +46,8 @@ export interface TradeMarker {
 export interface SetupMarkerMeta {
   id: string;
   setupType: string;
+  /** Optional human-readable name. Preferred over setupType for display. */
+  setupName?: string | null;
 }
 
 /**

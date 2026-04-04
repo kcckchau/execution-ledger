@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import SessionChart from '@/components/SessionChart';
 import { SETUP_TYPE_LABELS } from '@/types/setup';
 import type { SessionChartData } from '@/types/sessionChart';
@@ -34,14 +34,36 @@ export default function SetupSessionChart({
   setupDate,
   executions,
 }: SetupSessionChartProps) {
-  const [loading, setLoading] = useState(true);
+  const containerRef = useRef<HTMLDivElement>(null);
+  // Deferred until the chart container scrolls into the viewport.
+  const [inView, setInView] = useState(false);
+
+  const [loading, setLoading] = useState(false);
   const [session, setSession] = useState<SessionChartData | null>(null);
   const [tradeMarkers, setTradeMarkers] = useState<TradeMarker[] | null>(null);
   const [setupMeta, setSetupMeta] = useState<SetupMarkerMeta[] | null>(null);
-  // Set of setupIds whose markers are currently visible. Starts with all enabled.
   const [toggledSetups, setToggledSetups] = useState<Set<string>>(new Set());
 
+  // Observe visibility — fetch only once when the container comes into view.
   useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setInView(true);
+          obs.disconnect();
+        }
+      },
+      { rootMargin: '300px' }, // pre-load 300 px before visible
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  // Fetch chart data — only fires once inView becomes true.
+  useEffect(() => {
+    if (!inView) return;
     let cancelled = false;
     setLoading(true);
     fetch(
@@ -53,7 +75,6 @@ export default function SetupSessionChart({
         setSession(data.session);
         setTradeMarkers(data.tradeMarkers);
         setSetupMeta(data.setupMeta);
-        // Enable all setups by default.
         setToggledSetups(new Set(data.setupMeta?.map((s) => s.id) ?? []));
       })
       .catch(() => {
@@ -69,9 +90,9 @@ export default function SetupSessionChart({
     return () => {
       cancelled = true;
     };
-  }, [symbol, setupDate]);
+  }, [symbol, setupDate, inView]);
 
-  // Build display labels: append " #N" when the same setupType appears more than once.
+  // Build display labels: prefer setupName, then fall back to setupType + "#N" suffix.
   const setupLabels = useMemo<Record<string, string>>(() => {
     if (!setupMeta) return {};
     const typeCount: Record<string, number> = {};
@@ -81,13 +102,17 @@ export default function SetupSessionChart({
     const typeIdx: Record<string, number> = {};
     const result: Record<string, string> = {};
     for (const s of setupMeta) {
-      const base =
-        SETUP_TYPE_LABELS[s.setupType as keyof typeof SETUP_TYPE_LABELS] ?? s.setupType;
-      if (typeCount[s.setupType] > 1) {
-        typeIdx[s.setupType] = (typeIdx[s.setupType] ?? 0) + 1;
-        result[s.id] = `${base} #${typeIdx[s.setupType]}`;
+      if (s.setupName) {
+        result[s.id] = s.setupName;
       } else {
-        result[s.id] = base;
+        const base =
+          SETUP_TYPE_LABELS[s.setupType as keyof typeof SETUP_TYPE_LABELS] ?? s.setupType;
+        if (typeCount[s.setupType] > 1) {
+          typeIdx[s.setupType] = (typeIdx[s.setupType] ?? 0) + 1;
+          result[s.id] = `${base} #${typeIdx[s.setupType]}`;
+        } else {
+          result[s.id] = base;
+        }
       }
     }
     return result;
@@ -111,40 +136,15 @@ export default function SetupSessionChart({
     });
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
-
-  if (loading) {
-    return (
-      <div className="border-t border-zinc-800 px-5 py-6 text-center text-xs text-zinc-500">
-        Loading session chart…
-      </div>
-    );
-  }
-
-  if (!session) {
-    return (
-      <div className="border-t border-zinc-800 px-5 py-4 text-xs text-zinc-500">
-        No intraday file for{' '}
-        <code className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-300">{symbol}</code> on{' '}
-        {setupDate}. Add{' '}
-        <code className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-300">
-          data/market/{symbol}/{setupDate}.json
-        </code>
-        .
-      </div>
-    );
-  }
-
   const showToggles = setupMeta !== null && setupMeta.length > 1;
 
   return (
-    <div className="border-t border-zinc-800 px-2 pt-3 pb-3 sm:px-3">
-      {/* Header row: label + per-setup toggles */}
-      <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 px-2">
-        <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-          Session chart
+    <div ref={containerRef} className="rounded-lg border border-zinc-800 bg-zinc-900 overflow-hidden">
+      {/* Header */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2.5 border-b border-zinc-800">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+          {symbol} · Session
         </p>
-
         {showToggles && (
           <div className="flex flex-wrap gap-1">
             {setupMeta.map((s, idx) => {
@@ -165,11 +165,32 @@ export default function SetupSessionChart({
         )}
       </div>
 
-      <SessionChart
-        session={session}
-        tradeMarkers={visibleMarkers === null ? undefined : visibleMarkers}
-        executions={executions}
-      />
+      {/* Body */}
+      {!inView || loading ? (
+        <div className="px-4 py-6 text-center text-xs text-zinc-600">
+          {loading ? 'Loading…' : 'Scroll to load chart'}
+        </div>
+      ) : !session ? (
+        <div className="px-4 py-4 text-xs text-zinc-500">
+          No intraday file for{' '}
+          <code className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-300">{symbol}</code> on{' '}
+          {setupDate}.{' '}
+          <span className="text-zinc-600">
+            Add{' '}
+            <code className="rounded bg-zinc-800 px-1 py-0.5">
+              data/market/{symbol}/{setupDate}.json
+            </code>
+          </span>
+        </div>
+      ) : (
+        <div className="px-2 pb-2 pt-1 sm:px-3">
+          <SessionChart
+            session={session}
+            tradeMarkers={visibleMarkers === null ? undefined : visibleMarkers}
+            executions={executions}
+          />
+        </div>
+      )}
     </div>
   );
 }

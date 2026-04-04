@@ -7,6 +7,7 @@ import { EMPTY_FILTERS, filterTrades, computeTradeStats, type TradeFilters } fro
 import { calcSetupPnl } from '@/lib/pnl';
 import SetupCard from './SetupCard';
 import DayContextCard from './DayContextCard';
+import SetupSessionChart from './SetupSessionChart';
 import ConfirmDialog from './ConfirmDialog';
 import TradeFiltersBar from './TradeFiltersBar';
 
@@ -160,40 +161,53 @@ export default function SetupLog({
                 <div className="h-px flex-1 bg-zinc-800" />
               </div>
 
-              {/* Setup cards for this date */}
-              {groupSetups.map((setup) => {
-                const chartKey = `${setup.symbol}::${setup.setupDate}`;
-                const globalIndex = filteredSetups.indexOf(setup);
-                const showChart =
-                  filteredSetups.findIndex((s) => `${s.symbol}::${s.setupDate}` === chartKey) === globalIndex;
+              {/* ── Session charts — one per unique symbol, lazy loaded ── */}
+              {(() => {
+                const seenSymbols = new Set<string>();
+                return groupSetups
+                  .filter((s) => {
+                    if (seenSymbols.has(s.symbol)) return false;
+                    seenSymbols.add(s.symbol);
+                    return true;
+                  })
+                  .map((s) => (
+                    <SetupSessionChart
+                      key={`${s.symbol}::${s.setupDate}`}
+                      symbol={s.symbol}
+                      setupDate={s.setupDate}
+                      executions={groupSetups
+                        .filter((gs) => gs.symbol === s.symbol)
+                        .flatMap((gs) => gs.executions)}
+                    />
+                  ));
+              })()}
 
-                return (
-                  <div key={setup.id} className="flex items-start gap-3">
-                    <div className="pt-[18px] pl-1 shrink-0">
-                      <input
-                        type="checkbox"
-                        checked={selected.has(setup.id)}
-                        onChange={() => toggleSelect(setup.id)}
-                        title="Select setup"
-                        className="h-3.5 w-3.5 cursor-pointer rounded-sm border-zinc-600 accent-indigo-500"
-                      />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <SetupCard
-                        setup={setup}
-                        showChart={showChart}
-                        onAddExecution={onAddExecution}
-                        onSaveReview={onSaveReview}
-                        onUpdateStatus={onUpdateStatus}
-                        onDeleteSetup={() => onDeleteSetup(setup.id)}
-                        onUpdateSetup={(updated) => onUpdateSetup(setup.id, updated)}
-                        onUpdateExecution={(exec) => onUpdateExecution(setup.id, exec)}
-                        onDeleteExecution={(execId) => onDeleteExecution(setup.id, execId)}
-                      />
-                    </div>
+              {/* Setup cards for this date */}
+              {groupSetups.map((setup) => (
+                <div key={setup.id} className="flex items-start gap-3">
+                  <div className="pt-[18px] pl-1 shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(setup.id)}
+                      onChange={() => toggleSelect(setup.id)}
+                      title="Select setup"
+                      className="h-3.5 w-3.5 cursor-pointer rounded-sm border-zinc-600 accent-indigo-500"
+                    />
                   </div>
-                );
-              })}
+                  <div className="min-w-0 flex-1">
+                    <SetupCard
+                      setup={setup}
+                      onAddExecution={onAddExecution}
+                      onSaveReview={onSaveReview}
+                      onUpdateStatus={onUpdateStatus}
+                      onDeleteSetup={() => onDeleteSetup(setup.id)}
+                      onUpdateSetup={(updated) => onUpdateSetup(setup.id, updated)}
+                      onUpdateExecution={(exec) => onUpdateExecution(setup.id, exec)}
+                      onDeleteExecution={(execId) => onDeleteExecution(setup.id, execId)}
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
             );
           })}

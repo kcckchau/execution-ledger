@@ -7,6 +7,7 @@ import { calcSetupPnl, formatPnl } from '@/lib/pnl';
 import { formatSetupDate } from '@/lib/dateUtils';
 import SetupCard from './SetupCard';
 import DayContextCard from './DayContextCard';
+import SetupSessionChart from './SetupSessionChart';
 import ConfirmDialog from './ConfirmDialog';
 
 interface DailyDrillDownProps {
@@ -96,6 +97,27 @@ export default function DailyDrillDown({
           )}
         </div>
 
+        {/* ── Session charts — one per unique symbol, lazy loaded ── */}
+        {setups.length > 0 && (() => {
+          const seenSymbols = new Set<string>();
+          return setups
+            .filter((s) => {
+              if (seenSymbols.has(s.symbol)) return false;
+              seenSymbols.add(s.symbol);
+              return true;
+            })
+            .map((s) => (
+              <SetupSessionChart
+                key={`${s.symbol}::${s.setupDate}`}
+                symbol={s.symbol}
+                setupDate={s.setupDate}
+                executions={setups
+                  .filter((gs) => gs.symbol === s.symbol)
+                  .flatMap((gs) => gs.executions)}
+              />
+            ));
+        })()}
+
         {/* ── Setup cards or empty state ── */}
         {setups.length === 0 ? (
           <p className="text-sm text-zinc-600 italic text-center py-6">
@@ -103,26 +125,19 @@ export default function DailyDrillDown({
           </p>
         ) : (
           <div className="flex flex-col gap-4">
-            {setups.map((setup, index) => {
-              const chartKey = `${setup.symbol}::${setup.setupDate}`;
-              const showChart =
-                setups.findIndex((s) => `${s.symbol}::${s.setupDate}` === chartKey) === index;
-
-              return (
-                <SetupCard
-                  key={setup.id}
-                  setup={setup}
-                  showChart={showChart}
-                  onAddExecution={onAddExecution}
-                  onSaveReview={onSaveReview}
-                  onUpdateStatus={onUpdateStatus}
-                  onDeleteSetup={() => onDeleteSetup(setup.id)}
-                  onUpdateSetup={(updated) => onUpdateSetup(setup.id, updated)}
-                  onUpdateExecution={(exec) => onUpdateExecution(setup.id, exec)}
-                  onDeleteExecution={(execId) => onDeleteExecution(setup.id, execId)}
-                />
-              );
-            })}
+            {setups.map((setup) => (
+              <SetupCard
+                key={setup.id}
+                setup={setup}
+                onAddExecution={onAddExecution}
+                onSaveReview={onSaveReview}
+                onUpdateStatus={onUpdateStatus}
+                onDeleteSetup={() => onDeleteSetup(setup.id)}
+                onUpdateSetup={(updated) => onUpdateSetup(setup.id, updated)}
+                onUpdateExecution={(exec) => onUpdateExecution(setup.id, exec)}
+                onDeleteExecution={(execId) => onDeleteExecution(setup.id, execId)}
+              />
+            ))}
           </div>
         )}
       </div>
