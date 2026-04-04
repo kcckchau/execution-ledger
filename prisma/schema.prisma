@@ -40,12 +40,15 @@ enum Regime {
 }
 
 /// Trade-relative alignment (whether the trade direction aligns with the prevailing regime).
-/// NOTE: WITH_TREND / COUNTER are legacy names kept for backward compat.
-/// New records should prefer WITH_TREND for with-regime and COUNTER for counter-regime.
+/// WITH_TREND is the legacy name; WITH is the canonical new alias added in migration intelligence_refactor.
+/// COUNTER is retained for existing data.
 /// NEUTRAL added for flat or ambiguous regime conditions.
 enum Alignment {
+  // Legacy values — in production data; kept for backward compat.
   WITH_TREND
   COUNTER
+  // Canonical new values
+  WITH
   NEUTRAL
 }
 
@@ -143,13 +146,13 @@ enum MissReason {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model TradeSetup {
-  id        String    @id
+  id        String    @id @default(cuid())
   /// Stored as YYYY-MM-DD in America/New_York trading-day semantics.
   /// DO NOT convert to DateTime without a careful timezone-aware migration.
   setupDate String
   symbol    String
-  /// @legacy — stored as lowercase "long" | "short" for backward compat.
-  /// Use bestDirection (Direction enum) for new structured fields.
+  /// @legacy — restricted to "long" | "short" (lowercase). Do NOT store any other value.
+  /// Use bestDirection (Direction enum) for new structured reflection fields.
   /// TODO: migrate to Direction enum once API/UI code is updated.
   direction String
 
@@ -196,7 +199,7 @@ model TradeSetup {
   setupName    String?
 
   // ── Layer 3: reflection ──
-  mistakeTags     MistakeTag[]
+  mistakeTags     MistakeTag[] @default([])
   executionScore  Int?
   readScore       Int?
   disciplineScore Int?
@@ -244,10 +247,8 @@ model DayContext {
 
   transition Transition?
 
-  /// @deprecated — alignment is trade-relative, not day-wide.
-  /// This column will be removed once API/UI code reads alignment from TradeSetup.alignment.
-  /// TODO: remove in next migration step after updating DayContextCard and filter logic.
-  alignment Alignment?
+  // alignment removed — trade-relative, not day-wide. Lives on TradeSetup.alignment.
+  // DB column was dropped in migration 20260404000000_intelligence_refactor.
 
   notes     String   @default("")
   createdAt DateTime @default(now())
@@ -259,7 +260,7 @@ model DayContext {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Execution {
-  id            String     @id
+  id            String     @id @default(cuid())
   setupId       String
   actionType    String
   price         Float
@@ -343,6 +344,7 @@ model MarketOpportunity {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([date])
   @@index([symbol, date])
   @@index([setupType, trueRegime])
   @@index([taken, missReason])
