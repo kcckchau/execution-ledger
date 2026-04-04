@@ -1,4 +1,8 @@
-/** Single fill / marker from IBKR export (aligned to chart bars). */
+/**
+ * Single fill / marker from an IBKR JSON file (raw file input format).
+ * This type represents the on-disk shape before import; it is NOT used in the
+ * API response or chart rendering pipeline — use TradeMarker for those.
+ */
 export interface TradeMarkerItem {
   time: string;
   minuteTime?: string;
@@ -11,9 +15,6 @@ export interface TradeMarkerItem {
   shape: string;
   color: string;
   text: string;
-  /** Present when the marker was matched to a TradeSetup via Execution time/price. */
-  setupId?: string | null;
-  setupType?: string | null;
 }
 
 /** Root JSON from `data/trades/{symbol}/{YYYYMMDD}-markers.json`. */

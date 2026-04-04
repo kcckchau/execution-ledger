@@ -18,7 +18,7 @@ import {
 import { createSessionTimezoneChartFormatters } from '@/lib/chartTimeLocalization';
 import { computeEma } from '@/lib/ema';
 import type { SessionChartData, SessionChartExecutionProp } from '@/types/sessionChart';
-import type { TradeMarkerItem } from '@/types/tradeMarkers';
+import type { TradeMarker } from '@/types/chartMarker';
 import type { ActionType } from '@/types/setup';
 
 const VWAP_COLOR = '#b8bcc4';
@@ -82,8 +82,7 @@ function normalizeExecution(
 
 const CHART_MARKER_SHAPES = new Set<string>(['circle', 'square', 'arrowUp', 'arrowDown']);
 
-function tradeMarkerToSeriesMarker(m: TradeMarkerItem): SeriesMarker<UTCTimestamp> {
-  const iso = m.minuteTime ?? m.time;
+function tradeMarkerToSeriesMarker(m: TradeMarker): SeriesMarker<UTCTimestamp> {
   const shape = CHART_MARKER_SHAPES.has(m.shape)
     ? (m.shape as SeriesMarkerShape)
     : ('circle' as SeriesMarkerShape);
@@ -94,7 +93,7 @@ function tradeMarkerToSeriesMarker(m: TradeMarkerItem): SeriesMarker<UTCTimestam
         ? 'atPriceTop'
         : 'atPriceMiddle';
   return {
-    time: toUtcTimestamp(iso),
+    time: toUtcTimestamp(m.time),
     position,
     price: m.price,
     shape,
@@ -107,10 +106,10 @@ function tradeMarkerToSeriesMarker(m: TradeMarkerItem): SeriesMarker<UTCTimestam
 export interface SessionChartProps {
   session: SessionChartData;
   /**
-   * When defined (including an empty array), IBKR file markers: shape, color, text from payload.
+   * When defined (including an empty array), DB-backed markers drive the chart.
    * When omitted, `executions` drives markers (journal / mock).
    */
-  tradeMarkers?: TradeMarkerItem[];
+  tradeMarkers?: TradeMarker[];
   executions?: SessionChartExecutionProp[];
   /** Extra classes for the outer wrapper (chart is `w-full` × `min-h`). */
   className?: string;

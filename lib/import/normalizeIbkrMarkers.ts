@@ -15,6 +15,17 @@ export interface NormalizedChartMarker {
   markerShape: string;
   markerColor: string;
   markerText: string;
+  /**
+   * Deterministic FK → Execution.id.
+   * Formula: `"exec-" + externalId` — matches the ID assigned in upsertExecutions.
+   * This eliminates the need for minute+price approximate matching at query time.
+   */
+  executionId: string;
+  /**
+   * FK → TradeSetup.id — the auto-generated setup for this (symbol, date).
+   * Passed in from the caller who owns the setupId derivation logic.
+   */
+  setupId: string;
 }
 
 /**
@@ -28,12 +39,20 @@ function makeExternalId(symbol: string, m: TradeMarkerItem): string {
 
 /**
  * Maps raw IBKR marker objects from the JSON file into DB-ready records.
- * `tradeDate` should be YYYY-MM-DD (from the file or provided by the caller).
+ *
+ * @param symbol     Resolved ticker symbol.
+ * @param tradeDate  YYYY-MM-DD.
+ * @param markers    Raw markers from the parsed JSON file.
+ * @param setupId    The TradeSetup ID that will own these executions.
+ *                   Computed by the caller via `setupIdFor(symbol, tradeDate)` so
+ *                   the explicit linkage fields are set at normalization time,
+ *                   not derived approximately at query time.
  */
 export function normalizeIbkrMarkers(
   symbol: string,
   tradeDate: string,
-  markers: TradeMarkerItem[]
+  markers: TradeMarkerItem[],
+  setupId: string,
 ): NormalizedChartMarker[] {
   return markers.map((m) => {
     const externalId = makeExternalId(symbol, m);
@@ -52,6 +71,9 @@ export function normalizeIbkrMarkers(
       markerShape: m.shape,
       markerColor: m.color,
       markerText: m.text,
+      // Explicit linkage — no approximate matching needed at read time.
+      executionId: `exec-${externalId}`,
+      setupId,
     };
   });
 }

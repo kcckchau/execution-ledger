@@ -10,6 +10,7 @@ import {
 } from '@/lib/sessionTimeframe';
 import type { SessionChartData } from '@/types/sessionChart';
 import type { TradeMarkerItem } from '@/types/tradeMarkers';
+import type { TradeMarker } from '@/types/chartMarker';
 
 const selectClass =
   'h-9 rounded-md border border-zinc-700 bg-zinc-800 px-3 text-sm text-white ' +
@@ -21,9 +22,31 @@ interface DebugSessionChartClientProps {
   tradeMarkers?: TradeMarkerItem[];
 }
 
+/**
+ * Converts file-based TradeMarkerItem records to the canonical TradeMarker shape
+ * expected by SessionChart. File markers have no executionId/setupId linkage.
+ */
+function fileMarkersToTradeMarkers(items: TradeMarkerItem[]): TradeMarker[] {
+  return items.map((m, idx) => ({
+    id: `file-${idx}-${m.time}`,
+    time: m.minuteTime ?? m.time,
+    price: m.price,
+    shape: (['arrowUp', 'arrowDown', 'circle', 'square'].includes(m.shape)
+      ? m.shape
+      : 'circle') as TradeMarker['shape'],
+    color: m.color,
+    text: m.text,
+    action: (m.side === 'SLD' || m.side === 'SELL') ? 'SELL' : 'BUY',
+    quantity: m.shares,
+    // No explicit linkage for file-based markers.
+    executionId: null,
+    setupId: null,
+  }));
+}
+
 export default function DebugSessionChartClient({
   session,
-  tradeMarkers,
+  tradeMarkers: rawMarkers,
 }: DebugSessionChartClientProps) {
   const [timeframe, setTimeframe] = useState<ChartTimeframeId>('1m');
 
@@ -35,6 +58,11 @@ export default function DebugSessionChartClient({
   const executions = useMemo(
     () => buildMockExecutions(displaySession),
     [displaySession]
+  );
+
+  const tradeMarkers = useMemo(
+    () => (rawMarkers ? fileMarkersToTradeMarkers(rawMarkers) : undefined),
+    [rawMarkers]
   );
 
   return (

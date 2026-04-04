@@ -91,8 +91,14 @@ model ChartMarker {
   markerShape    String
   markerColor    String
   markerText     String
+  /// Soft FK → Execution.id ("exec-" + externalId). Null for markers imported
+  /// before this column was added (backfilled by migration).
+  executionId    String?
+  /// Soft FK → TradeSetup.id. Set at import time; null for legacy records.
+  setupId        String?
   createdAt      DateTime @default(now())
 
   @@unique([symbol, tradeDate, externalId])
   @@index([symbol, tradeDate])
+  @@index([setupId])
 }

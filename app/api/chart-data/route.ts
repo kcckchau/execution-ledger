@@ -1,22 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadMarketSession } from '@/lib/marketSession';
 import { prisma } from '@/lib/prisma';
-import type { UnifiedChartMarker, SetupMarkerMeta } from '@/types/chartMarker';
-
-/**
- * Returns "YYYY-M-D-H-M" in UTC — used to correlate ChartMarker rows with
- * Execution rows at 1-minute precision.
- */
-function toMinuteKey(dt: Date): string {
-  return `${dt.getUTCFullYear()}-${dt.getUTCMonth()}-${dt.getUTCDate()}-${dt.getUTCHours()}-${dt.getUTCMinutes()}`;
-}
+import type { TradeMarker, SetupMarkerMeta } from '@/types/chartMarker';
 
 /**
  * GET /api/chart-data?symbol=QQQ&date=2026-03-27
- * Loads market session from filesystem and trade markers from the DB.
- * Markers are enriched with setupId/setupType by joining ChartMarker ↔ Execution
- * at minute+price precision. Returns a setupMeta list of all setups that own
- * at least one marker on that day.
+ *
+ * Loads the market session from the filesystem and DB-backed chart markers.
+ *
+ * Marker → setup linkage uses the explicit `setupId` column on ChartMarker
+ * (populated at import time). No minute+price approximate matching is used.
+ * For records imported before the 20260403000001 migration the backfill SQL
+ * will have populated these columns; any still-null records remain unlinked
+ * and are returned with null setupId.
  */
 export async function GET(req: NextRequest) {
   const symbol = req.nextUrl.searchParams.get('symbol');
@@ -25,53 +21,59 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'symbol and date are required' }, { status: 400 });
   }
 
-  const [sessionResult, dbMarkers, setups] = await Promise.all([
+  const [sessionResult, dbMarkers] = await Promise.all([
     loadMarketSession(symbol, date),
     prisma.chartMarker.findMany({
       where: { symbol, tradeDate: date },
       orderBy: { executionTime: 'asc' },
     }),
-    prisma.tradeSetup.findMany({
-      where: { symbol, setupDate: date },
-      select: {
-        id: true,
-        setupType: true,
-        executions: { select: { executionTime: true, price: true } },
-      },
-    }),
   ]);
 
-  // Build a lookup: "minuteKey:price" → { setupId, setupType }
-  // Keyed by the Execution's own time+price so we can match IBKR ChartMarker rows.
-  const execLookup = new Map<string, { setupId: string; setupType: string }>();
-  for (const setup of setups) {
-    for (const exec of setup.executions) {
-      const key = `${toMinuteKey(exec.executionTime)}:${exec.price.toFixed(2)}`;
-      execLookup.set(key, { setupId: setup.id, setupType: setup.setupType });
-    }
+  if (dbMarkers.length === 0) {
+    return NextResponse.json({
+      session: sessionResult.ok ? sessionResult.data : null,
+      tradeMarkers: null,
+      setupMeta: null,
+    });
   }
 
-  // Enrich ChartMarker rows with setup metadata where a match is found.
-  const tradeMarkers: UnifiedChartMarker[] = dbMarkers.map((m) => {
-    const key = `${toMinuteKey(m.executionTime)}:${m.price.toFixed(2)}`;
-    const meta = execLookup.get(key);
-    return {
-      time: m.executionTime.toISOString(),
-      price: m.price,
-      shape: m.markerShape as UnifiedChartMarker['shape'],
-      color: m.markerColor,
-      text: m.markerText,
-      setupId: meta?.setupId ?? null,
-      setupType: meta?.setupType ?? null,
-    };
-  });
+  // Collect distinct setupIds that are explicitly linked (non-null).
+  const linkedSetupIds = [...new Set(
+    dbMarkers.map((m) => m.setupId).filter((id): id is string => id != null)
+  )];
 
-  // Derive setupMeta from markers that were successfully matched — only setups
-  // that actually have IBKR markers are worth showing a toggle for.
+  // Fetch setupType for each linked setup in one query.
+  const setupRows = linkedSetupIds.length > 0
+    ? await prisma.tradeSetup.findMany({
+        where: { id: { in: linkedSetupIds } },
+        select: { id: true, setupType: true },
+      })
+    : [];
+
+  const setupTypeMap = new Map(setupRows.map((s) => [s.id, s.setupType as string]));
+
+  // Map ChartMarker rows to the canonical TradeMarker shape.
+  const tradeMarkers: TradeMarker[] = dbMarkers.map((m) => ({
+    id: m.id,
+    time: m.executionTime.toISOString(),
+    price: m.price,
+    shape: m.markerShape as TradeMarker['shape'],
+    color: m.markerColor,
+    text: m.markerText,
+    action: m.side === 'SLD' ? 'SELL' : 'BUY',
+    quantity: m.shares,
+    // Explicit linkage — read directly from DB columns, no approximation.
+    executionId: m.executionId ?? null,
+    setupId: m.setupId ?? null,
+    setupType: m.setupId ? (setupTypeMap.get(m.setupId) ?? null) : null,
+  }));
+
+  // Derive setupMeta from markers that are actually linked. Preserves the
+  // natural order of first appearance (markers are ordered by executionTime asc).
   const seenSetups = new Map<string, SetupMarkerMeta>();
   for (const m of tradeMarkers) {
-    if (m.setupId && !seenSetups.has(m.setupId)) {
-      seenSetups.set(m.setupId, { id: m.setupId, setupType: m.setupType! });
+    if (m.setupId && m.setupType && !seenSetups.has(m.setupId)) {
+      seenSetups.set(m.setupId, { id: m.setupId, setupType: m.setupType });
     }
   }
   const setupMeta: SetupMarkerMeta[] | null =
@@ -79,7 +81,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     session: sessionResult.ok ? sessionResult.data : null,
-    tradeMarkers: tradeMarkers.length > 0 ? tradeMarkers : null,
+    tradeMarkers,
     setupMeta,
   });
 }

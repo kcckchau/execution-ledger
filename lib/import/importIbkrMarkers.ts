@@ -143,13 +143,15 @@ export async function importIbkrMarkersFile(
   const resolvedSymbol = symbol ?? payload.symbol;
   const resolvedDate = tradeDate ?? compactToIsoDate(payload.tradeDate);
 
-  const records = normalizeIbkrMarkers(resolvedSymbol, resolvedDate, payload.markers);
+  // Derive setupId before normalization so the explicit FK fields
+  // (executionId, setupId) can be embedded directly into each ChartMarker record,
+  // eliminating the need for approximate minute+price matching at query time.
+  const setupId = setupIdFor(resolvedSymbol, resolvedDate);
+
+  const records = normalizeIbkrMarkers(resolvedSymbol, resolvedDate, payload.markers, setupId);
 
   // 1. Chart markers
   const markerResult = await upsertMarkers(records);
-
-  // 2. Execution ledger — one setup per (symbol, tradeDate)
-  const setupId = setupIdFor(resolvedSymbol, resolvedDate);
   const firstStarter = records.find((r) => r.executionType === 'starter');
   const direction: 'long' | 'short' = firstStarter?.side === 'SLD' ? 'short' : 'long';
 

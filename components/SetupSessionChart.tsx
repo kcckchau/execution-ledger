@@ -4,13 +4,12 @@ import { useEffect, useMemo, useState } from 'react';
 import SessionChart from '@/components/SessionChart';
 import { SETUP_TYPE_LABELS } from '@/types/setup';
 import type { SessionChartData } from '@/types/sessionChart';
-import type { TradeMarkerItem } from '@/types/tradeMarkers';
-import type { SetupMarkerMeta } from '@/types/chartMarker';
+import type { TradeMarker, SetupMarkerMeta } from '@/types/chartMarker';
 import type { Execution } from '@/types/setup';
 
 interface ChartDataResponse {
   session: SessionChartData | null;
-  tradeMarkers: TradeMarkerItem[] | null;
+  tradeMarkers: TradeMarker[] | null;
   setupMeta: SetupMarkerMeta[] | null;
 }
 
@@ -37,7 +36,7 @@ export default function SetupSessionChart({
 }: SetupSessionChartProps) {
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<SessionChartData | null>(null);
-  const [tradeMarkers, setTradeMarkers] = useState<TradeMarkerItem[] | null>(null);
+  const [tradeMarkers, setTradeMarkers] = useState<TradeMarker[] | null>(null);
   const [setupMeta, setSetupMeta] = useState<SetupMarkerMeta[] | null>(null);
   // Set of setupIds whose markers are currently visible. Starts with all enabled.
   const [toggledSetups, setToggledSetups] = useState<Set<string>>(new Set());
@@ -95,7 +94,7 @@ export default function SetupSessionChart({
   }, [setupMeta]);
 
   // Filter visible markers: unmatched markers (no setupId) are always shown.
-  const visibleMarkers = useMemo<TradeMarkerItem[] | null>(() => {
+  const visibleMarkers = useMemo<TradeMarker[] | null>(() => {
     if (!tradeMarkers) return null;
     if (!setupMeta || setupMeta.length <= 1) return tradeMarkers;
     return tradeMarkers.filter(
