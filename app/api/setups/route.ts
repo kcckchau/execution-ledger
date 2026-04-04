@@ -6,7 +6,7 @@ export async function GET() {
   try {
     const rows = await prisma.tradeSetup.findMany({
       include: { executions: { orderBy: { executionTime: 'asc' } } },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ setupDate: 'desc' }, { createdAt: 'asc' }],
     });
     return NextResponse.json(rows.map(mapSetup));
   } catch (err) {

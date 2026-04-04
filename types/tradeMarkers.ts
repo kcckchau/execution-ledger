@@ -11,6 +11,9 @@ export interface TradeMarkerItem {
   shape: string;
   color: string;
   text: string;
+  /** Present when the marker was matched to a TradeSetup via Execution time/price. */
+  setupId?: string | null;
+  setupType?: string | null;
 }
 
 /** Root JSON from `data/trades/{symbol}/{YYYYMMDD}-markers.json`. */
