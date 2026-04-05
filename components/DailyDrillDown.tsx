@@ -8,6 +8,7 @@ import { formatSetupDate } from '@/lib/dateUtils';
 import SetupCard from './SetupCard';
 import DayContextCard from './DayContextCard';
 import SetupSessionChart from './SetupSessionChart';
+import OpportunitiesSection from './OpportunitiesSection';
 import ConfirmDialog from './ConfirmDialog';
 
 interface DailyDrillDownProps {
@@ -71,6 +72,9 @@ export default function DailyDrillDown({
           dayContext={setups[0]?.dayContext ?? null}
           onUpdate={(dc) => onUpdateDayContext(date, dc)}
         />
+
+        {/* ── Opportunities section ── */}
+        <OpportunitiesSection date={date} />
 
         {/* ── Trades section ── */}
         <div className="flex items-center gap-2">

@@ -8,6 +8,7 @@ import { calcSetupPnl } from '@/lib/pnl';
 import SetupCard from './SetupCard';
 import DayContextCard from './DayContextCard';
 import SetupSessionChart from './SetupSessionChart';
+import OpportunitiesSection from './OpportunitiesSection';
 import ConfirmDialog from './ConfirmDialog';
 import TradeFiltersBar from './TradeFiltersBar';
 
@@ -148,6 +149,9 @@ export default function SetupLog({
                 dayContext={dayContext}
                 onUpdate={(dc) => onUpdateDayContext(date, dc)}
               />
+
+              {/* ── Opportunities section ── */}
+              <OpportunitiesSection date={date} />
 
               {/* ── Trades section ── */}
               <div className="flex items-center gap-2">

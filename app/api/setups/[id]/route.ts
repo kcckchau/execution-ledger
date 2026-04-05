@@ -27,6 +27,11 @@ export async function PUT(req: NextRequest, { params }: Params) {
         ...(body.riskTarget !== undefined && { riskTarget: String(body.riskTarget).trim() }),
         ...(body.initialGrade !== undefined && { initialGrade: body.initialGrade || null }),
         ...(body.setupName !== undefined && { setupName: body.setupName || null }),
+        // Layer 2 — market reality
+        ...(body.trueRegime !== undefined && { trueRegime: body.trueRegime || null }),
+        ...(body.vwapState !== undefined && { vwapState: body.vwapState || null }),
+        ...(body.structure !== undefined && { structure: body.structure || null }),
+        ...(body.alignment !== undefined && { alignment: body.alignment || null }),
       },
       include: { executions: { orderBy: { executionTime: 'asc' } } },
     });

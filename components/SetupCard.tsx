@@ -6,12 +6,22 @@ import {
   type Execution,
   type SetupReview,
   type Regime,
+  type VWAPState,
+  type StructureType,
+  type Alignment,
   GRADE_COLORS,
   ACTION_BORDER_COLORS,
   ACTION_LABELS,
   SETUP_TYPE_LABELS,
   REGIME_LABELS,
   TRANSITION_LABELS,
+  VWAP_STATE_LABELS,
+  STRUCTURE_TYPE_LABELS,
+  ALIGNMENT_LABELS,
+  REGIMES,
+  VWAP_STATES,
+  STRUCTURE_TYPES,
+  ALIGNMENTS,
 } from '@/types/setup';
 import type { DayContext } from '@/types/dayContext';
 import { formatPlannedRiskReward } from '@/lib/plannedRiskReward';
@@ -151,6 +161,119 @@ function DayContextTags({ dc }: { dc: DayContext | null }) {
           {TRANSITION_LABELS[transition]}
         </span>
       )}
+    </div>
+  );
+}
+
+// ── Shared seg control ────────────────────────────────────────────────────────
+
+function Seg<T extends string>({
+  value,
+  options,
+  getLabel,
+  colorOn,
+  onChange,
+}: {
+  value: T | null;
+  options: readonly T[];
+  getLabel: (v: T) => string;
+  colorOn?: (v: T) => string;
+  onChange: (v: T | null) => void;
+}) {
+  const defaultOn = 'bg-indigo-700/60 text-indigo-200';
+  return (
+    <div className="flex h-6 overflow-hidden rounded border border-zinc-700/60">
+      {options.map((o) => (
+        <button
+          key={o}
+          type="button"
+          onClick={() => onChange(value === o ? null : o)}
+          className={`flex-1 truncate px-1.5 text-[10px] font-medium transition-colors ${
+            value === o
+              ? (colorOn ? colorOn(o) : defaultOn)
+              : 'bg-zinc-900 text-zinc-600 hover:text-zinc-400'
+          }`}
+        >
+          {getLabel(o)}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function regimeColor(r: Regime): string {
+  if (r === 'UP')         return 'bg-emerald-700/60 text-emerald-200';
+  if (r === 'DOWN')       return 'bg-rose-700/60    text-rose-200';
+  if (r === 'CHOP')       return 'bg-yellow-700/60  text-yellow-200';
+  if (r === 'TRANSITION') return 'bg-violet-700/60  text-violet-200';
+  return                          'bg-amber-700/60  text-amber-200';
+}
+function alignColor(a: Alignment): string {
+  if (a === 'WITH_TREND' || a === 'WITH') return 'bg-teal-700/60   text-teal-200';
+  if (a === 'COUNTER')                    return 'bg-orange-700/60 text-orange-200';
+  return                                         'bg-zinc-700      text-zinc-300';
+}
+
+// ── Layer 2: Market Reality inline panel ─────────────────────────────────────
+
+function MarketRealityPanel({
+  setup,
+  onSave,
+}: {
+  setup: TradeSetup;
+  onSave: (patch: Partial<Pick<TradeSetup, 'trueRegime' | 'vwapState' | 'structure' | 'alignment'>>) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2 border-t border-zinc-800 px-5 py-3">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+        Market Reality
+        <span className="ml-2 font-normal normal-case text-zinc-600">at entry</span>
+      </p>
+      <div className="flex flex-wrap gap-x-4 gap-y-2">
+        <SegField label="Regime">
+          <Seg
+            value={setup.trueRegime}
+            options={REGIMES}
+            getLabel={(r) => REGIME_LABELS[r]}
+            colorOn={regimeColor}
+            onChange={(v) => onSave({ trueRegime: v })}
+          />
+        </SegField>
+        <SegField label="VWAP">
+          <Seg
+            value={setup.vwapState}
+            options={VWAP_STATES}
+            getLabel={(v) => VWAP_STATE_LABELS[v]}
+            onChange={(v) => onSave({ vwapState: v })}
+          />
+        </SegField>
+        <SegField label="Structure">
+          <Seg
+            value={setup.structure}
+            options={STRUCTURE_TYPES}
+            getLabel={(s) => STRUCTURE_TYPE_LABELS[s]}
+            onChange={(v) => onSave({ structure: v })}
+          />
+        </SegField>
+        <SegField label="Alignment">
+          <Seg
+            value={setup.alignment}
+            options={['WITH_TREND', 'COUNTER', 'NEUTRAL'] as const}
+            getLabel={(a) => ALIGNMENT_LABELS[a]}
+            colorOn={alignColor}
+            onChange={(v) => onSave({ alignment: v as Alignment | null })}
+          />
+        </SegField>
+      </div>
+    </div>
+  );
+}
+
+function SegField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-0.5 min-w-0">
+      <span className="text-[9px] font-semibold uppercase tracking-wider text-zinc-600">{label}</span>
+      {children}
     </div>
   );
 }
@@ -362,6 +485,12 @@ export default function SetupCard({
             <p className="text-xs leading-relaxed text-zinc-500">{setup.overallNotes}</p>
           )}
         </div>
+
+        {/* ── Market Reality (Layer 2) ── */}
+        <MarketRealityPanel
+          setup={setup}
+          onSave={(patch) => onUpdateSetup({ ...setup, ...patch })}
+        />
 
         {/* ── Executions ── */}
         <div className="border-t border-zinc-800">
