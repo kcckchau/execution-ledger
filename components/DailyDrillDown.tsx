@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { type TradeSetup, type Execution, type SetupReview } from '@/types/setup';
+import { type TradeSetup, type Execution } from '@/types/setup';
 import type { DayContext } from '@/types/dayContext';
 import { calcSetupPnl, formatPnl } from '@/lib/pnl';
 import { formatSetupDate } from '@/lib/dateUtils';
@@ -15,7 +15,6 @@ interface DailyDrillDownProps {
   date: string; // YYYY-MM-DD
   setups: TradeSetup[];
   onAddExecution: (setupId: string, execution: Execution) => void;
-  onSaveReview: (setupId: string, review: SetupReview) => void;
   onUpdateStatus: (setupId: string, status: 'open' | 'closed') => void;
   onDeleteSetup: (id: string) => Promise<void>;
   onDeleteSetups: (ids: string[]) => Promise<void>;
@@ -29,7 +28,6 @@ export default function DailyDrillDown({
   date,
   setups,
   onAddExecution,
-  onSaveReview,
   onUpdateStatus,
   onDeleteSetup,
   onDeleteSetups,
@@ -134,7 +132,6 @@ export default function DailyDrillDown({
                 key={setup.id}
                 setup={setup}
                 onAddExecution={onAddExecution}
-                onSaveReview={onSaveReview}
                 onUpdateStatus={onUpdateStatus}
                 onDeleteSetup={() => onDeleteSetup(setup.id)}
                 onUpdateSetup={(updated) => onUpdateSetup(setup.id, updated)}

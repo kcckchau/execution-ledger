@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { type TradeSetup, type Execution, type SetupReview } from '@/types/setup';
+import { type TradeSetup, type Execution } from '@/types/setup';
 import type { DayContext } from '@/types/dayContext';
 import { EMPTY_FILTERS, filterTrades, computeTradeStats, type TradeFilters } from '@/lib/tradeFilters';
 import { calcSetupPnl } from '@/lib/pnl';
@@ -15,7 +15,6 @@ import TradeFiltersBar from './TradeFiltersBar';
 interface SetupLogProps {
   setups: TradeSetup[];
   onAddExecution: (setupId: string, execution: Execution) => void;
-  onSaveReview: (setupId: string, review: SetupReview) => void;
   onUpdateStatus: (setupId: string, status: 'open' | 'closed') => void;
   onDeleteSetup: (id: string) => Promise<void>;
   onDeleteSetups: (ids: string[]) => Promise<void>;
@@ -28,7 +27,6 @@ interface SetupLogProps {
 export default function SetupLog({
   setups,
   onAddExecution,
-  onSaveReview,
   onUpdateStatus,
   onDeleteSetup,
   onDeleteSetups,
@@ -202,7 +200,6 @@ export default function SetupLog({
                     <SetupCard
                       setup={setup}
                       onAddExecution={onAddExecution}
-                      onSaveReview={onSaveReview}
                       onUpdateStatus={onUpdateStatus}
                       onDeleteSetup={() => onDeleteSetup(setup.id)}
                       onUpdateSetup={(updated) => onUpdateSetup(setup.id, updated)}

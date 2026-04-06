@@ -314,10 +314,6 @@ model TradeSetup {
   /// The primary `direction` field stays as String — see note above.
   bestDirection   Direction?
   shouldTrade     Boolean?
-  /// @legacy JSON review blob: { followedPlan, wentWell, failed, lesson }.
-  /// Retained for backward compat. New structured reflection fields above should be preferred.
-  /// TODO: decompose into typed columns when API/UI review workflow is updated.
-  review          Json?
 
   // ── Review layer — post-trade analysis ──
   /// Monetary outcome: did the trade make or lose money.

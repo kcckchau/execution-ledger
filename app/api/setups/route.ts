@@ -125,7 +125,6 @@ export async function POST(req: NextRequest) {
         status: body.status ?? 'open',
         overallNotes: body.overallNotes ?? '',
         setupName: body.setupName ?? null,
-        review: body.review ?? undefined,
         // Review layer (all optional)
         outcome: body.outcome ?? null,
         setupResult: body.setupResult ?? null,

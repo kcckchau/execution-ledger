@@ -421,13 +421,6 @@ export interface Execution {
   updatedAt: string;
 }
 
-export interface SetupReview {
-  followedPlan: boolean | null;
-  wentWell: string;
-  failed: string;
-  lesson: string;
-}
-
 // ── TradeSetup ────────────────────────────────────────────────────────────────
 export interface TradeSetup {
   id: string;
@@ -509,8 +502,6 @@ export interface TradeSetup {
   overallNotes: string;
   /** Optional human-readable name shown in chart toggle UI. */
   setupName: string | null;
-  /** Legacy JSON review blob. */
-  review: SetupReview | null;
   executions: Execution[];
   createdAt: string;
   updatedAt: string;

@@ -1,7 +1,6 @@
 import type {
   TradeSetup,
   Execution,
-  SetupReview,
   TriggerType,
   Regime,
   VWAPState,
@@ -81,7 +80,6 @@ export type DbSetup = {
   status: string;
   overallNotes: string;
   setupName: string | null;
-  review: unknown;
   executions: DbExecution[];
   createdAt: Date;
   updatedAt: Date;
@@ -178,7 +176,6 @@ export function mapSetup(s: DbSetup, dayContext: DayContext | null = null): Trad
     status: s.status as TradeSetup['status'],
     overallNotes: s.overallNotes,
     setupName: s.setupName ?? null,
-    review: s.review ? (s.review as SetupReview) : null,
     executions: s.executions.map(mapExecution),
     createdAt: s.createdAt.toISOString(),
     updatedAt: s.updatedAt.toISOString(),

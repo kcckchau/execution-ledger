@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { type TradeSetup, type Execution, type SetupReview } from '@/types/setup';
+import { type TradeSetup, type Execution } from '@/types/setup';
 import type { DayContext } from '@/types/dayContext';
 import { calcSetupPnl, formatPnl } from '@/lib/pnl';
 import SetupForm from '@/components/SetupForm';
@@ -61,19 +61,6 @@ export default function Home() {
         s.id === setupId
           ? { ...s, executions: [...s.executions, execution], updatedAt: new Date().toISOString() }
           : s,
-      ),
-    );
-  }
-
-  async function saveReview(setupId: string, review: SetupReview) {
-    await fetch(`/api/setups/${setupId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ review }),
-    });
-    setSetups((prev) =>
-      prev.map((s) =>
-        s.id === setupId ? { ...s, review, updatedAt: new Date().toISOString() } : s,
       ),
     );
   }
@@ -291,7 +278,6 @@ export default function Home() {
                 date={selectedDate}
                 setups={selectedDateSetups}
                 onAddExecution={addExecution}
-                onSaveReview={saveReview}
                 onUpdateStatus={updateStatus}
                 onDeleteSetup={deleteSetup}
                 onDeleteSetups={deleteSetups}
@@ -306,7 +292,6 @@ export default function Home() {
           <SetupLog
             setups={setups}
             onAddExecution={addExecution}
-            onSaveReview={saveReview}
             onUpdateStatus={updateStatus}
             onDeleteSetup={deleteSetup}
             onDeleteSetups={deleteSetups}

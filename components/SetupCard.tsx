@@ -4,7 +4,6 @@ import { useState } from 'react';
 import {
   type TradeSetup,
   type Execution,
-  type SetupReview,
   type Regime,
   type VWAPState,
   type StructureType,
@@ -36,14 +35,12 @@ const REGIME_TAG: Record<Regime, string> = {
 import { calcSetupPnl, formatPnl } from '@/lib/pnl';
 import { formatSetupDate } from '@/lib/dateUtils';
 import ExecutionForm from './ExecutionForm';
-import ReviewPanel from './ReviewPanel';
 import SetupForm from './SetupForm';
 import ConfirmDialog from './ConfirmDialog';
 
 interface SetupCardProps {
   setup: TradeSetup;
   onAddExecution: (setupId: string, execution: Execution) => void;
-  onSaveReview: (setupId: string, review: SetupReview) => void;
   onUpdateStatus: (setupId: string, status: 'open' | 'closed') => void;
   onDeleteSetup: () => Promise<void>;
   onUpdateSetup: (updated: TradeSetup) => Promise<void>;
@@ -281,7 +278,6 @@ function SegField({ label, children }: { label: string; children: React.ReactNod
 export default function SetupCard({
   setup,
   onAddExecution,
-  onSaveReview,
   onUpdateStatus,
   onDeleteSetup,
   onUpdateSetup,
@@ -289,7 +285,6 @@ export default function SetupCard({
   onDeleteExecution,
 }: SetupCardProps) {
   const [showExecForm, setShowExecForm] = useState(false);
-  const [showReview, setShowReview] = useState(!!setup.review);
   const [editMode, setEditMode] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null);
   const [confirmPending, setConfirmPending] = useState(false);
@@ -313,7 +308,6 @@ export default function SetupCard({
   function handleToggleStatus() {
     const next = setup.status === 'open' ? 'closed' : 'open';
     onUpdateStatus(setup.id, next);
-    if (next === 'closed') setShowReview(true);
   }
 
   async function handleConfirm() {
@@ -612,29 +606,7 @@ export default function SetupCard({
               Delete
             </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowReview((v) => !v)}
-            className="text-xs font-medium text-zinc-400 hover:text-white transition-colors"
-          >
-            {showReview
-              ? 'Hide Review'
-              : setup.review
-              ? 'View Review'
-              : 'Write Review'}
-          </button>
         </div>
-
-        {/* ── Review ── */}
-        {showReview && (
-          <div className="border-t border-zinc-800 px-5 py-4">
-            <ReviewPanel
-              review={setup.review}
-              pnlContext={hasRealizedPnl ? formatPnl(pnl.realizedPnl) : null}
-              onSave={(rev) => onSaveReview(setup.id, rev)}
-            />
-          </div>
-        )}
       </div>
 
       <ConfirmDialog

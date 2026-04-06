@@ -15,7 +15,6 @@ export async function PUT(req: NextRequest, { params }: Params) {
       where: { id },
       data: {
         ...(body.status !== undefined && { status: body.status }),
-        ...(body.review !== undefined && { review: body.review }),
         ...(body.overallNotes !== undefined && { overallNotes: body.overallNotes }),
         ...(body.symbol !== undefined && { symbol: String(body.symbol).trim().toUpperCase() }),
         ...(body.setupDate !== undefined && { setupDate: body.setupDate }),

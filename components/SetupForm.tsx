@@ -287,7 +287,6 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
           marketOutcome: null,
           reviewNote:    null,
           status:          'open',
-          review:          null,
           executions:      [],
           createdAt:       now,
           updatedAt:       now,
