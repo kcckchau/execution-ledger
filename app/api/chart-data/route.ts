@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { loadMarketSession } from '@/lib/marketSession';
+import { loadMarketSession, findPrevTradingDate } from '@/lib/marketSession';
 import { prisma } from '@/lib/prisma';
 import type { TradeMarker, SetupMarkerMeta } from '@/types/chartMarker';
 
@@ -21,17 +21,28 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'symbol and date are required' }, { status: 400 });
   }
 
-  const [sessionResult, dbMarkers] = await Promise.all([
+  const [sessionResult, dbMarkers, prevDate] = await Promise.all([
     loadMarketSession(symbol, date),
     prisma.chartMarker.findMany({
       where: { symbol, tradeDate: date },
       orderBy: { executionTime: 'asc' },
     }),
+    findPrevTradingDate(symbol, date),
   ]);
+
+  // Load prev day session if a file exists (best-effort, no error on miss).
+  const prevSession = prevDate ? await loadMarketSession(symbol, prevDate) : null;
+  const prevCandles = prevSession?.ok ? prevSession.data.candles : null;
+
+  // Helper to attach prevCandles to a session payload.
+  function withPrev(data: typeof sessionResult) {
+    if (!data.ok) return null;
+    return { ...data.data, prevCandles: prevCandles ?? null };
+  }
 
   if (dbMarkers.length === 0) {
     return NextResponse.json({
-      session: sessionResult.ok ? sessionResult.data : null,
+      session: withPrev(sessionResult),
       tradeMarkers: null,
       setupMeta: null,
     });
@@ -80,7 +91,7 @@ export async function GET(req: NextRequest) {
     seenSetups.size > 0 ? [...seenSetups.values()] : null;
 
   return NextResponse.json({
-    session: sessionResult.ok ? sessionResult.data : null,
+    session: withPrev(sessionResult),
     tradeMarkers,
     setupMeta,
   });

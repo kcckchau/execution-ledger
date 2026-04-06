@@ -39,6 +39,8 @@ export interface SessionChartData {
   barSize: string;
   levels: SessionLevels;
   candles: SessionCandle[];
+  /** Previous trading day candles, rendered dimmed for context. Null when file not found. */
+  prevCandles?: SessionCandle[] | null;
 }
 
 /** Minimal execution shape for chart markers. */

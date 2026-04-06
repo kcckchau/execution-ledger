@@ -20,6 +20,32 @@ function resolveMarketSessionPath(symbol: string, date: string): string | null {
 }
 
 /**
+ * Returns the previous trading day ISO date by walking back up to 7 calendar
+ * days from `date` and returning the first file that exists on disk.
+ * Returns null if no file is found within that window.
+ */
+export async function findPrevTradingDate(
+  symbol: string,
+  date: string
+): Promise<string | null> {
+  const base = new Date(`${date}T12:00:00Z`);
+  for (let i = 1; i <= 7; i++) {
+    const d = new Date(base);
+    d.setUTCDate(d.getUTCDate() - i);
+    const iso = d.toISOString().slice(0, 10);
+    const filePath = resolveMarketSessionPath(symbol, iso);
+    if (!filePath) continue;
+    try {
+      await readFile(filePath, 'utf8');
+      return iso;
+    } catch {
+      // not found — keep looking
+    }
+  }
+  return null;
+}
+
+/**
  * Loads intraday session JSON from `data/market/{symbol}/{date}.json` (relative to project root).
  * Server-only: uses the filesystem. Call from Server Components, Route Handlers, or server actions.
  */

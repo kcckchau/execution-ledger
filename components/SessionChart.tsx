@@ -25,6 +25,13 @@ const VWAP_COLOR = '#b8bcc4';
 const EMA9_COLOR = '#22d3ee';
 const EMA21_COLOR = '#eab308';
 
+/** Match main candlestick series (today + previous day). */
+const CANDLE_UP = '#22c55e';
+const CANDLE_DOWN = '#ef4444';
+/** Volume histogram bull/bear (same palette as candles, semi-transparent). */
+const VOL_UP = 'rgba(34,197,94,0.45)';
+const VOL_DOWN = 'rgba(239,68,68,0.45)';
+
 const SESSION_BAND_COLORS = {
   premarket: 'rgba(250, 204, 21, 0.09)',   // amber tint
   regular: 'rgba(34, 197, 94, 0.05)',      // faint green
@@ -139,6 +146,32 @@ export default function SessionChart({
       close: c.close,
     }));
 
+    // Previous day candles (rendered first so they sit behind current day).
+    const prevSorted = session.prevCandles
+      ? [...session.prevCandles].sort(
+          (a, b) => new Date(a.time).getTime() - new Date(b.time).getTime()
+        )
+      : [];
+
+    const volumeData = sorted
+      .filter((c) => typeof c.volume === 'number' && c.volume > 0)
+      .map((c) => ({
+        time: toUtcTimestamp(c.time),
+        value: c.volume,
+        color: c.close >= c.open ? VOL_UP : VOL_DOWN,
+      }));
+
+    const prevVolumeData =
+      prevSorted.length > 0
+        ? prevSorted
+            .filter((c) => typeof c.volume === 'number' && c.volume > 0)
+            .map((c) => ({
+              time: toUtcTimestamp(c.time),
+              value: c.volume,
+              color: c.close >= c.open ? VOL_UP : VOL_DOWN,
+            }))
+        : [];
+
     const vwapData = sorted.map((c) => ({
       time: toUtcTimestamp(c.time),
       value: c.vwap,
@@ -190,7 +223,8 @@ export default function SessionChart({
       },
       rightPriceScale: {
         borderColor: '#374151',
-        scaleMargins: { top: 0.08, bottom: 0.08 },
+        // Leave 22% at the bottom for the volume pane.
+        scaleMargins: { top: 0.06, bottom: 0.22 },
       },
       timeScale: {
         borderColor: '#374151',
@@ -210,7 +244,7 @@ export default function SessionChart({
       regular: [] as UTCTimestamp[],
       aftermarket: [] as UTCTimestamp[],
     };
-    for (const c of sorted) {
+    for (const c of [...prevSorted, ...sorted]) {
       if (c.session === 'premarket') sessionGroups.premarket.push(toUtcTimestamp(c.time));
       else if (c.session === 'regular') sessionGroups.regular.push(toUtcTimestamp(c.time));
       else if (c.session === 'aftermarket') sessionGroups.aftermarket.push(toUtcTimestamp(c.time));
@@ -236,6 +270,53 @@ export default function SessionChart({
         bandScaleConfigured = true;
       }
       bandSeries.setData(bandData);
+    }
+
+    // ── Previous day candles ─────────────────────────────────────────────────
+    if (prevSorted.length > 0) {
+      const prevCandleData = prevSorted.map((c) => ({
+        time: toUtcTimestamp(c.time),
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+      }));
+      const prevSeries = chart.addSeries(CandlestickSeries, {
+        upColor: CANDLE_UP,
+        downColor: CANDLE_DOWN,
+        wickUpColor: CANDLE_UP,
+        wickDownColor: CANDLE_DOWN,
+        borderVisible: false,
+        priceLineVisible: false,
+        lastValueVisible: false,
+      });
+      prevSeries.setData(prevCandleData);
+    }
+
+    // ── Volume histogram (previous day behind, today on top) ─────────────────
+    const volumeScaleOpts = {
+      scaleMargins: { top: 0.8, bottom: 0 },
+      visible: false,
+    };
+    if (prevVolumeData.length > 0) {
+      const prevVolSeries = chart.addSeries(HistogramSeries, {
+        priceScaleId: 'volume',
+        priceLineVisible: false,
+        lastValueVisible: false,
+        base: 0,
+      });
+      prevVolSeries.priceScale().applyOptions(volumeScaleOpts);
+      prevVolSeries.setData(prevVolumeData);
+    }
+    if (volumeData.length > 0) {
+      const volSeries = chart.addSeries(HistogramSeries, {
+        priceScaleId: 'volume',
+        priceLineVisible: false,
+        lastValueVisible: false,
+        base: 0,
+      });
+      volSeries.priceScale().applyOptions(volumeScaleOpts);
+      volSeries.setData(volumeData);
     }
 
     // Lines first so candlesticks draw on top.
@@ -267,11 +348,11 @@ export default function SessionChart({
     ema21Line.setData(ema21Data);
 
     const candleSeries = chart.addSeries(CandlestickSeries, {
-      upColor: '#22c55e',
-      downColor: '#ef4444',
+      upColor: CANDLE_UP,
+      downColor: CANDLE_DOWN,
       borderVisible: false,
-      wickUpColor: '#22c55e',
-      wickDownColor: '#ef4444',
+      wickUpColor: CANDLE_UP,
+      wickDownColor: CANDLE_DOWN,
     });
     candleSeries.setData(candleData);
 
@@ -306,14 +387,14 @@ export default function SessionChart({
 
     createSeriesMarkers(candleSeries, markers, { autoScale: true });
 
-    const barCount = candleData.length;
+    const totalBarCount = prevSorted.length + candleData.length;
     let alive = true;
     const applyFullSessionRange = () => {
       if (!alive) return;
       chart.timeScale().fitContent();
       chart.timeScale().setVisibleLogicalRange({
         from: 0 as Logical,
-        to: (barCount - 1) as Logical,
+        to: (totalBarCount - 1) as Logical,
       });
     };
 
