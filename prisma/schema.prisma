@@ -181,6 +181,17 @@ enum EntryTrigger {
   REJECTION_CANDLE
 }
 
+/// Structured condition that invalidates the trade idea.
+/// Stored instead of (or alongside) free-text invalidation for analytics.
+enum InvalidationType {
+  RECLAIM_VWAP
+  BREAK_RANGE_HIGH
+  BREAK_RANGE_LOW
+  HOLD_ABOVE_VWAP
+  HOLD_BELOW_VWAP
+  STRUCTURE_BREAK
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // TradeSetup — for trades that were executed or actively planned.
 // Structured as three analytical layers.
@@ -202,8 +213,6 @@ model TradeSetup {
   // ── Layer 1 legacy: free-text planning fields (retained for backward compat) ──
   /// Free-text trigger description. Structured equivalent: triggerType.
   trigger        String
-  /// Free-text invalidation condition.
-  invalidation   String
   /// Free-text decision target / idea objective.
   decisionTarget String
   /// Free-text entry level. Numeric equivalent: entryPrice.
@@ -218,6 +227,12 @@ model TradeSetup {
   entryPrice   Float?
   stopPrice    Float?
   targetPrice  Float?
+
+  // ── Structured invalidation ──
+  /// Enum condition that voids the trade idea — required for analytics.
+  invalidationType InvalidationType @default(STRUCTURE_BREAK)
+  /// Optional free-text nuance on top of the structured type.
+  invalidationNote String?
 
   // ── 4-part classification model ──
   /// WHY — already captured by setupType above.

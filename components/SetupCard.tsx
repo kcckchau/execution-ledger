@@ -436,7 +436,14 @@ export default function SetupCard({
               </div>
               <div className="flex flex-col gap-0.5 sm:col-span-2">
                 <dt className="text-zinc-500">Invalidation</dt>
-                <dd className="text-zinc-300">{setup.invalidation}</dd>
+                <dd className="text-zinc-300">
+                  {setup.invalidationType
+                    ? <span className="font-medium">{setup.invalidationType.replace(/_/g, ' ')}</span>
+                    : <span className="text-zinc-600">—</span>}
+                  {setup.invalidationNote && (
+                    <span className="ml-2 text-zinc-400 font-normal">— {setup.invalidationNote}</span>
+                  )}
+                </dd>
               </div>
               <div className="flex flex-col gap-0.5 sm:col-span-2">
                 <dt className="text-zinc-500">Target (idea)</dt>

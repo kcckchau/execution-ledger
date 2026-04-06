@@ -13,6 +13,7 @@ import type {
   Context,
   Location,
   EntryTrigger,
+  InvalidationType,
 } from '@/types/setup';
 import type { DayContext } from '@/types/dayContext';
 
@@ -36,8 +37,10 @@ export type DbSetup = {
   setupType: string;
   // Layer 1 legacy text
   trigger: string;
-  invalidation: string;
   decisionTarget: string;
+  // Structured invalidation
+  invalidationType: string;
+  invalidationNote: string | null;
   riskEntry: string;
   riskStop: string;
   riskTarget: string;
@@ -125,8 +128,10 @@ export function mapSetup(s: DbSetup, dayContext: DayContext | null = null): Trad
     setupType: s.setupType as TradeSetup['setupType'],
     // Layer 1 legacy
     trigger: s.trigger,
-    invalidation: s.invalidation,
     decisionTarget: s.decisionTarget,
+    // Structured invalidation
+    invalidationType: (s.invalidationType as InvalidationType),
+    invalidationNote: s.invalidationNote ?? null,
     riskEntry: s.riskEntry,
     riskStop: s.riskStop,
     riskTarget: s.riskTarget,

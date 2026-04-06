@@ -9,6 +9,7 @@ import {
   type Context,
   type Location,
   type EntryTrigger,
+  type InvalidationType,
   SETUP_TYPES,
   SETUP_TYPE_LABELS,
   GRADES,
@@ -19,6 +20,8 @@ import {
   LOCATION_LABELS,
   ENTRY_TRIGGERS,
   ENTRY_TRIGGER_LABELS,
+  INVALIDATION_TYPES,
+  INVALIDATION_TYPE_LABELS,
 } from '@/types/setup';
 import { getTodayInEasternTime } from '@/lib/dateUtils';
 import { formatPlannedRiskReward } from '@/lib/plannedRiskReward';
@@ -38,7 +41,6 @@ function makeDefaultForm(init?: TradeSetup) {
       direction: init.direction,
       setupType: init.setupType,
       trigger: init.trigger,
-      invalidation: init.invalidation,
       decisionTarget: init.decisionTarget,
       riskEntry: init.riskEntry,
       riskStop: init.riskStop,
@@ -51,6 +53,9 @@ function makeDefaultForm(init?: TradeSetup) {
       contexts: init.contexts ?? ([] as Context[]),
       locations: init.locations ?? ([] as Location[]),
       entryTrigger: init.entryTrigger ?? ('' as EntryTrigger | ''),
+      // Structured invalidation
+      invalidationType: init.invalidationType ?? ('' as InvalidationType | ''),
+      invalidationNote: init.invalidationNote ?? '',
     };
   }
   return {
@@ -58,7 +63,6 @@ function makeDefaultForm(init?: TradeSetup) {
     direction: 'long' as Direction,
     setupType: SETUP_TYPES[0] as SetupType,
     trigger: '',
-    invalidation: '',
     decisionTarget: '',
     riskEntry: '',
     riskStop: '',
@@ -71,6 +75,9 @@ function makeDefaultForm(init?: TradeSetup) {
     contexts: [] as Context[],
     locations: [] as Location[],
     entryTrigger: '' as EntryTrigger | '',
+    // Structured invalidation
+    invalidationType: '' as InvalidationType | '',
+    invalidationNote: '',
   };
 }
 
@@ -153,7 +160,11 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
     e.preventDefault();
     setValidationError(null);
 
-    if (!form.symbol.trim() || !form.invalidation.trim() || !form.decisionTarget.trim()) {
+    if (!form.symbol.trim() || !form.decisionTarget.trim()) {
+      return;
+    }
+    if (!form.invalidationType) {
+      setValidationError('Invalidation type is required.');
       return;
     }
     if (form.contexts.length === 0) {
@@ -185,8 +196,9 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
           direction: form.direction,
           setupType: form.setupType,
           trigger: form.trigger.trim(),
-          invalidation: form.invalidation.trim(),
           decisionTarget: form.decisionTarget.trim(),
+          invalidationType: form.invalidationType as InvalidationType,
+          invalidationNote: form.invalidationNote.trim() || null,
           riskEntry: form.riskEntry.trim(),
           riskStop: form.riskStop.trim(),
           riskTarget: form.riskTarget.trim(),
@@ -207,8 +219,9 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
           direction: form.direction,
           setupType: form.setupType,
           trigger: form.trigger.trim(),
-          invalidation: form.invalidation.trim(),
           decisionTarget: form.decisionTarget.trim(),
+          invalidationType: form.invalidationType as InvalidationType,
+          invalidationNote: form.invalidationNote.trim() || null,
           riskEntry: form.riskEntry.trim(),
           riskStop: form.riskStop.trim(),
           riskTarget: form.riskTarget.trim(),
@@ -424,18 +437,35 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
             className={inputClass}
           />
         </div>
-        <div className="flex flex-col gap-1.5">
-          <label className={labelClass}>
-            Invalidation <span className="text-red-500">*</span>
-          </label>
-          <textarea
-            rows={2}
-            placeholder="e.g. close below VWAP, take out prior low"
-            value={form.invalidation}
-            onChange={(e) => setForm((f) => ({ ...f, invalidation: e.target.value }))}
-            className={textareaClass}
-            required
-          />
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>
+              Invalidation Type <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={form.invalidationType}
+              onChange={(e) => setForm((f) => ({ ...f, invalidationType: e.target.value as InvalidationType | '' }))}
+              className={inputClass}
+            >
+              <option value="">Select condition…</option>
+              {INVALIDATION_TYPES.map((t) => (
+                <option key={t} value={t}>{INVALIDATION_TYPE_LABELS[t]}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>
+              Invalidation Note <span className="text-zinc-600 font-normal">(optional)</span>
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. break AH high with acceptance"
+              value={form.invalidationNote}
+              onChange={(e) => setForm((f) => ({ ...f, invalidationNote: e.target.value }))}
+              className={inputClass}
+            />
+          </div>
         </div>
         <div className="flex flex-col gap-1.5">
           <label className={labelClass}>Target</label>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { mapSetup, mapDayContext, type DbSetup } from '@/lib/mappers';
-import { CONTEXTS, LOCATIONS, ENTRY_TRIGGERS } from '@/types/setup';
+import { CONTEXTS, LOCATIONS, ENTRY_TRIGGERS, INVALIDATION_TYPES } from '@/types/setup';
 import type { Context, Location, EntryTrigger } from '@/lib/generated/prisma/client';
 
 type Params = { params: Promise<{ id: string }> };
@@ -22,8 +22,16 @@ export async function PUT(req: NextRequest, { params }: Params) {
         ...(body.direction !== undefined && { direction: body.direction }),
         ...(body.setupType !== undefined && { setupType: body.setupType }),
         ...(body.trigger !== undefined && { trigger: String(body.trigger).trim() }),
-        ...(body.invalidation !== undefined && { invalidation: String(body.invalidation).trim() }),
         ...(body.decisionTarget !== undefined && { decisionTarget: String(body.decisionTarget).trim() }),
+        // Structured invalidation
+        ...(body.invalidationType !== undefined && {
+          invalidationType: (INVALIDATION_TYPES as readonly string[]).includes(body.invalidationType)
+            ? body.invalidationType
+            : 'STRUCTURE_BREAK',
+        }),
+        ...(body.invalidationNote !== undefined && {
+          invalidationNote: body.invalidationNote ? String(body.invalidationNote).trim() : null,
+        }),
         ...(body.riskEntry !== undefined && { riskEntry: String(body.riskEntry).trim() }),
         ...(body.riskStop !== undefined && { riskStop: String(body.riskStop).trim() }),
         ...(body.riskTarget !== undefined && { riskTarget: String(body.riskTarget).trim() }),

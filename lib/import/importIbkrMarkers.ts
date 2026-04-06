@@ -64,7 +64,7 @@ async function upsertTradeSetup(
       direction,
       setupType: 'VWAP_RECLAIM',
       trigger: 'Imported from IBKR',
-      invalidation: '',
+      invalidationType: 'STRUCTURE_BREAK',
       decisionTarget: '',
       riskEntry: '',
       riskStop: '',

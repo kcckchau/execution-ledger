@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { mapSetup, mapDayContext } from '@/lib/mappers';
-import { SETUP_TYPES, CONTEXTS, LOCATIONS, ENTRY_TRIGGERS } from '@/types/setup';
+import { SETUP_TYPES, CONTEXTS, LOCATIONS, ENTRY_TRIGGERS, INVALIDATION_TYPES } from '@/types/setup';
 
 export async function GET() {
   try {
@@ -46,8 +46,8 @@ function validateSetupBody(body: Record<string, unknown>): string | null {
   if (!body.setupType || !(SETUP_TYPES as readonly string[]).includes(body.setupType as string)) {
     return 'setupType is required and must be a valid SetupType';
   }
-  if (!body.invalidation || !(body.invalidation as string).trim()) {
-    return 'invalidation is required and cannot be empty';
+  if (!body.invalidationType || !(INVALIDATION_TYPES as readonly string[]).includes(body.invalidationType as string)) {
+    return 'invalidationType is required and must be a valid InvalidationType';
   }
   if (!body.entryTrigger || !(ENTRY_TRIGGERS as readonly string[]).includes(body.entryTrigger as string)) {
     return 'entryTrigger is required and must be a valid EntryTrigger';
@@ -111,8 +111,9 @@ export async function POST(req: NextRequest) {
         direction: body.direction,
         setupType: body.setupType,
         trigger: body.trigger ?? '',
-        invalidation: body.invalidation,
         decisionTarget: body.decisionTarget ?? '',
+        invalidationType: body.invalidationType,
+        invalidationNote: body.invalidationNote ? String(body.invalidationNote).trim() : null,
         riskEntry: body.riskEntry ?? '',
         riskStop: body.riskStop ?? '',
         riskTarget: body.riskTarget ?? '',

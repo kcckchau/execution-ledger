@@ -292,6 +292,27 @@ export const LOCATION_LABELS: Record<Location, string> = {
   WHOLE_NUMBER:   'Whole Number',
 };
 
+// ── InvalidationType ──────────────────────────────────────────────────────────
+/** Structured condition that voids the trade idea. Required for analytics. */
+export const INVALIDATION_TYPES = [
+  'RECLAIM_VWAP',
+  'BREAK_RANGE_HIGH',
+  'BREAK_RANGE_LOW',
+  'HOLD_ABOVE_VWAP',
+  'HOLD_BELOW_VWAP',
+  'STRUCTURE_BREAK',
+] as const;
+export type InvalidationType = (typeof INVALIDATION_TYPES)[number];
+
+export const INVALIDATION_TYPE_LABELS: Record<InvalidationType, string> = {
+  RECLAIM_VWAP:    'Reclaim VWAP',
+  BREAK_RANGE_HIGH:'Break Range High',
+  BREAK_RANGE_LOW: 'Break Range Low',
+  HOLD_ABOVE_VWAP: 'Hold Above VWAP',
+  HOLD_BELOW_VWAP: 'Hold Below VWAP',
+  STRUCTURE_BREAK: 'Structure Break',
+};
+
 // ── EntryTrigger ──────────────────────────────────────────────────────────────
 /** Execution timing signal — what candle/pattern triggered the entry. Single-select. */
 export const ENTRY_TRIGGERS = [
@@ -362,8 +383,10 @@ export interface TradeSetup {
   // ── Layer 1: intent / plan ─────────────────────────────────────────────────
   /** What must happen to enter (legacy text field). */
   trigger: string;
-  /** What voids the idea (legacy text field). */
-  invalidation: string;
+  /** Structured enum that voids the trade idea. */
+  invalidationType: InvalidationType;
+  /** Optional free-text nuance on top of the structured type. */
+  invalidationNote: string | null;
   /** Planned objective in the idea phase (legacy text field). */
   decisionTarget: string;
   /** Planned entry level (legacy text field). */
