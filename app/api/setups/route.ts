@@ -126,6 +126,12 @@ export async function POST(req: NextRequest) {
         overallNotes: body.overallNotes ?? '',
         setupName: body.setupName ?? null,
         review: body.review ?? undefined,
+        // Review layer (all optional)
+        outcome: body.outcome ?? null,
+        setupResult: body.setupResult ?? null,
+        mistakeTypes: body.mistakeTypes ?? [],
+        marketOutcome: body.marketOutcome ?? null,
+        reviewNote: body.reviewNote ? String(body.reviewNote).trim() : null,
       },
       include: { executions: true },
     });

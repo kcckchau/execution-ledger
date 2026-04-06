@@ -10,6 +10,10 @@ import {
   type Location,
   type EntryTrigger,
   type InvalidationType,
+  type Outcome,
+  type SetupResult,
+  type MistakeType,
+  type MarketOutcome,
   SETUP_TYPES,
   SETUP_TYPE_LABELS,
   GRADES,
@@ -22,6 +26,14 @@ import {
   ENTRY_TRIGGER_LABELS,
   INVALIDATION_TYPES,
   INVALIDATION_TYPE_LABELS,
+  OUTCOMES,
+  OUTCOME_LABELS,
+  SETUP_RESULTS,
+  SETUP_RESULT_LABELS,
+  MISTAKE_TYPES,
+  MISTAKE_TYPE_LABELS,
+  MARKET_OUTCOMES,
+  MARKET_OUTCOME_LABELS,
 } from '@/types/setup';
 import { getTodayInEasternTime } from '@/lib/dateUtils';
 import { formatPlannedRiskReward } from '@/lib/plannedRiskReward';
@@ -50,6 +62,12 @@ function makeDefaultForm(init?: TradeSetup) {
       thesis:          init.decisionTarget,
       invalidationType: init.invalidationType ?? ('' as InvalidationType | ''),
       invalidationNote: init.invalidationNote ?? '',
+      // Review layer
+      outcome:       (init.outcome ?? '') as Outcome | '',
+      setupResult:   (init.setupResult ?? '') as SetupResult | '',
+      mistakeTypes:  init.mistakeTypes ?? ([] as MistakeType[]),
+      marketOutcome: (init.marketOutcome ?? '') as MarketOutcome | '',
+      reviewNote:    init.reviewNote ?? '',
       riskEntry:       init.riskEntry,
       riskStop:        init.riskStop,
       riskTarget:      init.riskTarget,
@@ -71,6 +89,12 @@ function makeDefaultForm(init?: TradeSetup) {
     thesis:          '',
     invalidationType: '' as InvalidationType | '',
     invalidationNote: '',
+    // Review layer
+    outcome:       '' as Outcome | '',
+    setupResult:   '' as SetupResult | '',
+    mistakeTypes:  [] as MistakeType[],
+    marketOutcome: '' as MarketOutcome | '',
+    reviewNote:    '',
     riskEntry:       '',
     riskStop:        '',
     riskTarget:      '',
@@ -187,6 +211,15 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
     }));
   }
 
+  function toggleMistakeType(m: MistakeType) {
+    setForm((f) => ({
+      ...f,
+      mistakeTypes: f.mistakeTypes.includes(m)
+        ? f.mistakeTypes.filter((x) => x !== m)
+        : [...f.mistakeTypes, m],
+    }));
+  }
+
   // ── Submit ────────────────────────────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -215,6 +248,12 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
         initialGrade:     (form.initialGrade as Grade) || null,
         overallNotes:     form.overallNotes.trim(),
         setupName:        form.setupName.trim() || null,
+        // Review layer
+        outcome:       (form.outcome as Outcome) || null,
+        setupResult:   (form.setupResult as SetupResult) || null,
+        mistakeTypes:  form.mistakeTypes,
+        marketOutcome: (form.marketOutcome as MarketOutcome) || null,
+        reviewNote:    form.reviewNote.trim() || null,
       };
 
       if (isEdit && initialSetup && onSave) {
@@ -241,6 +280,12 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
           bestSetupType:   null,
           bestDirection:   null,
           shouldTrade:     null,
+          // Review layer
+          outcome:       null,
+          setupResult:   null,
+          mistakeTypes:  [],
+          marketOutcome: null,
+          reviewNote:    null,
           status:          'open',
           review:          null,
           executions:      [],
@@ -535,6 +580,95 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
               className={inputClass}
             />
           </div>
+        </div>
+      </div>
+
+      {/* ── Review ── */}
+      <div className="flex flex-col gap-3">
+        <h3 className={sectionTitleClass}>
+          Review{' '}
+          <span className="font-normal normal-case text-zinc-600 tracking-normal">— fill after trade closes</span>
+        </h3>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {/* Outcome */}
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>Outcome</label>
+            <select
+              value={form.outcome}
+              onChange={(e) => setForm((f) => ({ ...f, outcome: e.target.value as Outcome | '' }))}
+              className={inputClass}
+            >
+              <option value="">—</option>
+              {OUTCOMES.map((o) => (
+                <option key={o} value={o}>{OUTCOME_LABELS[o]}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Setup Result */}
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>Setup Result</label>
+            <select
+              value={form.setupResult}
+              onChange={(e) => setForm((f) => ({ ...f, setupResult: e.target.value as SetupResult | '' }))}
+              className={inputClass}
+            >
+              <option value="">—</option>
+              {SETUP_RESULTS.map((r) => (
+                <option key={r} value={r}>{SETUP_RESULT_LABELS[r]}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Market Outcome */}
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>Market Outcome</label>
+            <select
+              value={form.marketOutcome}
+              onChange={(e) => setForm((f) => ({ ...f, marketOutcome: e.target.value as MarketOutcome | '' }))}
+              className={inputClass}
+            >
+              <option value="">—</option>
+              {MARKET_OUTCOMES.map((m) => (
+                <option key={m} value={m}>{MARKET_OUTCOME_LABELS[m]}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Mistake Types */}
+        <div className="flex flex-col gap-1.5">
+          <label className={labelClass}>
+            Mistakes{' '}
+            <span className="text-zinc-600 font-normal">(optional — pick all that apply)</span>
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {MISTAKE_TYPES.map((m) => (
+              <TagToggle
+                key={m}
+                value={m}
+                label={MISTAKE_TYPE_LABELS[m]}
+                selected={form.mistakeTypes.includes(m)}
+                onToggle={toggleMistakeType}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Review Note */}
+        <div className="flex flex-col gap-1.5">
+          <label className={labelClass}>
+            Review Note{' '}
+            <span className="text-zinc-600 font-normal">(optional)</span>
+          </label>
+          <textarea
+            rows={2}
+            placeholder="What happened? What would you do differently?"
+            value={form.reviewNote}
+            onChange={(e) => setForm((f) => ({ ...f, reviewNote: e.target.value }))}
+            className={textareaClass}
+          />
         </div>
       </div>
 

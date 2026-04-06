@@ -193,6 +193,47 @@ enum InvalidationType {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Review layer enums — post-trade analysis
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Monetary outcome of the trade.
+enum Outcome {
+  WIN
+  LOSS
+  BREAKEVEN
+}
+
+/// Whether the setup idea itself was correct, independent of P&L.
+enum SetupResult {
+  PLAYED_OUT
+  FAILED
+  UNCLEAR
+}
+
+/// Category of execution or planning mistake.
+/// Multi-select — multiple mistakes can apply to a single trade.
+enum MistakeType {
+  BAD_SETUP
+  WRONG_CONTEXT
+  BAD_LOCATION
+  EARLY_ENTRY
+  LATE_ENTRY
+  NO_TRIGGER
+  WRONG_STOP
+  NO_PLAN
+  EMOTIONAL
+}
+
+/// What the market actually did after entry, regardless of the trade's P&L.
+enum MarketOutcome {
+  VWAP_RECLAIM
+  VWAP_REJECT
+  TREND_CONTINUATION
+  RANGE_CONTINUATION
+  REVERSAL
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // TradeSetup — for trades that were executed or actively planned.
 // Structured as three analytical layers.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -278,6 +319,18 @@ model TradeSetup {
   /// TODO: decompose into typed columns when API/UI review workflow is updated.
   review          Json?
 
+  // ── Review layer — post-trade analysis ──
+  /// Monetary outcome: did the trade make or lose money.
+  outcome       Outcome?
+  /// Whether the trade idea was actually correct (independent of P&L).
+  setupResult   SetupResult?
+  /// What execution or planning mistakes were made (multi-select).
+  mistakeTypes  MistakeType[] @default([])
+  /// What the market actually did after entry.
+  marketOutcome MarketOutcome?
+  /// Free-text post-trade note.
+  reviewNote    String?
+
   executions Execution[]
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
@@ -286,6 +339,7 @@ model TradeSetup {
   @@index([trueRegime, vwapState])
   @@index([alignment, shouldTrade])
   @@index([entryTrigger])
+  @@index([outcome, setupResult])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

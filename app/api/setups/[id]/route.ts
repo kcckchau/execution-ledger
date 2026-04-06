@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { mapSetup, mapDayContext, type DbSetup } from '@/lib/mappers';
-import { CONTEXTS, LOCATIONS, ENTRY_TRIGGERS, INVALIDATION_TYPES } from '@/types/setup';
-import type { Context, Location, EntryTrigger } from '@/lib/generated/prisma/client';
+import { CONTEXTS, LOCATIONS, ENTRY_TRIGGERS, INVALIDATION_TYPES, OUTCOMES, SETUP_RESULTS, MISTAKE_TYPES, MARKET_OUTCOMES } from '@/types/setup';
+import type { Context, Location, EntryTrigger, MistakeType as PrismaMistakeType } from '@/lib/generated/prisma/client';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -58,6 +58,24 @@ export async function PUT(req: NextRequest, { params }: Params) {
         ...(body.vwapState !== undefined && { vwapState: body.vwapState || null }),
         ...(body.structure !== undefined && { structure: body.structure || null }),
         ...(body.alignment !== undefined && { alignment: body.alignment || null }),
+        // Review layer
+        ...(body.outcome !== undefined && {
+          outcome: (OUTCOMES as readonly string[]).includes(body.outcome) ? body.outcome : null,
+        }),
+        ...(body.setupResult !== undefined && {
+          setupResult: (SETUP_RESULTS as readonly string[]).includes(body.setupResult) ? body.setupResult : null,
+        }),
+        ...(body.mistakeTypes !== undefined && {
+          mistakeTypes: (Array.isArray(body.mistakeTypes)
+            ? (body.mistakeTypes as string[]).filter((m) => (MISTAKE_TYPES as readonly string[]).includes(m))
+            : []) as PrismaMistakeType[],
+        }),
+        ...(body.marketOutcome !== undefined && {
+          marketOutcome: (MARKET_OUTCOMES as readonly string[]).includes(body.marketOutcome) ? body.marketOutcome : null,
+        }),
+        ...(body.reviewNote !== undefined && {
+          reviewNote: body.reviewNote ? String(body.reviewNote).trim() : null,
+        }),
       },
       include: { executions: { orderBy: { executionTime: 'asc' } } },
     });

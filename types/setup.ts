@@ -330,6 +330,64 @@ export const ENTRY_TRIGGER_LABELS: Record<EntryTrigger, string> = {
   REJECTION_CANDLE:      'Rejection Candle',
 };
 
+// ── Review layer ──────────────────────────────────────────────────────────────
+
+export const OUTCOMES = ['WIN', 'LOSS', 'BREAKEVEN'] as const;
+export type Outcome = (typeof OUTCOMES)[number];
+export const OUTCOME_LABELS: Record<Outcome, string> = {
+  WIN:       'Win',
+  LOSS:      'Loss',
+  BREAKEVEN: 'Breakeven',
+};
+
+export const SETUP_RESULTS = ['PLAYED_OUT', 'FAILED', 'UNCLEAR'] as const;
+export type SetupResult = (typeof SETUP_RESULTS)[number];
+export const SETUP_RESULT_LABELS: Record<SetupResult, string> = {
+  PLAYED_OUT: 'Played Out',
+  FAILED:     'Failed',
+  UNCLEAR:    'Unclear',
+};
+
+export const MISTAKE_TYPES = [
+  'BAD_SETUP',
+  'WRONG_CONTEXT',
+  'BAD_LOCATION',
+  'EARLY_ENTRY',
+  'LATE_ENTRY',
+  'NO_TRIGGER',
+  'WRONG_STOP',
+  'NO_PLAN',
+  'EMOTIONAL',
+] as const;
+export type MistakeType = (typeof MISTAKE_TYPES)[number];
+export const MISTAKE_TYPE_LABELS: Record<MistakeType, string> = {
+  BAD_SETUP:     'Bad Setup',
+  WRONG_CONTEXT: 'Wrong Context',
+  BAD_LOCATION:  'Bad Location',
+  EARLY_ENTRY:   'Early Entry',
+  LATE_ENTRY:    'Late Entry',
+  NO_TRIGGER:    'No Trigger',
+  WRONG_STOP:    'Wrong Stop',
+  NO_PLAN:       'No Plan',
+  EMOTIONAL:     'Emotional',
+};
+
+export const MARKET_OUTCOMES = [
+  'VWAP_RECLAIM',
+  'VWAP_REJECT',
+  'TREND_CONTINUATION',
+  'RANGE_CONTINUATION',
+  'REVERSAL',
+] as const;
+export type MarketOutcome = (typeof MARKET_OUTCOMES)[number];
+export const MARKET_OUTCOME_LABELS: Record<MarketOutcome, string> = {
+  VWAP_RECLAIM:       'VWAP Reclaim',
+  VWAP_REJECT:        'VWAP Reject',
+  TREND_CONTINUATION: 'Trend Continuation',
+  RANGE_CONTINUATION: 'Range Continuation',
+  REVERSAL:           'Reversal',
+};
+
 // ── Direction (new structured enum, uppercase) ────────────────────────────────
 /** Uppercase direction enum used in MarketOpportunity and TradeSetup reflection. */
 export const DIRECTION_ENUM_VALUES = ['LONG', 'SHORT'] as const;
@@ -431,6 +489,18 @@ export interface TradeSetup {
   bestDirection: DirectionEnum | null;
   /** Whether this trade should have been taken at all. */
   shouldTrade: boolean | null;
+
+  // ── Review layer ──────────────────────────────────────────────────────────
+  /** Monetary outcome of the trade. */
+  outcome: Outcome | null;
+  /** Whether the trade idea itself was correct (independent of P&L). */
+  setupResult: SetupResult | null;
+  /** Execution or planning mistakes (multi-select). */
+  mistakeTypes: MistakeType[];
+  /** What the market actually did after entry. */
+  marketOutcome: MarketOutcome | null;
+  /** Free-text post-trade note. */
+  reviewNote: string | null;
 
   // ── Meta ──────────────────────────────────────────────────────────────────
   initialGrade: Grade | null;

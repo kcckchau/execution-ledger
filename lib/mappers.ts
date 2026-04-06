@@ -14,6 +14,10 @@ import type {
   Location,
   EntryTrigger,
   InvalidationType,
+  Outcome,
+  SetupResult,
+  MistakeType,
+  MarketOutcome,
 } from '@/types/setup';
 import type { DayContext } from '@/types/dayContext';
 
@@ -66,6 +70,12 @@ export type DbSetup = {
   bestSetupType: string | null;
   bestDirection: string | null;
   shouldTrade: boolean | null;
+  // Review layer
+  outcome: string | null;
+  setupResult: string | null;
+  mistakeTypes: string[];
+  marketOutcome: string | null;
+  reviewNote: string | null;
   // Meta
   initialGrade: string | null;
   status: string;
@@ -157,6 +167,12 @@ export function mapSetup(s: DbSetup, dayContext: DayContext | null = null): Trad
     bestSetupType: (s.bestSetupType as SetupType) ?? null,
     bestDirection: (s.bestDirection as DirectionEnum) ?? null,
     shouldTrade: s.shouldTrade ?? null,
+    // Review layer
+    outcome: (s.outcome as Outcome) ?? null,
+    setupResult: (s.setupResult as SetupResult) ?? null,
+    mistakeTypes: (s.mistakeTypes as MistakeType[]) ?? [],
+    marketOutcome: (s.marketOutcome as MarketOutcome) ?? null,
+    reviewNote: s.reviewNote ?? null,
     // Meta
     initialGrade: (s.initialGrade as TradeSetup['initialGrade']) ?? null,
     status: s.status as TradeSetup['status'],
