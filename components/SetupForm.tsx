@@ -6,10 +6,19 @@ import {
   type SetupType,
   type Grade,
   type Direction,
+  type Context,
+  type Location,
+  type EntryTrigger,
   SETUP_TYPES,
   SETUP_TYPE_LABELS,
   GRADES,
   DIRECTIONS,
+  CONTEXTS,
+  CONTEXT_LABELS,
+  LOCATIONS,
+  LOCATION_LABELS,
+  ENTRY_TRIGGERS,
+  ENTRY_TRIGGER_LABELS,
 } from '@/types/setup';
 import { getTodayInEasternTime } from '@/lib/dateUtils';
 import { formatPlannedRiskReward } from '@/lib/plannedRiskReward';
@@ -38,6 +47,10 @@ function makeDefaultForm(init?: TradeSetup) {
       overallNotes: init.overallNotes,
       setupDate: init.setupDate,
       setupName: init.setupName ?? '',
+      // 4-part classification
+      contexts: init.contexts ?? ([] as Context[]),
+      locations: init.locations ?? ([] as Location[]),
+      entryTrigger: init.entryTrigger ?? ('' as EntryTrigger | ''),
     };
   }
   return {
@@ -54,6 +67,10 @@ function makeDefaultForm(init?: TradeSetup) {
     overallNotes: '',
     setupDate: getTodayInEasternTime(),
     setupName: '',
+    // 4-part classification
+    contexts: [] as Context[],
+    locations: [] as Location[],
+    entryTrigger: '' as EntryTrigger | '',
   };
 }
 
@@ -73,26 +90,86 @@ const sectionTitleClass =
 const labelClass    = 'text-xs font-medium text-zinc-400';
 const labelDimClass = 'text-xs font-medium text-zinc-500';
 
+// ── Tag toggle component ──────────────────────────────────────────────────────
+
+function TagToggle<T extends string>({
+  value,
+  label,
+  selected,
+  onToggle,
+}: {
+  value: T;
+  label: string;
+  selected: boolean;
+  onToggle: (v: T) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(value)}
+      className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+        selected
+          ? 'bg-indigo-600 text-white ring-1 ring-indigo-400/50'
+          : 'bg-zinc-800 text-zinc-400 ring-1 ring-zinc-700 hover:bg-zinc-700 hover:text-zinc-200'
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function SetupForm({ onLog, onClose, initialSetup, onSave }: SetupFormProps) {
   const isEdit = !!initialSetup;
   const [form, setForm] = useState(() => makeDefaultForm(initialSetup));
   const [saving, setSaving] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const plannedRR = useMemo(
     () => formatPlannedRiskReward(form.riskEntry, form.riskStop, form.riskTarget, form.direction),
     [form.riskEntry, form.riskStop, form.riskTarget, form.direction]
   );
 
+  function toggleContext(ctx: Context) {
+    setForm((f) => ({
+      ...f,
+      contexts: f.contexts.includes(ctx)
+        ? f.contexts.filter((c) => c !== ctx)
+        : [...f.contexts, ctx],
+    }));
+  }
+
+  function toggleLocation(loc: Location) {
+    setForm((f) => ({
+      ...f,
+      locations: f.locations.includes(loc)
+        ? f.locations.filter((l) => l !== loc)
+        : [...f.locations, loc],
+    }));
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setValidationError(null);
+
+    if (!form.symbol.trim() || !form.invalidation.trim() || !form.decisionTarget.trim()) {
+      return;
+    }
+    if (form.contexts.length === 0) {
+      setValidationError('Select at least one Context — this is required for win-rate analysis.');
+      return;
+    }
+    if (!form.entryTrigger) {
+      setValidationError('Entry trigger is required.');
+      return;
+    }
+    // Cross-field rule: RANGE_REJECT cannot occur at MID_RANGE
     if (
-      !form.symbol.trim() ||
-      !form.trigger.trim() ||
-      !form.invalidation.trim() ||
-      !form.decisionTarget.trim()
+      form.setupType === 'RANGE_REJECT' &&
+      form.locations.includes('MID_RANGE')
     ) {
+      setValidationError('RANGE_REJECT cannot occur at MID_RANGE — rejections happen at range extremes.');
       return;
     }
 
@@ -116,6 +193,10 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
           initialGrade: (form.initialGrade as Grade) || null,
           overallNotes: form.overallNotes.trim(),
           setupName: form.setupName.trim() || null,
+          // 4-part classification
+          contexts: form.contexts,
+          locations: form.locations,
+          entryTrigger: (form.entryTrigger as EntryTrigger) || null,
           updatedAt: now,
         });
       } else {
@@ -131,17 +212,21 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
           riskEntry: form.riskEntry.trim(),
           riskStop: form.riskStop.trim(),
           riskTarget: form.riskTarget.trim(),
-          // Layer 1 structured (not editable in form yet)
+          // 4-part classification
+          contexts: form.contexts,
+          locations: form.locations,
+          entryTrigger: (form.entryTrigger as EntryTrigger) || null,
+          // Layer 1 structured
           triggerType: null,
           entryPrice: null,
           stopPrice: null,
           targetPrice: null,
-          // Layer 2 (not editable in form yet)
+          // Layer 2
           trueRegime: null,
           vwapState: null,
           structure: null,
           alignment: null,
-          // Layer 3 (not editable in form yet)
+          // Layer 3
           mistakeTags: [],
           executionScore: null,
           readScore: null,
@@ -249,12 +334,15 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
         </div>
       </div>
 
-      {/* ── Decision ── */}
-      <div className="flex flex-col gap-3">
-        <h3 className={sectionTitleClass}>Decision</h3>
+      {/* ── 4-Part Classification ── */}
+      <div className="flex flex-col gap-4">
+        <h3 className={sectionTitleClass}>Classification</h3>
 
+        {/* Setup type — WHY */}
         <div className="flex flex-col gap-1.5">
-          <label className={labelClass}>Setup type</label>
+          <label className={labelClass}>
+            Setup <span className="text-zinc-600 font-normal">— WHY you&apos;re in this trade</span>
+          </label>
           <select
             value={form.setupType}
             onChange={(e) => setForm((f) => ({ ...f, setupType: e.target.value as SetupType }))}
@@ -266,25 +354,86 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
           </select>
         </div>
 
+        {/* Context — WHEN it works */}
         <div className="flex flex-col gap-1.5">
-          <label className={labelClass}>Trigger</label>
+          <label className={labelClass}>
+            Context <span className="text-red-500">*</span>{' '}
+            <span className="text-zinc-600 font-normal">— WHEN it works (pick all that apply)</span>
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {CONTEXTS.map((ctx) => (
+              <TagToggle
+                key={ctx}
+                value={ctx}
+                label={CONTEXT_LABELS[ctx]}
+                selected={form.contexts.includes(ctx)}
+                onToggle={toggleContext}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Location — WHERE */}
+        <div className="flex flex-col gap-1.5">
+          <label className={labelClass}>
+            Location <span className="text-zinc-600 font-normal">— WHERE (price levels in play)</span>
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {LOCATIONS.map((loc) => (
+              <TagToggle
+                key={loc}
+                value={loc}
+                label={LOCATION_LABELS[loc]}
+                selected={form.locations.includes(loc)}
+                onToggle={toggleLocation}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Entry trigger — execution timing */}
+        <div className="flex flex-col gap-1.5">
+          <label className={labelClass}>
+            Entry Trigger <span className="text-red-500">*</span>{' '}
+            <span className="text-zinc-600 font-normal">— execution timing signal</span>
+          </label>
+          <select
+            value={form.entryTrigger}
+            onChange={(e) => setForm((f) => ({ ...f, entryTrigger: e.target.value as EntryTrigger | '' }))}
+            className={inputClass}
+          >
+            <option value="">Select trigger…</option>
+            {ENTRY_TRIGGERS.map((t) => (
+              <option key={t} value={t}>{ENTRY_TRIGGER_LABELS[t]}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* ── Trade plan ── */}
+      <div className="flex flex-col gap-3">
+        <h3 className={sectionTitleClass}>Trade plan</h3>
+
+        <div className="flex flex-col gap-1.5">
+          <label className={labelClass}>Trigger <span className="text-zinc-600 font-normal">(description)</span></label>
           <input
             type="text"
-            placeholder="e.g. reclaim VWAP, break OR high"
+            placeholder="e.g. reclaim VWAP on volume, break OR high"
             value={form.trigger}
             onChange={(e) => setForm((f) => ({ ...f, trigger: e.target.value }))}
             className={inputClass}
-            required
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label className={labelClass}>Invalidation</label>
-          <input
-            type="text"
+          <label className={labelClass}>
+            Invalidation <span className="text-red-500">*</span>
+          </label>
+          <textarea
+            rows={2}
             placeholder="e.g. close below VWAP, take out prior low"
             value={form.invalidation}
             onChange={(e) => setForm((f) => ({ ...f, invalidation: e.target.value }))}
-            className={inputClass}
+            className={textareaClass}
             required
           />
         </div>
@@ -368,6 +517,13 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
           />
         </div>
       </div>
+
+      {/* ── Validation error ── */}
+      {validationError && (
+        <p className="rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-400 ring-1 ring-red-500/30">
+          {validationError}
+        </p>
+      )}
 
       <div className="flex justify-end">
         <button

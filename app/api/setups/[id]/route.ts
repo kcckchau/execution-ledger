@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { mapSetup, mapDayContext } from '@/lib/mappers';
+import { mapSetup, mapDayContext, type DbSetup } from '@/lib/mappers';
+import { CONTEXTS, LOCATIONS, ENTRY_TRIGGERS } from '@/types/setup';
+import type { Context, Location, EntryTrigger } from '@/lib/generated/prisma/client';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -27,6 +29,22 @@ export async function PUT(req: NextRequest, { params }: Params) {
         ...(body.riskTarget !== undefined && { riskTarget: String(body.riskTarget).trim() }),
         ...(body.initialGrade !== undefined && { initialGrade: body.initialGrade || null }),
         ...(body.setupName !== undefined && { setupName: body.setupName || null }),
+        // 4-part classification
+        ...(body.contexts !== undefined && {
+          contexts: (Array.isArray(body.contexts)
+            ? (body.contexts as string[]).filter((c) => (CONTEXTS as readonly string[]).includes(c))
+            : []) as Context[],
+        }),
+        ...(body.locations !== undefined && {
+          locations: (Array.isArray(body.locations)
+            ? (body.locations as string[]).filter((l) => (LOCATIONS as readonly string[]).includes(l))
+            : []) as Location[],
+        }),
+        ...(body.entryTrigger !== undefined && {
+          entryTrigger: ((ENTRY_TRIGGERS as readonly string[]).includes(body.entryTrigger)
+            ? body.entryTrigger
+            : null) as EntryTrigger | null,
+        }),
         // Layer 2 — market reality
         ...(body.trueRegime !== undefined && { trueRegime: body.trueRegime || null }),
         ...(body.vwapState !== undefined && { vwapState: body.vwapState || null }),
@@ -38,7 +56,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
     // Return setup enriched with day context.
     const dayCtx = await prisma.dayContext.findUnique({ where: { date: row.setupDate } });
-    return NextResponse.json(mapSetup(row, dayCtx ? mapDayContext(dayCtx) : null));
+    return NextResponse.json(mapSetup(row as unknown as DbSetup, dayCtx ? mapDayContext(dayCtx) : null));
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unexpected error';
     return NextResponse.json({ error: message }, { status: 500 });

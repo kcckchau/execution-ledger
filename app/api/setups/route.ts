@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { mapSetup, mapDayContext } from '@/lib/mappers';
+import { SETUP_TYPES, CONTEXTS, LOCATIONS, ENTRY_TRIGGERS } from '@/types/setup';
 
 export async function GET() {
   try {
@@ -38,9 +39,70 @@ export async function DELETE(req: NextRequest) {
   }
 }
 
+// ── Validation helpers ────────────────────────────────────────────────────────
+
+function validateSetupBody(body: Record<string, unknown>): string | null {
+  // Core required fields
+  if (!body.setupType || !(SETUP_TYPES as readonly string[]).includes(body.setupType as string)) {
+    return 'setupType is required and must be a valid SetupType';
+  }
+  if (!body.invalidation || !(body.invalidation as string).trim()) {
+    return 'invalidation is required and cannot be empty';
+  }
+  if (!body.entryTrigger || !(ENTRY_TRIGGERS as readonly string[]).includes(body.entryTrigger as string)) {
+    return 'entryTrigger is required and must be a valid EntryTrigger';
+  }
+
+  // contexts must be an array of ≥1 valid Context values
+  const contexts = body.contexts;
+  if (!Array.isArray(contexts) || contexts.length === 0) {
+    return 'contexts must be a non-empty array';
+  }
+  const invalidCtx = (contexts as unknown[]).find(
+    (c) => typeof c !== 'string' || !(CONTEXTS as readonly string[]).includes(c)
+  );
+  if (invalidCtx !== undefined) {
+    return `Invalid context value: ${String(invalidCtx)}`;
+  }
+
+  // locations must be an array of valid Location values (optional, but if provided must be valid)
+  const locations = body.locations;
+  if (locations !== undefined && locations !== null) {
+    if (!Array.isArray(locations)) {
+      return 'locations must be an array';
+    }
+    const invalidLoc = (locations as unknown[]).find(
+      (l) => typeof l !== 'string' || !(LOCATIONS as readonly string[]).includes(l)
+    );
+    if (invalidLoc !== undefined) {
+      return `Invalid location value: ${String(invalidLoc)}`;
+    }
+  }
+
+  // Cross-field rule: RANGE_REJECT cannot occur at MID_RANGE
+  if (
+    body.setupType === 'RANGE_REJECT' &&
+    Array.isArray(contexts) &&
+    (contexts as string[]).includes('RANGE')
+  ) {
+    const locs = Array.isArray(locations) ? (locations as string[]) : [];
+    if (locs.includes('MID_RANGE')) {
+      return 'Invalid trade: RANGE_REJECT cannot occur at MID_RANGE — rejections happen at range extremes';
+    }
+  }
+
+  return null;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+
+    const validationError = validateSetupBody(body);
+    if (validationError) {
+      return NextResponse.json({ error: validationError }, { status: 400 });
+    }
+
     const row = await prisma.tradeSetup.create({
       data: {
         id: body.id,
@@ -48,12 +110,16 @@ export async function POST(req: NextRequest) {
         symbol: body.symbol,
         direction: body.direction,
         setupType: body.setupType,
-        trigger: body.trigger,
+        trigger: body.trigger ?? '',
         invalidation: body.invalidation,
-        decisionTarget: body.decisionTarget,
-        riskEntry: body.riskEntry,
-        riskStop: body.riskStop,
-        riskTarget: body.riskTarget,
+        decisionTarget: body.decisionTarget ?? '',
+        riskEntry: body.riskEntry ?? '',
+        riskStop: body.riskStop ?? '',
+        riskTarget: body.riskTarget ?? '',
+        // 4-part classification
+        contexts: body.contexts,
+        locations: body.locations ?? [],
+        entryTrigger: body.entryTrigger,
         initialGrade: body.initialGrade ?? null,
         status: body.status ?? 'open',
         overallNotes: body.overallNotes ?? '',

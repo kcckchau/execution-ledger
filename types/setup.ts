@@ -23,22 +23,26 @@ export const SETUP_TYPES = [
   'SWEEP_FAIL',
   'RANGE_RECLAIM',
   'RANGE_REJECT',
+  'FAILED_BREAKOUT',
+  'FAILED_BREAKDOWN',
 ] as const;
 
 export type SetupType = (typeof SETUP_TYPES)[number];
 
 export const SETUP_TYPE_LABELS: Record<SetupType, string> = {
-  VWAP_RECLAIM:  'VWAP Reclaim',
-  VWAP_REJECT:   'VWAP Reject',
-  BREAKOUT:      'Breakout',
-  BREAKDOWN:     'Breakdown',
-  RANGE:         'Range',
-  FLIP:          'Flip',
-  VWAP_PULLBACK: 'VWAP Pullback',
-  ORB_BREAK:     'ORB Break',
-  SWEEP_FAIL:    'Sweep Fail',
-  RANGE_RECLAIM: 'Range Reclaim',
-  RANGE_REJECT:  'Range Reject',
+  VWAP_RECLAIM:     'VWAP Reclaim',
+  VWAP_REJECT:      'VWAP Reject',
+  BREAKOUT:         'Breakout',
+  BREAKDOWN:        'Breakdown',
+  RANGE:            'Range',
+  FLIP:             'Flip',
+  VWAP_PULLBACK:    'VWAP Pullback',
+  ORB_BREAK:        'ORB Break',
+  SWEEP_FAIL:       'Sweep Fail',
+  RANGE_RECLAIM:    'Range Reclaim',
+  RANGE_REJECT:     'Range Reject',
+  FAILED_BREAKOUT:  'Failed Breakout',
+  FAILED_BREAKDOWN: 'Failed Breakdown',
 };
 
 // ── Regime ────────────────────────────────────────────────────────────────────
@@ -238,6 +242,73 @@ export const MISS_REASON_LABELS: Record<MissReason, string> = {
   RISK_LIMIT_REACHED: 'Risk Limit Reached',
 };
 
+// ── Context ───────────────────────────────────────────────────────────────────
+/** Market conditions when the trade was taken. Multi-select; edge from combinations. */
+export const CONTEXTS = [
+  'TREND',
+  'RANGE',
+  'TRANSITION',
+  'ABOVE_VWAP',
+  'BELOW_VWAP',
+] as const;
+export type Context = (typeof CONTEXTS)[number];
+
+export const CONTEXT_LABELS: Record<Context, string> = {
+  TREND:      'Trend',
+  RANGE:      'Range',
+  TRANSITION: 'Transition',
+  ABOVE_VWAP: 'Above VWAP',
+  BELOW_VWAP: 'Below VWAP',
+};
+
+// ── Location ──────────────────────────────────────────────────────────────────
+/** Specific price levels forming the battlefield. Multi-select; more = higher confluence. */
+export const LOCATIONS = [
+  'RANGE_HIGH',
+  'RANGE_LOW',
+  'MID_RANGE',
+  'PDH',
+  'PDL',
+  'PREMARKET_HIGH',
+  'PREMARKET_LOW',
+  'AH_HIGH',
+  'AH_LOW',
+  'VWAP',
+  'WHOLE_NUMBER',
+] as const;
+export type Location = (typeof LOCATIONS)[number];
+
+export const LOCATION_LABELS: Record<Location, string> = {
+  RANGE_HIGH:     'Range High',
+  RANGE_LOW:      'Range Low',
+  MID_RANGE:      'Mid Range',
+  PDH:            'PDH',
+  PDL:            'PDL',
+  PREMARKET_HIGH: 'Premarket High',
+  PREMARKET_LOW:  'Premarket Low',
+  AH_HIGH:        'AH High',
+  AH_LOW:         'AH Low',
+  VWAP:           'VWAP',
+  WHOLE_NUMBER:   'Whole Number',
+};
+
+// ── EntryTrigger ──────────────────────────────────────────────────────────────
+/** Execution timing signal — what candle/pattern triggered the entry. Single-select. */
+export const ENTRY_TRIGGERS = [
+  'EMA9_21_BULLISH_CROSS',
+  'EMA9_21_BEARISH_CROSS',
+  'BREAK_STRUCTURE',
+  'REJECTION_CANDLE',
+] as const;
+export type EntryTrigger = (typeof ENTRY_TRIGGERS)[number];
+
+export const ENTRY_TRIGGER_LABELS: Record<EntryTrigger, string> = {
+  EMA9_21_BULLISH_CROSS: 'EMA 9/21 Bullish Cross',
+  EMA9_21_BEARISH_CROSS: 'EMA 9/21 Bearish Cross',
+  BREAK_STRUCTURE:       'Break Structure',
+  REJECTION_CANDLE:      'Rejection Candle',
+};
+
 // ── Direction (new structured enum, uppercase) ────────────────────────────────
 /** Uppercase direction enum used in MarketOpportunity and TradeSetup reflection. */
 export const DIRECTION_ENUM_VALUES = ['LONG', 'SHORT'] as const;
@@ -309,6 +380,14 @@ export interface TradeSetup {
   stopPrice: number | null;
   /** Structured numeric target level. */
   targetPrice: number | null;
+
+  // ── 4-part classification model ───────────────────────────────────────────
+  /** WHEN it works — market conditions at entry. Required ≥1 for new records. */
+  contexts: Context[];
+  /** WHERE — exact price levels at play. Optional. */
+  locations: Location[];
+  /** HOW to enter — execution timing signal. Required for new records. */
+  entryTrigger: EntryTrigger | null;
 
   // ── Layer 2: market reality at entry ──────────────────────────────────────
   /** Actual regime at the time of this specific trade. */

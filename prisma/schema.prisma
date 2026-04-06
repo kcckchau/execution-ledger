@@ -26,6 +26,8 @@ enum SetupType {
   SWEEP_FAIL
   BREAKOUT
   BREAKDOWN
+  FAILED_BREAKOUT
+  FAILED_BREAKDOWN
   RANGE_RECLAIM
   RANGE_REJECT
 }
@@ -141,6 +143,45 @@ enum MissReason {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 4-part classification model enums
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Market conditions / confluence state when the trade was taken.
+/// Multi-select — edge comes from combinations (e.g. TREND + ABOVE_VWAP).
+enum Context {
+  TREND
+  RANGE
+  TRANSITION
+  ABOVE_VWAP
+  BELOW_VWAP
+}
+
+/// Specific price levels that formed the battlefield for the trade.
+/// Multi-select — more locations = higher confluence.
+enum Location {
+  RANGE_HIGH
+  RANGE_LOW
+  MID_RANGE
+  PDH
+  PDL
+  PREMARKET_HIGH
+  PREMARKET_LOW
+  AH_HIGH
+  AH_LOW
+  VWAP
+  WHOLE_NUMBER
+}
+
+/// Exact execution timing signal — what candle/pattern triggered the entry.
+/// Single-select; distinct from SetupType (WHY) and Location (WHERE).
+enum EntryTrigger {
+  EMA9_21_BULLISH_CROSS
+  EMA9_21_BEARISH_CROSS
+  BREAK_STRUCTURE
+  REJECTION_CANDLE
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // TradeSetup — for trades that were executed or actively planned.
 // Structured as three analytical layers.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -173,10 +214,19 @@ model TradeSetup {
   riskTarget     String
 
   // ── Layer 1 structured: trade planning ──
-  triggerType TriggerType?
-  entryPrice  Float?
-  stopPrice   Float?
-  targetPrice Float?
+  triggerType  TriggerType?
+  entryPrice   Float?
+  stopPrice    Float?
+  targetPrice  Float?
+
+  // ── 4-part classification model ──
+  /// WHY — already captured by setupType above.
+  /// WHEN it works — market conditions at entry (multi-select, required ≥1 for new records).
+  contexts     Context[]    @default([])
+  /// WHERE — exact price levels forming the battlefield (multi-select, optional).
+  locations    Location[]   @default([])
+  /// HOW to enter — execution timing signal (single, required for new records).
+  entryTrigger EntryTrigger?
 
   // ── Layer 2: per-trade market reality at/around entry ──
   /// Market regime at the time this specific trade was entered.
@@ -220,6 +270,7 @@ model TradeSetup {
   @@index([setupDate, setupType])
   @@index([trueRegime, vwapState])
   @@index([alignment, shouldTrade])
+  @@index([entryTrigger])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

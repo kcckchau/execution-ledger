@@ -10,6 +10,9 @@ import type {
   MistakeTag,
   SetupType,
   DirectionEnum,
+  Context,
+  Location,
+  EntryTrigger,
 } from '@/types/setup';
 import type { DayContext } from '@/types/dayContext';
 
@@ -25,7 +28,7 @@ type DbExecution = {
   updatedAt: Date;
 };
 
-type DbSetup = {
+export type DbSetup = {
   id: string;
   setupDate: string;
   symbol: string;
@@ -43,6 +46,10 @@ type DbSetup = {
   entryPrice: number | null;
   stopPrice: number | null;
   targetPrice: number | null;
+  // 4-part classification
+  contexts: string[];
+  locations: string[];
+  entryTrigger: string | null;
   // Layer 2
   trueRegime: string | null;
   vwapState: string | null;
@@ -128,6 +135,10 @@ export function mapSetup(s: DbSetup, dayContext: DayContext | null = null): Trad
     entryPrice: s.entryPrice ?? null,
     stopPrice: s.stopPrice ?? null,
     targetPrice: s.targetPrice ?? null,
+    // 4-part classification
+    contexts: (s.contexts as Context[]) ?? [],
+    locations: (s.locations as Location[]) ?? [],
+    entryTrigger: (s.entryTrigger as EntryTrigger) ?? null,
     // Layer 2
     trueRegime: (s.trueRegime as Regime) ?? null,
     vwapState: (s.vwapState as VWAPState) ?? null,
