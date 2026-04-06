@@ -29,7 +29,6 @@ import { formatPlannedRiskReward } from '@/lib/plannedRiskReward';
 interface SetupFormProps {
   onLog: (setup: TradeSetup) => void;
   onClose: () => void;
-  /** When provided the form operates in edit mode — calls onSave instead of onLog. */
   initialSetup?: TradeSetup;
   onSave?: (setup: TradeSetup) => void;
 }
@@ -37,51 +36,49 @@ interface SetupFormProps {
 function makeDefaultForm(init?: TradeSetup) {
   if (init) {
     return {
-      symbol: init.symbol,
-      direction: init.direction,
-      setupType: init.setupType,
-      trigger: init.trigger,
-      decisionTarget: init.decisionTarget,
-      riskEntry: init.riskEntry,
-      riskStop: init.riskStop,
-      riskTarget: init.riskTarget,
-      initialGrade: (init.initialGrade ?? '') as Grade | '',
-      overallNotes: init.overallNotes,
-      setupDate: init.setupDate,
-      setupName: init.setupName ?? '',
-      // 4-part classification
-      contexts: init.contexts ?? ([] as Context[]),
-      locations: init.locations ?? ([] as Location[]),
-      entryTrigger: init.entryTrigger ?? ('' as EntryTrigger | ''),
-      // Structured invalidation
+      symbol:          init.symbol,
+      direction:       init.direction,
+      setupType:       init.setupType,
+      setupDate:       init.setupDate,
+      setupName:       init.setupName ?? '',
+      initialGrade:    (init.initialGrade ?? '') as Grade | '',
+      // Classification
+      contexts:        init.contexts ?? ([] as Context[]),
+      locations:       init.locations ?? ([] as Location[]),
+      entryTrigger:    init.entryTrigger ?? ('' as EntryTrigger | ''),
+      // Trade Plan
+      thesis:          init.decisionTarget,
       invalidationType: init.invalidationType ?? ('' as InvalidationType | ''),
       invalidationNote: init.invalidationNote ?? '',
+      riskEntry:       init.riskEntry,
+      riskStop:        init.riskStop,
+      riskTarget:      init.riskTarget,
+      overallNotes:    init.overallNotes,
     };
   }
   return {
-    symbol: '',
-    direction: 'long' as Direction,
-    setupType: SETUP_TYPES[0] as SetupType,
-    trigger: '',
-    decisionTarget: '',
-    riskEntry: '',
-    riskStop: '',
-    riskTarget: '',
-    initialGrade: '' as Grade | '',
-    overallNotes: '',
-    setupDate: getTodayInEasternTime(),
-    setupName: '',
-    // 4-part classification
-    contexts: [] as Context[],
-    locations: [] as Location[],
-    entryTrigger: '' as EntryTrigger | '',
-    // Structured invalidation
+    symbol:          '',
+    direction:       'long' as Direction,
+    setupType:       SETUP_TYPES[0] as SetupType,
+    setupDate:       getTodayInEasternTime(),
+    setupName:       '',
+    initialGrade:    '' as Grade | '',
+    // Classification
+    contexts:        [] as Context[],
+    locations:       [] as Location[],
+    entryTrigger:    '' as EntryTrigger | '',
+    // Trade Plan
+    thesis:          '',
     invalidationType: '' as InvalidationType | '',
     invalidationNote: '',
+    riskEntry:       '',
+    riskStop:        '',
+    riskTarget:      '',
+    overallNotes:    '',
   };
 }
 
-// ── Shared style tokens ───────────────────────────────────────────────────────
+// ── Style tokens ──────────────────────────────────────────────────────────────
 
 const inputClass =
   'h-9 rounded-md border border-zinc-700 bg-zinc-800 px-3 text-sm text-white ' +
@@ -97,7 +94,9 @@ const sectionTitleClass =
 const labelClass    = 'text-xs font-medium text-zinc-400';
 const labelDimClass = 'text-xs font-medium text-zinc-500';
 
-// ── Tag toggle component ──────────────────────────────────────────────────────
+const REQ = <span className="text-red-500 ml-0.5">*</span>;
+
+// ── Tag toggle ────────────────────────────────────────────────────────────────
 
 function TagToggle<T extends string>({
   value,
@@ -131,131 +130,123 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
   const isEdit = !!initialSetup;
   const [form, setForm] = useState(() => makeDefaultForm(initialSetup));
   const [saving, setSaving] = useState(false);
-  const [validationError, setValidationError] = useState<string | null>(null);
 
+  // ── Derived validity (disable Save reactively) ────────────────────────────
+  const canSave = useMemo(
+    () =>
+      form.symbol.trim() !== '' &&
+      form.entryTrigger !== '' &&
+      form.contexts.length > 0 &&
+      form.thesis.trim() !== '' &&
+      form.invalidationType !== '',
+    [form.symbol, form.entryTrigger, form.contexts, form.thesis, form.invalidationType]
+  );
+
+  // ── Non-blocking warnings (live) ─────────────────────────────────────────
+  const warnings = useMemo(() => {
+    const msgs: string[] = [];
+
+    if (
+      (form.setupType === 'VWAP_REJECT' || form.setupType === 'VWAP_RECLAIM') &&
+      !form.locations.includes('VWAP')
+    ) {
+      msgs.push(`${SETUP_TYPE_LABELS[form.setupType]} usually trades at VWAP — consider adding VWAP to Locations.`);
+    }
+
+    if (form.setupType === 'RANGE_REJECT' && form.locations.includes('MID_RANGE')) {
+      msgs.push('RANGE_REJECT at MID_RANGE is unusual — rejections happen at range extremes.');
+    }
+
+    if (
+      form.invalidationType === 'STRUCTURE_BREAK' &&
+      /vwap/i.test(form.invalidationNote)
+    ) {
+      msgs.push('Your note mentions VWAP — consider using Reclaim VWAP or Hold Above/Below VWAP as the invalidation type.');
+    }
+
+    return msgs;
+  }, [form.setupType, form.locations, form.invalidationType, form.invalidationNote]);
+
+  // ── R:R ───────────────────────────────────────────────────────────────────
   const plannedRR = useMemo(
     () => formatPlannedRiskReward(form.riskEntry, form.riskStop, form.riskTarget, form.direction),
     [form.riskEntry, form.riskStop, form.riskTarget, form.direction]
   );
 
+  // ── Tag toggles ───────────────────────────────────────────────────────────
   function toggleContext(ctx: Context) {
     setForm((f) => ({
       ...f,
-      contexts: f.contexts.includes(ctx)
-        ? f.contexts.filter((c) => c !== ctx)
-        : [...f.contexts, ctx],
+      contexts: f.contexts.includes(ctx) ? f.contexts.filter((c) => c !== ctx) : [...f.contexts, ctx],
     }));
   }
-
   function toggleLocation(loc: Location) {
     setForm((f) => ({
       ...f,
-      locations: f.locations.includes(loc)
-        ? f.locations.filter((l) => l !== loc)
-        : [...f.locations, loc],
+      locations: f.locations.includes(loc) ? f.locations.filter((l) => l !== loc) : [...f.locations, loc],
     }));
   }
 
+  // ── Submit ────────────────────────────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setValidationError(null);
-
-    if (!form.symbol.trim() || !form.decisionTarget.trim()) {
-      return;
-    }
-    if (!form.invalidationType) {
-      setValidationError('Invalidation type is required.');
-      return;
-    }
-    if (form.contexts.length === 0) {
-      setValidationError('Select at least one Context — this is required for win-rate analysis.');
-      return;
-    }
-    if (!form.entryTrigger) {
-      setValidationError('Entry trigger is required.');
-      return;
-    }
-    // Cross-field rule: RANGE_REJECT cannot occur at MID_RANGE
-    if (
-      form.setupType === 'RANGE_REJECT' &&
-      form.locations.includes('MID_RANGE')
-    ) {
-      setValidationError('RANGE_REJECT cannot occur at MID_RANGE — rejections happen at range extremes.');
-      return;
-    }
+    if (!canSave) return;
 
     setSaving(true);
     try {
       const now = new Date().toISOString();
+      const shared = {
+        setupDate:        form.setupDate,
+        symbol:           form.symbol.trim().toUpperCase(),
+        direction:        form.direction,
+        setupType:        form.setupType,
+        // Classification — structured trigger stored in entryTrigger; legacy text field left blank
+        trigger:          '',
+        decisionTarget:   form.thesis.trim(),
+        contexts:         form.contexts,
+        locations:        form.locations,
+        entryTrigger:     (form.entryTrigger as EntryTrigger) || null,
+        // Trade Plan
+        invalidationType: form.invalidationType as InvalidationType,
+        invalidationNote: form.invalidationNote.trim() || null,
+        riskEntry:        form.riskEntry.trim(),
+        riskStop:         form.riskStop.trim(),
+        riskTarget:       form.riskTarget.trim(),
+        initialGrade:     (form.initialGrade as Grade) || null,
+        overallNotes:     form.overallNotes.trim(),
+        setupName:        form.setupName.trim() || null,
+      };
 
       if (isEdit && initialSetup && onSave) {
-        await onSave({
-          ...initialSetup,
-          setupDate: form.setupDate,
-          symbol: form.symbol.trim().toUpperCase(),
-          direction: form.direction,
-          setupType: form.setupType,
-          trigger: form.trigger.trim(),
-          decisionTarget: form.decisionTarget.trim(),
-          invalidationType: form.invalidationType as InvalidationType,
-          invalidationNote: form.invalidationNote.trim() || null,
-          riskEntry: form.riskEntry.trim(),
-          riskStop: form.riskStop.trim(),
-          riskTarget: form.riskTarget.trim(),
-          initialGrade: (form.initialGrade as Grade) || null,
-          overallNotes: form.overallNotes.trim(),
-          setupName: form.setupName.trim() || null,
-          // 4-part classification
-          contexts: form.contexts,
-          locations: form.locations,
-          entryTrigger: (form.entryTrigger as EntryTrigger) || null,
-          updatedAt: now,
-        });
+        await onSave({ ...initialSetup, ...shared, updatedAt: now });
       } else {
         onLog({
-          id: crypto.randomUUID(),
-          setupDate: form.setupDate,
-          symbol: form.symbol.trim().toUpperCase(),
-          direction: form.direction,
-          setupType: form.setupType,
-          trigger: form.trigger.trim(),
-          decisionTarget: form.decisionTarget.trim(),
-          invalidationType: form.invalidationType as InvalidationType,
-          invalidationNote: form.invalidationNote.trim() || null,
-          riskEntry: form.riskEntry.trim(),
-          riskStop: form.riskStop.trim(),
-          riskTarget: form.riskTarget.trim(),
-          // 4-part classification
-          contexts: form.contexts,
-          locations: form.locations,
-          entryTrigger: (form.entryTrigger as EntryTrigger) || null,
-          // Layer 1 structured
-          triggerType: null,
-          entryPrice: null,
-          stopPrice: null,
-          targetPrice: null,
+          id:              crypto.randomUUID(),
+          ...shared,
+          // Layer 1 structured (not yet wired in form)
+          triggerType:     null,
+          entryPrice:      null,
+          stopPrice:       null,
+          targetPrice:     null,
           // Layer 2
-          trueRegime: null,
-          vwapState: null,
-          structure: null,
-          alignment: null,
+          trueRegime:      null,
+          vwapState:       null,
+          structure:       null,
+          alignment:       null,
           // Layer 3
-          mistakeTags: [],
-          executionScore: null,
-          readScore: null,
+          mistakeTags:     [],
+          executionScore:  null,
+          readScore:       null,
           disciplineScore: null,
-          bestSetupType: null,
-          bestDirection: null,
-          shouldTrade: null,
-          initialGrade: (form.initialGrade as Grade) || null,
-          status: 'open',
-          overallNotes: form.overallNotes.trim(),
-          setupName: form.setupName.trim() || null,
-          review: null,
-          executions: [],
-          createdAt: now,
-          updatedAt: now,
-          dayContext: null,
+          bestSetupType:   null,
+          bestDirection:   null,
+          shouldTrade:     null,
+          status:          'open',
+          review:          null,
+          executions:      [],
+          createdAt:       now,
+          updatedAt:       now,
+          dayContext:      null,
         });
         setForm(makeDefaultForm());
         onClose();
@@ -265,12 +256,13 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
     }
   }
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <form
       onSubmit={handleSubmit}
       className="flex flex-col gap-5 rounded-lg border border-zinc-800 bg-zinc-900 p-6"
     >
-      {/* ── Title ── */}
+      {/* Title */}
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-white">{isEdit ? 'Edit Setup' : 'New Setup'}</h2>
         <button
@@ -286,14 +278,13 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
       {/* ── Identity row ── */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className="flex flex-col gap-1.5">
-          <label className={labelClass}>Symbol</label>
+          <label className={labelClass}>Symbol{REQ}</label>
           <input
             type="text"
             placeholder="AAPL"
             value={form.symbol}
             onChange={(e) => setForm((f) => ({ ...f, symbol: e.target.value }))}
             className={inputClass}
-            required
           />
         </div>
 
@@ -321,14 +312,13 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
 
         <div className="flex flex-col gap-1.5">
           <label className={labelClass}>
-            Trading Date <span className="font-normal text-zinc-600">(ET)</span>
+            Date <span className="font-normal text-zinc-600">(ET)</span>
           </label>
           <input
             type="date"
             value={form.setupDate}
             onChange={(e) => setForm((f) => ({ ...f, setupDate: e.target.value }))}
             className={inputClass}
-            required
           />
         </div>
 
@@ -347,31 +337,52 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
         </div>
       </div>
 
-      {/* ── 4-Part Classification ── */}
+      {/* ── Classification ── */}
       <div className="flex flex-col gap-4">
         <h3 className={sectionTitleClass}>Classification</h3>
 
-        {/* Setup type — WHY */}
-        <div className="flex flex-col gap-1.5">
-          <label className={labelClass}>
-            Setup <span className="text-zinc-600 font-normal">— WHY you&apos;re in this trade</span>
-          </label>
-          <select
-            value={form.setupType}
-            onChange={(e) => setForm((f) => ({ ...f, setupType: e.target.value as SetupType }))}
-            className={inputClass}
-          >
-            {SETUP_TYPES.map((s) => (
-              <option key={s} value={s}>{SETUP_TYPE_LABELS[s]}</option>
-            ))}
-          </select>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {/* Setup type */}
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>
+              Setup{REQ}{' '}
+              <span className="text-zinc-600 font-normal">— WHY</span>
+            </label>
+            <select
+              value={form.setupType}
+              onChange={(e) => setForm((f) => ({ ...f, setupType: e.target.value as SetupType }))}
+              className={inputClass}
+            >
+              {SETUP_TYPES.map((s) => (
+                <option key={s} value={s}>{SETUP_TYPE_LABELS[s]}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Trigger */}
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>
+              Trigger{REQ}{' '}
+              <span className="text-zinc-600 font-normal">— execution signal</span>
+            </label>
+            <select
+              value={form.entryTrigger}
+              onChange={(e) => setForm((f) => ({ ...f, entryTrigger: e.target.value as EntryTrigger | '' }))}
+              className={inputClass}
+            >
+              <option value="">Select trigger…</option>
+              {ENTRY_TRIGGERS.map((t) => (
+                <option key={t} value={t}>{ENTRY_TRIGGER_LABELS[t]}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        {/* Context — WHEN it works */}
+        {/* Context */}
         <div className="flex flex-col gap-1.5">
           <label className={labelClass}>
-            Context <span className="text-red-500">*</span>{' '}
-            <span className="text-zinc-600 font-normal">— WHEN it works (pick all that apply)</span>
+            Context{REQ}{' '}
+            <span className="text-zinc-600 font-normal">— WHEN it works</span>
           </label>
           <div className="flex flex-wrap gap-2">
             {CONTEXTS.map((ctx) => (
@@ -386,10 +397,11 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
           </div>
         </div>
 
-        {/* Location — WHERE */}
+        {/* Location */}
         <div className="flex flex-col gap-1.5">
           <label className={labelClass}>
-            Location <span className="text-zinc-600 font-normal">— WHERE (price levels in play)</span>
+            Location{' '}
+            <span className="text-zinc-600 font-normal">— WHERE (price levels in play)</span>
           </label>
           <div className="flex flex-wrap gap-2">
             {LOCATIONS.map((loc) => (
@@ -403,46 +415,31 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
             ))}
           </div>
         </div>
-
-        {/* Entry trigger — execution timing */}
-        <div className="flex flex-col gap-1.5">
-          <label className={labelClass}>
-            Entry Trigger <span className="text-red-500">*</span>{' '}
-            <span className="text-zinc-600 font-normal">— execution timing signal</span>
-          </label>
-          <select
-            value={form.entryTrigger}
-            onChange={(e) => setForm((f) => ({ ...f, entryTrigger: e.target.value as EntryTrigger | '' }))}
-            className={inputClass}
-          >
-            <option value="">Select trigger…</option>
-            {ENTRY_TRIGGERS.map((t) => (
-              <option key={t} value={t}>{ENTRY_TRIGGER_LABELS[t]}</option>
-            ))}
-          </select>
-        </div>
       </div>
 
-      {/* ── Trade plan ── */}
+      {/* ── Trade Plan ── */}
       <div className="flex flex-col gap-3">
-        <h3 className={sectionTitleClass}>Trade plan</h3>
+        <h3 className={sectionTitleClass}>Trade Plan</h3>
 
+        {/* Thesis */}
         <div className="flex flex-col gap-1.5">
-          <label className={labelClass}>Trigger <span className="text-zinc-600 font-normal">(description)</span></label>
-          <input
-            type="text"
-            placeholder="e.g. reclaim VWAP on volume, break OR high"
-            value={form.trigger}
-            onChange={(e) => setForm((f) => ({ ...f, trigger: e.target.value }))}
-            className={inputClass}
+          <label className={labelClass}>
+            Thesis{REQ}{' '}
+            <span className="text-zinc-600 font-normal">— what needs to happen</span>
+          </label>
+          <textarea
+            rows={2}
+            placeholder="e.g. reclaim VWAP on volume, hold above and target PDH"
+            value={form.thesis}
+            onChange={(e) => setForm((f) => ({ ...f, thesis: e.target.value }))}
+            className={textareaClass}
           />
         </div>
 
+        {/* Invalidation */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
-            <label className={labelClass}>
-              Invalidation Type <span className="text-red-500">*</span>
-            </label>
+            <label className={labelClass}>Invalidation Type{REQ}</label>
             <select
               value={form.invalidationType}
               onChange={(e) => setForm((f) => ({ ...f, invalidationType: e.target.value as InvalidationType | '' }))}
@@ -456,7 +453,8 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
           </div>
           <div className="flex flex-col gap-1.5">
             <label className={labelClass}>
-              Invalidation Note <span className="text-zinc-600 font-normal">(optional)</span>
+              Invalidation Note{' '}
+              <span className="text-zinc-600 font-normal">(optional)</span>
             </label>
             <input
               type="text"
@@ -467,25 +465,11 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
             />
           </div>
         </div>
-        <div className="flex flex-col gap-1.5">
-          <label className={labelClass}>Target</label>
-          <input
-            type="text"
-            placeholder="e.g. PDH, range high, 2R"
-            value={form.decisionTarget}
-            onChange={(e) => setForm((f) => ({ ...f, decisionTarget: e.target.value }))}
-            className={inputClass}
-            required
-          />
-        </div>
-      </div>
 
-      {/* ── Risk plan ── */}
-      <div className="flex flex-col gap-3">
-        <h3 className={sectionTitleClass}>Risk plan</h3>
+        {/* Entry / Stop / Target */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="flex flex-col gap-1.5">
-            <label className={labelClass}>Entry</label>
+            <label className={labelClass}>Entry <span className="text-zinc-600 font-normal">(optional)</span></label>
             <input
               type="text"
               placeholder="Price or level"
@@ -495,7 +479,7 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className={labelClass}>Stop</label>
+            <label className={labelClass}>Stop <span className="text-zinc-600 font-normal">(optional)</span></label>
             <input
               type="text"
               placeholder="Price or level"
@@ -505,7 +489,7 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className={labelClass}>Target</label>
+            <label className={labelClass}>Target <span className="text-zinc-600 font-normal">(optional)</span></label>
             <input
               type="text"
               placeholder="Take-profit / exit"
@@ -515,51 +499,71 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
             />
           </div>
         </div>
+
+        {/* Planned R:R */}
         <p className="text-xs text-zinc-500">
           Planned R:R{' '}
           <span className="font-mono tabular-nums text-zinc-300">
             {plannedRR !== null ? `1 : ${plannedRR}` : '—'}
           </span>
-          <span className="ml-2 text-zinc-600">(when entry, stop &amp; target are numeric)</span>
+          <span className="ml-2 text-zinc-600">(computed when entry, stop &amp; target are numeric)</span>
         </p>
+
+        {/* Notes + Name */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <label className={labelDimClass}>
+              Notes <span className="text-zinc-600 font-normal">(optional)</span>
+            </label>
+            <textarea
+              rows={2}
+              placeholder="Extra context, levels to watch, sizing…"
+              value={form.overallNotes}
+              onChange={(e) => setForm((f) => ({ ...f, overallNotes: e.target.value }))}
+              className={textareaClass}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className={labelDimClass}>
+              Name <span className="text-zinc-600 font-normal">(optional — shown in chart toggle)</span>
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Morning VWAP play"
+              value={form.setupName}
+              onChange={(e) => setForm((f) => ({ ...f, setupName: e.target.value }))}
+              className={inputClass}
+            />
+          </div>
+        </div>
       </div>
 
-      {/* ── Notes + optional name ── */}
-      <div className="flex flex-col gap-3">
+      {/* ── Warnings ── */}
+      {warnings.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <label className={labelDimClass}>Name <span className="text-zinc-600 font-normal">(optional — shown in chart toggle)</span></label>
-          <input
-            type="text"
-            placeholder="e.g. Morning VWAP play"
-            value={form.setupName}
-            onChange={(e) => setForm((f) => ({ ...f, setupName: e.target.value }))}
-            className={inputClass}
-          />
+          {warnings.map((w) => (
+            <p
+              key={w}
+              className="rounded-md bg-amber-500/10 px-3 py-2 text-xs text-amber-400 ring-1 ring-amber-500/30"
+            >
+              {w}
+            </p>
+          ))}
         </div>
-        <div className="flex flex-col gap-1.5">
-          <label className={labelDimClass}>Notes</label>
-          <textarea
-            rows={2}
-            placeholder="Extra context, levels to watch, sizing…"
-            value={form.overallNotes}
-            onChange={(e) => setForm((f) => ({ ...f, overallNotes: e.target.value }))}
-            className={textareaClass}
-          />
-        </div>
-      </div>
+      )}
 
-      {/* ── Validation error ── */}
-      {validationError && (
-        <p className="rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-400 ring-1 ring-red-500/30">
-          {validationError}
+      {/* ── Required fields hint ── */}
+      {!canSave && (
+        <p className="text-xs text-zinc-600">
+          Required: symbol, setup, trigger, at least one context, thesis, invalidation type.
         </p>
       )}
 
       <div className="flex justify-end">
         <button
           type="submit"
-          disabled={saving}
-          className="h-9 rounded-md bg-indigo-600 px-5 text-sm font-medium text-white transition-colors hover:bg-indigo-500 disabled:opacity-60"
+          disabled={saving || !canSave}
+          className="h-9 rounded-md bg-indigo-600 px-5 text-sm font-medium text-white transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
         >
           {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Log Setup'}
         </button>
