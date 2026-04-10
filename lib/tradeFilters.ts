@@ -60,6 +60,11 @@ export function filterTrades(setups: TradeSetup[], filters: TradeFilters): Trade
 
 export interface TradeStats {
   count: number;
+  /** Sum of realized P&L on executed (non-ideal) setups */
+  totalPnlExecuted: number;
+  /** Sum of realized P&L on ideal setups */
+  totalPnlIdeal: number;
+  /** Executed + ideal (same as totalPnlExecuted + totalPnlIdeal) */
   totalPnl: number;
   /** Wins / (wins + losses). null when no closed trades in set. */
   winRate: number | null;
@@ -93,17 +98,37 @@ export function computeGroupedStats(
 
 export function computeTradeStats(setups: TradeSetup[]): TradeStats {
   if (setups.length === 0) {
-    return { count: 0, totalPnl: 0, winRate: null, avgPnl: null };
+    return {
+      count: 0,
+      totalPnlExecuted: 0,
+      totalPnlIdeal: 0,
+      totalPnl: 0,
+      winRate: null,
+      avgPnl: null,
+    };
   }
 
+  const executed = setups.filter((s) => !s.isIdeal);
+  const ideal = setups.filter((s) => s.isIdeal);
+  const totalPnlExecuted = executed.reduce(
+    (sum, s) => sum + calcSetupPnl(s.executions, s.direction).realizedPnl,
+    0,
+  );
+  const totalPnlIdeal = ideal.reduce(
+    (sum, s) => sum + calcSetupPnl(s.executions, s.direction).realizedPnl,
+    0,
+  );
+  const totalPnl = totalPnlExecuted + totalPnlIdeal;
+
   const pnls = setups.map((s) => calcSetupPnl(s.executions, s.direction).realizedPnl);
-  const totalPnl = pnls.reduce((sum, p) => sum + p, 0);
-  const wins   = pnls.filter((p) => p > 0).length;
+  const wins = pnls.filter((p) => p > 0).length;
   const losses = pnls.filter((p) => p < 0).length;
   const denominator = wins + losses;
 
   return {
     count: setups.length,
+    totalPnlExecuted,
+    totalPnlIdeal,
     totalPnl,
     winRate: denominator > 0 ? wins / denominator : null,
     avgPnl: totalPnl / setups.length,

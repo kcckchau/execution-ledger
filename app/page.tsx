@@ -199,8 +199,18 @@ export default function Home() {
     () => setups.filter((s) => s.status === 'open').length,
     [setups],
   );
-  const totalRealizedPnl = useMemo(
-    () => setups.reduce((sum, s) => sum + calcSetupPnl(s.executions, s.direction).realizedPnl, 0),
+  const totalPnlExecuted = useMemo(
+    () =>
+      setups
+        .filter((s) => !s.isIdeal)
+        .reduce((sum, s) => sum + calcSetupPnl(s.executions, s.direction).realizedPnl, 0),
+    [setups],
+  );
+  const totalPnlIdeal = useMemo(
+    () =>
+      setups
+        .filter((s) => s.isIdeal)
+        .reduce((sum, s) => sum + calcSetupPnl(s.executions, s.direction).realizedPnl, 0),
     [setups],
   );
   const hasPnl = useMemo(
@@ -254,15 +264,29 @@ export default function Home() {
                 <p className="text-xs text-zinc-500">{openCount} open</p>
               </div>
               {hasPnl && (
-                <div className="text-right">
-                  <p className="text-xs text-zinc-500">Realized P&L</p>
-                  <p
-                    className={`text-sm font-semibold tabular-nums ${
-                      totalRealizedPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                    }`}
-                  >
-                    {formatPnl(totalRealizedPnl)}
-                  </p>
+                <div className="text-right space-y-1">
+                  <div>
+                    <p className="text-xs text-zinc-500">Executed P&L</p>
+                    <p
+                      className={`text-sm font-semibold tabular-nums ${
+                        totalPnlExecuted >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                      }`}
+                    >
+                      {formatPnl(totalPnlExecuted)}
+                    </p>
+                  </div>
+                  {totalPnlIdeal !== 0 && (
+                    <div>
+                      <p className="text-[10px] text-violet-500/90">Ideal (hypothetical)</p>
+                      <p
+                        className={`text-xs font-semibold tabular-nums ${
+                          totalPnlIdeal >= 0 ? 'text-violet-400' : 'text-violet-300'
+                        }`}
+                      >
+                        {formatPnl(totalPnlIdeal)}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -357,7 +381,6 @@ export default function Home() {
             onAddExecution={addExecution}
             onUpdateStatus={updateStatus}
             onDeleteSetup={deleteSetup}
-            onDeleteSetups={deleteSetups}
             onUpdateSetup={updateSetup}
             onUpdateExecution={updateExecution}
             onDeleteExecution={deleteExecution}

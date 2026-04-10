@@ -92,10 +92,14 @@ export function formatSetupDateShort(ymd: string): string {
 // ─── Aggregation ──────────────────────────────────────────────────────────────
 
 export interface DaySummary {
-  date: string;          // YYYY-MM-DD
+  date: string; // YYYY-MM-DD
   setups: TradeSetup[];
-  realizedPnl: number;
-  setupCount: number;
+  /** Realized P&L from executed (non-ideal) setups */
+  realizedPnlExecuted: number;
+  /** Hypothetical realized P&L from ideal setups */
+  realizedPnlIdeal: number;
+  setupCountExecuted: number;
+  setupCountIdeal: number;
 }
 
 export function groupSetupsByDate(setups: TradeSetup[]): Record<string, TradeSetup[]> {
@@ -134,19 +138,24 @@ export function countSetupsByDate(setups: TradeSetup[]): Record<string, number> 
 export function getDaySummaries(
   setups: TradeSetup[],
 ): Record<string, DaySummary> {
-  // Ideal setups are excluded from calendar P&L and setup counts.
-  const executed = setups.filter((s) => !s.isIdeal);
-  const byDate = groupSetupsByDate(executed);
+  const byDate = groupSetupsByDate(setups);
   const out: Record<string, DaySummary> = {};
   for (const [date, group] of Object.entries(byDate)) {
+    const executed = group.filter((s) => !s.isIdeal);
+    const ideal = group.filter((s) => s.isIdeal);
     out[date] = {
       date,
       setups: group,
-      realizedPnl: group.reduce(
+      realizedPnlExecuted: executed.reduce(
         (sum, s) => sum + calcSetupPnl(s.executions, s.direction).realizedPnl,
         0,
       ),
-      setupCount: group.length,
+      realizedPnlIdeal: ideal.reduce(
+        (sum, s) => sum + calcSetupPnl(s.executions, s.direction).realizedPnl,
+        0,
+      ),
+      setupCountExecuted: executed.length,
+      setupCountIdeal: ideal.length,
     };
   }
   return out;

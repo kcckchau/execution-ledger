@@ -45,12 +45,18 @@ export default function DailyDrillDown({
   const idealSetups = setups.filter((s) => s.isIdeal);
   const visibleSetups = mode === 'executed' ? executedSetups : idealSetups;
 
-  // P&L is always from executed setups only — ideal setups never count.
-  const totalPnl = executedSetups.reduce(
+  const totalPnlExecuted = executedSetups.reduce(
     (sum, s) => sum + calcSetupPnl(s.executions, s.direction).realizedPnl,
     0,
   );
-  const hasPnl = executedSetups.some((s) =>
+  const totalPnlIdeal = idealSetups.reduce(
+    (sum, s) => sum + calcSetupPnl(s.executions, s.direction).realizedPnl,
+    0,
+  );
+  const hasExecutedPnl = executedSetups.some((s) =>
+    s.executions.some((e) => e.actionType === 'trim' || e.actionType === 'exit'),
+  );
+  const hasIdealPnl = idealSetups.some((s) =>
     s.executions.some((e) => e.actionType === 'trim' || e.actionType === 'exit'),
   );
 
@@ -108,15 +114,26 @@ export default function DailyDrillDown({
           {visibleSetups.length > 0 && (
             <span className="text-[10px] text-zinc-600">{visibleSetups.length}</span>
           )}
-          {mode === 'executed' && hasPnl && (
+          {mode === 'executed' && hasExecutedPnl && (
             <span className={`text-[10px] font-medium tabular-nums ${
-              totalPnl > 0 ? 'text-emerald-400' : 'text-rose-400'
+              totalPnlExecuted > 0 ? 'text-emerald-400' : 'text-rose-400'
             }`}>
-              {totalPnl > 0 ? '+' : ''}{formatPnl(totalPnl)}
+              {totalPnlExecuted > 0 ? '+' : ''}{formatPnl(totalPnlExecuted)}
             </span>
           )}
           {mode === 'ideal' && idealSetups.length > 0 && (
-            <span className="text-[10px] text-violet-500">not in P&amp;L</span>
+            <span className="flex items-center gap-1.5 text-[10px] text-violet-500/90">
+              {hasIdealPnl && totalPnlIdeal !== 0 && (
+                <span
+                  className={`font-medium tabular-nums ${
+                    totalPnlIdeal > 0 ? 'text-violet-400' : 'text-violet-300'
+                  }`}
+                >
+                  {totalPnlIdeal > 0 ? '+' : ''}{formatPnl(totalPnlIdeal)}
+                </span>
+              )}
+              <span className="font-normal text-violet-500/70">hypothetical</span>
+            </span>
           )}
           <div className="h-px flex-1 bg-zinc-800" />
           {visibleSetups.length > 0 && (

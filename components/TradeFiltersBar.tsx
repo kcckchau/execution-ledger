@@ -181,11 +181,27 @@ export default function TradeFiltersBar({
           <span className="text-zinc-400 tabular-nums">
             {stats.count} trade{stats.count !== 1 ? 's' : ''}
           </span>
-          <span className="text-zinc-500">
-            P&L{' '}
-            <span className={`font-mono font-medium tabular-nums ${pnlClass(stats.totalPnl)}`}>
-              {formatPnl(stats.totalPnl)}
+          <span className="text-zinc-500 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            <span>
+              Ex{' '}
+              <span
+                className={`font-mono font-medium tabular-nums ${pnlClass(stats.totalPnlExecuted)}`}
+              >
+                {formatPnl(stats.totalPnlExecuted)}
+              </span>
             </span>
+            {stats.totalPnlIdeal !== 0 && (
+              <span>
+                Id{' '}
+                <span
+                  className={`font-mono font-medium tabular-nums ${
+                    stats.totalPnlIdeal >= 0 ? 'text-violet-400' : 'text-violet-300'
+                  }`}
+                >
+                  {formatPnl(stats.totalPnlIdeal)}
+                </span>
+              </span>
+            )}
           </span>
           {stats.winRate !== null && (
             <span className="text-zinc-500">

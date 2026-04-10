@@ -36,24 +36,32 @@ function CalendarCell({
   onClick,
 }: CellProps) {
   const day = parseInt(date.split('-')[2], 10);
-  const hasTrades = summary && summary.setupCount > 0;
-  const isPositive = hasTrades && summary!.realizedPnl > 0;
-  const isNegative = hasTrades && summary!.realizedPnl < 0;
-  const isFlat = hasTrades && summary!.realizedPnl === 0;
+  const setupTotal =
+    summary !== undefined
+      ? summary.setupCountExecuted + summary.setupCountIdeal
+      : 0;
+  const hasTrades = summary !== undefined && setupTotal > 0;
+  const ex = summary?.realizedPnlExecuted ?? 0;
+  const idPnl = summary?.realizedPnlIdeal ?? 0;
+  const isPositive = hasTrades && ex > 0;
+  const isNegative = hasTrades && ex < 0;
+  const isFlatExec = hasTrades && ex === 0;
+  const onlyIdealPnl = hasTrades && ex === 0 && idPnl !== 0;
 
   return (
     <button
       type="button"
       onClick={onClick}
       className={[
-        'relative flex flex-col p-2 rounded-md border text-left transition-all h-[76px]',
+        'relative flex flex-col p-2 rounded-md border text-left transition-all min-h-[76px]',
         isSelected
           ? 'ring-2 ring-indigo-500 ring-offset-1 ring-offset-[#0B0B0C]'
           : '',
         !isCurrentMonth ? 'opacity-30' : '',
         isPositive ? 'bg-emerald-950/50 border-emerald-900/60 hover:bg-emerald-950/70' : '',
         isNegative ? 'bg-rose-950/50 border-rose-900/60 hover:bg-rose-950/70' : '',
-        isFlat ? 'bg-zinc-900 border-zinc-800 hover:border-zinc-600' : '',
+        onlyIdealPnl ? 'bg-violet-950/40 border-violet-900/50 hover:bg-violet-950/60' : '',
+        isFlatExec && !onlyIdealPnl ? 'bg-zinc-900 border-zinc-800 hover:border-zinc-600' : '',
         !hasTrades ? 'bg-zinc-900 border-zinc-800 hover:border-zinc-600' : '',
       ]
         .filter(Boolean)
@@ -71,21 +79,34 @@ function CalendarCell({
         {day}
       </span>
 
-      {hasTrades && (
+      {hasTrades && summary && (
         <div className="mt-auto flex flex-col gap-0.5">
           <span
-            className={`text-xs tabular-nums font-semibold leading-tight ${
-              isPositive
-                ? 'text-emerald-400'
-                : isNegative
-                ? 'text-rose-400'
-                : 'text-zinc-400'
+            className={`text-[11px] tabular-nums font-semibold leading-tight ${
+              ex !== 0
+                ? ex > 0
+                  ? 'text-emerald-400'
+                  : 'text-rose-400'
+                : 'text-zinc-500'
             }`}
+            title="Executed P&L"
           >
-            {summary!.realizedPnl === 0 ? '—' : formatPnl(summary!.realizedPnl)}
+            {ex === 0 && idPnl === 0 ? '—' : ex !== 0 ? formatPnl(ex) : '—'}
           </span>
+          {idPnl !== 0 && (
+            <span
+              className={`text-[10px] tabular-nums font-medium leading-tight ${
+                idPnl > 0 ? 'text-violet-400' : 'text-violet-300/80'
+              }`}
+              title="Ideal (hypothetical) P&L"
+            >
+              Id {formatPnl(idPnl)}
+            </span>
+          )}
           <span className="text-[10px] leading-tight text-zinc-600">
-            {summary!.setupCount} setup{summary!.setupCount !== 1 ? 's' : ''}
+            {summary.setupCountExecuted > 0 && summary.setupCountIdeal > 0
+              ? `${summary.setupCountExecuted} ex · ${summary.setupCountIdeal} id`
+              : `${setupTotal} setup${setupTotal !== 1 ? 's' : ''}`}
           </span>
         </div>
       )}
@@ -142,14 +163,25 @@ export default function CalendarView({
     return m === viewMonth && summaries[d] !== undefined;
   }).length;
 
-  const monthPnl = days
+  const { monthPnlExecuted, monthPnlIdeal } = days
     .filter((d) => {
       const m = parseInt(d.split('-')[1], 10);
       return m === viewMonth && summaries[d] !== undefined;
     })
-    .reduce((sum, d) => sum + (summaries[d]?.realizedPnl ?? 0), 0);
+    .reduce(
+      (acc, d) => {
+        const s = summaries[d];
+        if (!s) return acc;
+        return {
+          monthPnlExecuted: acc.monthPnlExecuted + s.realizedPnlExecuted,
+          monthPnlIdeal: acc.monthPnlIdeal + s.realizedPnlIdeal,
+        };
+      },
+      { monthPnlExecuted: 0, monthPnlIdeal: 0 },
+    );
 
   const hasMonthPnl = tradeDaysThisMonth > 0;
+  const hasMonthIdealPnl = hasMonthPnl && monthPnlIdeal !== 0;
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-5 flex flex-col gap-4">
@@ -178,17 +210,33 @@ export default function CalendarView({
         </div>
 
         {hasMonthPnl && (
-          <div className="text-right">
-            <p className="text-[10px] text-zinc-500 uppercase tracking-wider">
-              Month P&L
-            </p>
-            <p
-              className={`text-sm font-bold tabular-nums ${
-                monthPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
-              }`}
-            >
-              {formatPnl(monthPnl)}
-            </p>
+          <div className="text-right space-y-0.5">
+            <div>
+              <p className="text-[10px] text-zinc-500 uppercase tracking-wider">
+                Month · Executed
+              </p>
+              <p
+                className={`text-sm font-bold tabular-nums ${
+                  monthPnlExecuted >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                }`}
+              >
+                {formatPnl(monthPnlExecuted)}
+              </p>
+            </div>
+            {hasMonthIdealPnl && (
+              <div>
+                <p className="text-[10px] text-violet-500/90 uppercase tracking-wider">
+                  Ideal
+                </p>
+                <p
+                  className={`text-xs font-semibold tabular-nums ${
+                    monthPnlIdeal >= 0 ? 'text-violet-400' : 'text-violet-300'
+                  }`}
+                >
+                  {formatPnl(monthPnlIdeal)}
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>
