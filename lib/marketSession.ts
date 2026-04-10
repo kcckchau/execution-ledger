@@ -12,6 +12,10 @@ export type LoadMarketSessionResult =
   | { ok: true; data: SessionChartData }
   | { ok: false; reason: 'not_found' | 'invalid_json' | 'invalid_args' };
 
+// Module-level cache for findPrevTradingDate. Key: "SYMBOL:YYYY-MM-DD".
+// The previous trading date for a given day is stable — once determined it never changes.
+const prevDateCache = new Map<string, string | null>();
+
 function resolveMarketSessionPath(symbol: string, date: string): string | null {
   const sym = symbol.trim();
   const d = date.trim();
@@ -23,12 +27,19 @@ function resolveMarketSessionPath(symbol: string, date: string): string | null {
  * Returns the previous trading day ISO date by walking back up to 7 calendar
  * days from `date` and returning the first file that exists on disk.
  * Returns null if no file is found within that window.
+ * Results are cached indefinitely — the previous trading day for a given date is immutable.
  */
 export async function findPrevTradingDate(
   symbol: string,
   date: string
 ): Promise<string | null> {
+  const cacheKey = `${symbol}:${date}`;
+  if (prevDateCache.has(cacheKey)) {
+    return prevDateCache.get(cacheKey) ?? null;
+  }
+
   const base = new Date(`${date}T12:00:00Z`);
+  let result: string | null = null;
   for (let i = 1; i <= 7; i++) {
     const d = new Date(base);
     d.setUTCDate(d.getUTCDate() - i);
@@ -37,12 +48,15 @@ export async function findPrevTradingDate(
     if (!filePath) continue;
     try {
       await readFile(filePath, 'utf8');
-      return iso;
+      result = iso;
+      break;
     } catch {
       // not found — keep looking
     }
   }
-  return null;
+
+  prevDateCache.set(cacheKey, result);
+  return result;
 }
 
 /**

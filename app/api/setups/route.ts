@@ -3,9 +3,14 @@ import { prisma } from '@/lib/prisma';
 import { mapSetup, mapDayContext } from '@/lib/mappers';
 import { SETUP_TYPES, CONTEXTS, LOCATIONS, ENTRY_TRIGGERS, INVALIDATION_TYPES } from '@/types/setup';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = req.nextUrl;
+    const limitParam = parseInt(searchParams.get('limit') ?? '500', 10);
+    const limit = isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 1000) : 500;
+
     const rows = await prisma.tradeSetup.findMany({
+      take: limit,
       include: { executions: { orderBy: { executionTime: 'asc' } } },
       orderBy: [{ setupDate: 'desc' }, { createdAt: 'asc' }],
     });

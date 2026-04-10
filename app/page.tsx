@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { type TradeSetup, type Execution } from '@/types/setup';
 import type { DayContext } from '@/types/dayContext';
 import { calcSetupPnl, formatPnl } from '@/lib/pnl';
@@ -18,11 +18,14 @@ type ActiveView = 'log' | 'calendar';
 export default function Home() {
   const [setups, setSetups] = useState<TradeSetup[]>([]);
   const [loading, setLoading] = useState(true);
-
   const [error, setError] = useState<string | null>(null);
+  const [mutationError, setMutationError] = useState<string | null>(null);
+  const [showSetupForm, setShowSetupForm] = useState(false);
+  const [activeView, setActiveView] = useState<ActiveView>('log');
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/setups')
+    fetch('/api/setups?limit=500')
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) {
@@ -34,43 +37,60 @@ export default function Home() {
       .catch((e) => setError(e instanceof Error ? e.message : 'Network error'))
       .finally(() => setLoading(false));
   }, []);
-  const [showSetupForm, setShowSetupForm] = useState(false);
-  const [activeView, setActiveView] = useState<ActiveView>('log');
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
   async function logSetup(setup: TradeSetup) {
-    await fetch('/api/setups', {
+    setMutationError(null);
+    const res = await fetch('/api/setups', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(setup),
     });
-    setSetups((prev) => [setup, ...prev]);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setMutationError(data?.error ?? 'Failed to create setup');
+      return;
+    }
+    const created: TradeSetup = await res.json();
+    setSetups((prev) => [created, ...prev]);
     setActiveView('log');
   }
 
   async function addExecution(setupId: string, execution: Execution) {
-    await fetch(`/api/setups/${setupId}/executions`, {
+    setMutationError(null);
+    const res = await fetch(`/api/setups/${setupId}/executions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(execution),
     });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setMutationError(data?.error ?? 'Failed to add execution');
+      return;
+    }
+    const created: Execution = await res.json();
     setSetups((prev) =>
       prev.map((s) =>
         s.id === setupId
-          ? { ...s, executions: [...s.executions, execution], updatedAt: new Date().toISOString() }
+          ? { ...s, executions: [...s.executions, created], updatedAt: new Date().toISOString() }
           : s,
       ),
     );
   }
 
   async function updateStatus(setupId: string, status: 'open' | 'closed') {
-    await fetch(`/api/setups/${setupId}`, {
+    setMutationError(null);
+    const res = await fetch(`/api/setups/${setupId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
     });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setMutationError(data?.error ?? 'Failed to update status');
+      return;
+    }
     setSetups((prev) =>
       prev.map((s) =>
         s.id === setupId ? { ...s, status, updatedAt: new Date().toISOString() } : s,
@@ -79,61 +99,87 @@ export default function Home() {
   }
 
   async function updateSetup(id: string, updated: TradeSetup) {
+    setMutationError(null);
     const res = await fetch(`/api/setups/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updated),
     });
-    if (res.ok) {
-      const data: TradeSetup = await res.json();
-      setSetups((prev) => prev.map((s) => (s.id === id ? data : s)));
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setMutationError(data?.error ?? 'Failed to update setup');
+      return;
     }
+    const data: TradeSetup = await res.json();
+    setSetups((prev) => prev.map((s) => (s.id === id ? data : s)));
   }
 
   async function deleteSetup(id: string) {
-    await fetch(`/api/setups/${id}`, { method: 'DELETE' });
+    setMutationError(null);
+    const res = await fetch(`/api/setups/${id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setMutationError(data?.error ?? 'Failed to delete setup');
+      return;
+    }
     setSetups((prev) => prev.filter((s) => s.id !== id));
   }
 
   async function deleteSetups(ids: string[]) {
-    await fetch('/api/setups', {
+    setMutationError(null);
+    const res = await fetch('/api/setups', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ids }),
     });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setMutationError(data?.error ?? 'Failed to delete setups');
+      return;
+    }
     setSetups((prev) => prev.filter((s) => !ids.includes(s.id)));
   }
 
   async function updateExecution(setupId: string, exec: Execution) {
+    setMutationError(null);
     const res = await fetch(`/api/setups/${setupId}/executions/${exec.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(exec),
     });
-    if (res.ok) {
-      const data: Execution = await res.json();
-      setSetups((prev) =>
-        prev.map((s) =>
-          s.id === setupId
-            ? {
-                ...s,
-                executions: s.executions.map((e) => (e.id === exec.id ? data : e)),
-                updatedAt: new Date().toISOString(),
-              }
-            : s,
-        ),
-      );
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setMutationError(data?.error ?? 'Failed to update execution');
+      return;
     }
-  }
-
-  function updateDayContext(date: string, dc: DayContext) {
+    const data: Execution = await res.json();
     setSetups((prev) =>
-      prev.map((s) => (s.setupDate === date ? { ...s, dayContext: dc } : s)),
+      prev.map((s) =>
+        s.id === setupId
+          ? {
+              ...s,
+              executions: s.executions.map((e) => (e.id === exec.id ? data : e)),
+              updatedAt: new Date().toISOString(),
+            }
+          : s,
+      ),
     );
   }
 
+  const updateDayContext = useCallback((date: string, dc: DayContext) => {
+    setSetups((prev) =>
+      prev.map((s) => (s.setupDate === date ? { ...s, dayContext: dc } : s)),
+    );
+  }, []);
+
   async function deleteExecution(setupId: string, execId: string) {
-    await fetch(`/api/setups/${setupId}/executions/${execId}`, { method: 'DELETE' });
+    setMutationError(null);
+    const res = await fetch(`/api/setups/${setupId}/executions/${execId}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setMutationError(data?.error ?? 'Failed to delete execution');
+      return;
+    }
     setSetups((prev) =>
       prev.map((s) =>
         s.id === setupId
@@ -149,18 +195,21 @@ export default function Home() {
 
   // ── Derived ───────────────────────────────────────────────────────────────
 
-  const openCount = setups.filter((s) => s.status === 'open').length;
-  const totalRealizedPnl = setups.reduce(
-    (sum, s) => sum + calcSetupPnl(s.executions, s.direction).realizedPnl,
-    0,
+  const openCount = useMemo(
+    () => setups.filter((s) => s.status === 'open').length,
+    [setups],
   );
-  const hasPnl = setups.some((s) =>
-    s.executions.some((e) => e.actionType === 'trim' || e.actionType === 'exit'),
+  const totalRealizedPnl = useMemo(
+    () => setups.reduce((sum, s) => sum + calcSetupPnl(s.executions, s.direction).realizedPnl, 0),
+    [setups],
+  );
+  const hasPnl = useMemo(
+    () => setups.some((s) => s.executions.some((e) => e.actionType === 'trim' || e.actionType === 'exit')),
+    [setups],
   );
 
   const selectedDateSetups = useMemo(
-    () =>
-      selectedDate ? setups.filter((s) => s.setupDate === selectedDate) : [],
+    () => selectedDate ? setups.filter((s) => s.setupDate === selectedDate) : [],
     [setups, selectedDate],
   );
 
@@ -223,6 +272,20 @@ export default function Home() {
 
       {/* ── Main ── */}
       <main className="mx-auto max-w-4xl px-6 py-8 flex flex-col gap-6">
+
+        {/* ── Mutation error banner ── */}
+        {mutationError && (
+          <div className="flex items-center justify-between gap-4 rounded-md border border-rose-500/30 bg-rose-500/10 px-4 py-2.5">
+            <p className="text-xs text-rose-400">{mutationError}</p>
+            <button
+              type="button"
+              onClick={() => setMutationError(null)}
+              className="text-xs text-rose-500 hover:text-rose-300 transition-colors shrink-0"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {/* ── Toolbar: view toggle + New Setup ── */}
         {showSetupForm ? (

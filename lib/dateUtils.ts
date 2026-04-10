@@ -30,6 +30,44 @@ export function toEasternDate(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+function easternOffset(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+
+  function nthSunday(year: number, month: number, n: number): number {
+    const firstOfMonth = new Date(Date.UTC(year, month - 1, 1));
+    const firstSun = (7 - firstOfMonth.getUTCDay()) % 7;
+    return 1 + firstSun + (n - 1) * 7;
+  }
+
+  const dstStart = nthSunday(y, 3, 2);
+  const dstEnd = nthSunday(y, 11, 1);
+
+  const inEdt =
+    (m === 3 && d >= dstStart) ||
+    (m > 3 && m < 11) ||
+    (m === 11 && d < dstEnd);
+
+  return inEdt ? '-04:00' : '-05:00';
+}
+
+export function easternDateTimeToIso(dateStr: string, timeStr: string): string {
+  const offset = easternOffset(dateStr);
+  return new Date(`${dateStr}T${timeStr}:00${offset}`).toISOString();
+}
+
+export function easternTimeFromIso(iso: string): string {
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+  const parts = fmt.formatToParts(new Date(iso));
+  const h = parts.find((p) => p.type === 'hour')?.value ?? '00';
+  const m = parts.find((p) => p.type === 'minute')?.value ?? '00';
+  return `${h}:${m}`;
+}
+
 // ─── Formatting ───────────────────────────────────────────────────────────────
 
 /** "Mar 24, 2026" from YYYY-MM-DD */

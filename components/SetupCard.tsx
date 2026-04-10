@@ -62,11 +62,13 @@ function formatTime(iso: string): string {
 function ExecutionRow({
   exec,
   setupId,
+  setupDate,
   onUpdate,
   onDelete,
 }: {
   exec: Execution;
   setupId: string;
+  setupDate: string;
   onUpdate: (exec: Execution) => Promise<void>;
   onDelete: () => void;
 }) {
@@ -77,6 +79,7 @@ function ExecutionRow({
     return (
       <ExecutionForm
         setupId={setupId}
+        setupDate={setupDate}
         initialExecution={exec}
         onSave={async (updated) => {
           await onUpdate(updated);
@@ -508,6 +511,7 @@ export default function SetupCard({
                   key={exec.id}
                   exec={exec}
                   setupId={setup.id}
+                  setupDate={setup.setupDate}
                   onUpdate={onUpdateExecution}
                   onDelete={() => setConfirmTarget({ type: 'deleteExecution', execId: exec.id })}
                 />
@@ -561,6 +565,7 @@ export default function SetupCard({
             <div className="px-5 pb-4">
               <ExecutionForm
                 setupId={setup.id}
+                setupDate={setup.setupDate}
                 onAdd={(exec) => {
                   onAddExecution(setup.id, exec);
                   setShowExecForm(false);

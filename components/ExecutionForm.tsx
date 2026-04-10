@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import { type Execution, type ActionType, ACTION_TYPES } from '@/types/setup';
+import { easternDateTimeToIso, easternTimeFromIso } from '@/lib/dateUtils';
 
 interface ExecutionFormProps {
   setupId: string;
+  setupDate: string;
   /** Create mode: called with the new execution. */
   onAdd?: (execution: Execution) => void;
   /** Edit mode: called with the updated execution. Requires initialExecution. */
@@ -19,18 +21,13 @@ function getCurrentTime(): string {
   return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 }
 
-function timeFromIso(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-}
-
 function makeForm(init?: Execution) {
   if (init) {
     return {
       actionType: init.actionType as ActionType,
       price: init.price.toString(),
       size: init.size.toString(),
-      time: timeFromIso(init.executionTime),
+      time: easternTimeFromIso(init.executionTime),
       note: init.note,
     };
   }
@@ -49,6 +46,7 @@ const inputClass =
 
 export default function ExecutionForm({
   setupId,
+  setupDate,
   onAdd,
   onSave,
   onCancel,
@@ -65,12 +63,6 @@ export default function ExecutionForm({
     if (!isFinite(price) || price <= 0) return;
     if (!isFinite(size) || size <= 0) return;
 
-    const [hours, minutes] = form.time.split(':').map(Number);
-    const execDate = isEdit
-      ? new Date(initialExecution!.executionTime)
-      : new Date();
-    execDate.setHours(hours, minutes, 0, 0);
-
     const now = new Date().toISOString();
     const execution: Execution = {
       id: initialExecution?.id ?? crypto.randomUUID(),
@@ -78,7 +70,7 @@ export default function ExecutionForm({
       actionType: form.actionType,
       price,
       size,
-      executionTime: execDate.toISOString(),
+      executionTime: easternDateTimeToIso(setupDate, form.time),
       note: form.note.trim(),
       createdAt: initialExecution?.createdAt ?? now,
       updatedAt: now,
