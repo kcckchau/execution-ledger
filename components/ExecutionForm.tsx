@@ -17,8 +17,15 @@ interface ExecutionFormProps {
 }
 
 function getCurrentTime(): string {
-  const now = new Date();
-  return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(new Date());
+  const hour = parts.find((p) => p.type === 'hour')?.value ?? '00';
+  const minute = parts.find((p) => p.type === 'minute')?.value ?? '00';
+  return `${hour}:${minute}`;
 }
 
 function makeForm(init?: Execution) {

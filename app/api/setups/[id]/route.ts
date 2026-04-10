@@ -14,6 +14,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
     const row = await prisma.tradeSetup.update({
       where: { id },
       data: {
+        ...(body.isIdeal !== undefined && { isIdeal: Boolean(body.isIdeal) }),
         ...(body.status !== undefined && { status: body.status }),
         ...(body.overallNotes !== undefined && { overallNotes: body.overallNotes }),
         ...(body.symbol !== undefined && { symbol: String(body.symbol).trim().toUpperCase() }),

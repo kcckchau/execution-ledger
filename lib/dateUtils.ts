@@ -134,7 +134,9 @@ export function countSetupsByDate(setups: TradeSetup[]): Record<string, number> 
 export function getDaySummaries(
   setups: TradeSetup[],
 ): Record<string, DaySummary> {
-  const byDate = groupSetupsByDate(setups);
+  // Ideal setups are excluded from calendar P&L and setup counts.
+  const executed = setups.filter((s) => !s.isIdeal);
+  const byDate = groupSetupsByDate(executed);
   const out: Record<string, DaySummary> = {};
   for (const [date, group] of Object.entries(byDate)) {
     out[date] = {

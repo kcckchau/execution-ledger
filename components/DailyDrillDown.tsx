@@ -8,8 +8,9 @@ import { formatSetupDate } from '@/lib/dateUtils';
 import SetupCard from './SetupCard';
 import DayContextCard from './DayContextCard';
 import SetupSessionChart from './SetupSessionChart';
-import OpportunitiesSection from './OpportunitiesSection';
 import ConfirmDialog from './ConfirmDialog';
+
+type SetupMode = 'executed' | 'ideal';
 
 interface DailyDrillDownProps {
   date: string; // YYYY-MM-DD
@@ -38,19 +39,25 @@ export default function DailyDrillDown({
 }: DailyDrillDownProps) {
   const [showDeleteDayConfirm, setShowDeleteDayConfirm] = useState(false);
   const [deleteDayPending, setDeleteDayPending] = useState(false);
+  const [mode, setMode] = useState<SetupMode>('executed');
 
-  const totalPnl = setups.reduce(
+  const executedSetups = setups.filter((s) => !s.isIdeal);
+  const idealSetups = setups.filter((s) => s.isIdeal);
+  const visibleSetups = mode === 'executed' ? executedSetups : idealSetups;
+
+  // P&L is always from executed setups only — ideal setups never count.
+  const totalPnl = executedSetups.reduce(
     (sum, s) => sum + calcSetupPnl(s.executions, s.direction).realizedPnl,
     0,
   );
-  const hasPnl = setups.some((s) =>
+  const hasPnl = executedSetups.some((s) =>
     s.executions.some((e) => e.actionType === 'trim' || e.actionType === 'exit'),
   );
 
   async function handleDeleteDay() {
     setDeleteDayPending(true);
     try {
-      await onDeleteSetups(setups.map((s) => s.id));
+      await onDeleteSetups(visibleSetups.map((s) => s.id));
       setShowDeleteDayConfirm(false);
     } finally {
       setDeleteDayPending(false);
@@ -71,24 +78,48 @@ export default function DailyDrillDown({
           onUpdate={(dc) => onUpdateDayContext(date, dc)}
         />
 
-        {/* ── Opportunities section ── */}
-        <OpportunitiesSection date={date} />
-
-        {/* ── Trades section ── */}
+        {/* ── Setups section ── */}
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-semibold uppercase tracking-widest text-zinc-600">Trades</span>
-          {setups.length > 0 && (
-            <span className="text-[10px] text-zinc-600">{setups.length}</span>
+          {/* Executed / Ideal toggle */}
+          <div className="flex rounded-md border border-zinc-800 overflow-hidden shrink-0">
+            <button
+              type="button"
+              onClick={() => setMode('executed')}
+              className={`px-3 py-1 text-[10px] font-semibold uppercase tracking-wider transition-colors ${
+                mode === 'executed'
+                  ? 'bg-zinc-700 text-white'
+                  : 'bg-zinc-900 text-zinc-500 hover:text-zinc-300'
+              }`}
+            >
+              Executed
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('ideal')}
+              className={`px-3 py-1 text-[10px] font-semibold uppercase tracking-wider transition-colors border-l border-zinc-800 ${
+                mode === 'ideal'
+                  ? 'bg-violet-900/60 text-violet-300'
+                  : 'bg-zinc-900 text-zinc-500 hover:text-zinc-300'
+              }`}
+            >
+              Ideal
+            </button>
+          </div>
+          {visibleSetups.length > 0 && (
+            <span className="text-[10px] text-zinc-600">{visibleSetups.length}</span>
           )}
-          {hasPnl && (
+          {mode === 'executed' && hasPnl && (
             <span className={`text-[10px] font-medium tabular-nums ${
               totalPnl > 0 ? 'text-emerald-400' : 'text-rose-400'
             }`}>
               {totalPnl > 0 ? '+' : ''}{formatPnl(totalPnl)}
             </span>
           )}
+          {mode === 'ideal' && idealSetups.length > 0 && (
+            <span className="text-[10px] text-violet-500">not in P&amp;L</span>
+          )}
           <div className="h-px flex-1 bg-zinc-800" />
-          {setups.length > 0 && (
+          {visibleSetups.length > 0 && (
             <button
               type="button"
               onClick={() => setShowDeleteDayConfirm(true)}
@@ -99,10 +130,10 @@ export default function DailyDrillDown({
           )}
         </div>
 
-        {/* ── Session charts — one per unique symbol, lazy loaded ── */}
-        {setups.length > 0 && (() => {
+        {/* ── Session charts — one per unique symbol in the visible set, lazy loaded ── */}
+        {visibleSetups.length > 0 && (() => {
           const seenSymbols = new Set<string>();
-          return setups
+          return visibleSetups
             .filter((s) => {
               if (seenSymbols.has(s.symbol)) return false;
               seenSymbols.add(s.symbol);
@@ -110,24 +141,24 @@ export default function DailyDrillDown({
             })
             .map((s) => (
               <SetupSessionChart
-                key={`${s.symbol}::${s.setupDate}`}
+                key={`${s.symbol}::${s.setupDate}::${mode}`}
                 symbol={s.symbol}
                 setupDate={s.setupDate}
-                executions={setups
-                  .filter((gs) => gs.symbol === s.symbol)
-                  .flatMap((gs) => gs.executions)}
+                setups={visibleSetups.filter((gs) => gs.symbol === s.symbol)}
               />
             ));
         })()}
 
         {/* ── Setup cards or empty state ── */}
-        {setups.length === 0 ? (
+        {visibleSetups.length === 0 ? (
           <p className="text-sm text-zinc-600 italic text-center py-6">
-            No setups logged for this day.
+            {mode === 'ideal'
+              ? 'No ideal setups logged for this day.'
+              : 'No executed setups logged for this day.'}
           </p>
         ) : (
           <div className="flex flex-col gap-4">
-            {setups.map((setup) => (
+            {visibleSetups.map((setup) => (
               <SetupCard
                 key={setup.id}
                 setup={setup}
@@ -145,9 +176,9 @@ export default function DailyDrillDown({
 
       <ConfirmDialog
         open={showDeleteDayConfirm}
-        title={`Delete all setups for ${formatSetupDate(date)}`}
-        message={`Permanently delete all ${setups.length} setup${setups.length !== 1 ? 's' : ''} and their executions for ${date}? This cannot be undone.`}
-        confirmLabel={`Delete ${setups.length}`}
+        title={`Delete ${mode} setups for ${formatSetupDate(date)}`}
+        message={`Permanently delete all ${visibleSetups.length} ${mode} setup${visibleSetups.length !== 1 ? 's' : ''} and their executions for ${date}? This cannot be undone.`}
+        confirmLabel={`Delete ${visibleSetups.length}`}
         pending={deleteDayPending}
         onConfirm={handleDeleteDay}
         onCancel={() => setShowDeleteDayConfirm(false)}

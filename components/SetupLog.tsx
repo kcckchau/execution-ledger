@@ -8,7 +8,6 @@ import { calcSetupPnl } from '@/lib/pnl';
 import SetupCard from './SetupCard';
 import DayContextCard from './DayContextCard';
 import SetupSessionChart from './SetupSessionChart';
-import OpportunitiesSection from './OpportunitiesSection';
 import ConfirmDialog from './ConfirmDialog';
 import TradeFiltersBar from './TradeFiltersBar';
 
@@ -127,10 +126,12 @@ export default function SetupLog({
       ) : (
         <div className="flex flex-col gap-6">
           {dateGroups.map(({ date, setups: groupSetups, dayContext }) => {
-            const dailyPnl = groupSetups.reduce(
-              (sum, s) => sum + calcSetupPnl(s.executions, s.direction).realizedPnl,
-              0,
-            );
+            const dailyPnl = groupSetups
+              .filter((s) => !s.isIdeal)
+              .reduce(
+                (sum, s) => sum + calcSetupPnl(s.executions, s.direction).realizedPnl,
+                0,
+              );
             const pnlSign = dailyPnl > 0 ? '+' : '';
             const pnlColor =
               dailyPnl > 0 ? 'text-emerald-400' : dailyPnl < 0 ? 'text-rose-400' : 'text-zinc-500';
@@ -147,9 +148,6 @@ export default function SetupLog({
                 dayContext={dayContext}
                 onUpdate={(dc) => onUpdateDayContext(date, dc)}
               />
-
-              {/* ── Opportunities section ── */}
-              <OpportunitiesSection date={date} />
 
               {/* ── Trades section ── */}
               <div className="flex items-center gap-2">
@@ -177,9 +175,7 @@ export default function SetupLog({
                       key={`${s.symbol}::${s.setupDate}`}
                       symbol={s.symbol}
                       setupDate={s.setupDate}
-                      executions={groupSetups
-                        .filter((gs) => gs.symbol === s.symbol)
-                        .flatMap((gs) => gs.executions)}
+                      setups={groupSetups.filter((gs) => gs.symbol === s.symbol)}
                     />
                   ));
               })()}

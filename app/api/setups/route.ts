@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { mapSetup, mapDayContext } from '@/lib/mappers';
+import { mapSetup, mapDayContext, type DbSetup } from '@/lib/mappers';
 import { SETUP_TYPES, CONTEXTS, LOCATIONS, ENTRY_TRIGGERS, INVALIDATION_TYPES } from '@/types/setup';
 
 export async function GET(req: NextRequest) {
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
       : [];
     const dayContextMap = new Map(dayContextRows.map((d) => [d.date, mapDayContext(d)]));
 
-    return NextResponse.json(rows.map((r) => mapSetup(r, dayContextMap.get(r.setupDate) ?? null)));
+    return NextResponse.json(rows.map((r) => mapSetup(r as unknown as DbSetup, dayContextMap.get(r.setupDate) ?? null)));
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unexpected error';
     return NextResponse.json({ error: message }, { status: 500 });
@@ -126,6 +126,7 @@ export async function POST(req: NextRequest) {
         contexts: body.contexts,
         locations: body.locations ?? [],
         entryTrigger: body.entryTrigger,
+        isIdeal: body.isIdeal === true,
         initialGrade: body.initialGrade ?? null,
         status: body.status ?? 'open',
         overallNotes: body.overallNotes ?? '',
@@ -143,7 +144,7 @@ export async function POST(req: NextRequest) {
     // Fetch the day context for this setup's date.
     const dayCtx = await prisma.dayContext.findUnique({ where: { date: row.setupDate } });
     return NextResponse.json(
-      mapSetup(row, dayCtx ? mapDayContext(dayCtx) : null),
+      mapSetup(row as unknown as DbSetup, dayCtx ? mapDayContext(dayCtx) : null),
       { status: 201 }
     );
   } catch (err) {

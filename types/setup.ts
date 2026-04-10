@@ -389,7 +389,7 @@ export const MARKET_OUTCOME_LABELS: Record<MarketOutcome, string> = {
 };
 
 // ── Direction (new structured enum, uppercase) ────────────────────────────────
-/** Uppercase direction enum used in MarketOpportunity and TradeSetup reflection. */
+/** Uppercase direction enum used in TradeSetup reflection (bestDirection). */
 export const DIRECTION_ENUM_VALUES = ['LONG', 'SHORT'] as const;
 export type DirectionEnum = (typeof DIRECTION_ENUM_VALUES)[number];
 
@@ -496,6 +496,8 @@ export interface TradeSetup {
   reviewNote: string | null;
 
   // ── Meta ──────────────────────────────────────────────────────────────────
+  /** When true this is an ideal/hypothetical trade — excluded from P&L. */
+  isIdeal: boolean;
   initialGrade: Grade | null;
   status: SetupStatus;
   /** Optional extra context (does not replace structured fields). */

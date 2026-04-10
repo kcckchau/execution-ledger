@@ -48,6 +48,7 @@ interface SetupFormProps {
 function makeDefaultForm(init?: TradeSetup) {
   if (init) {
     return {
+      isIdeal:         init.isIdeal,
       symbol:          init.symbol,
       direction:       init.direction,
       setupType:       init.setupType,
@@ -75,6 +76,7 @@ function makeDefaultForm(init?: TradeSetup) {
     };
   }
   return {
+    isIdeal:         false,
     symbol:          '',
     direction:       'long' as Direction,
     setupType:       SETUP_TYPES[0] as SetupType,
@@ -229,6 +231,7 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
     try {
       const now = new Date().toISOString();
       const shared = {
+        isIdeal:          form.isIdeal,
         setupDate:        form.setupDate,
         symbol:           form.symbol.trim().toUpperCase(),
         direction:        form.direction,
@@ -317,6 +320,42 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
         >
           Cancel
         </button>
+      </div>
+
+      {/* ── Tracking mode ── */}
+      <div className="flex flex-col gap-1.5">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+          Setup Mode
+        </p>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setForm((f) => ({ ...f, isIdeal: false }))}
+            aria-pressed={!form.isIdeal}
+            className={`rounded-md px-3 py-1.5 text-xs font-semibold ring-1 transition-colors ${
+              !form.isIdeal
+                ? 'bg-zinc-700 text-zinc-100 ring-zinc-500/50'
+                : 'bg-zinc-900 text-zinc-500 ring-zinc-700 hover:bg-zinc-800 hover:text-zinc-300'
+            }`}
+          >
+            Executed (counts in P&amp;L)
+          </button>
+          <button
+            type="button"
+            onClick={() => setForm((f) => ({ ...f, isIdeal: true }))}
+            aria-pressed={form.isIdeal}
+            className={`rounded-md px-3 py-1.5 text-xs font-semibold ring-1 transition-colors ${
+              form.isIdeal
+                ? 'bg-violet-900/60 text-violet-300 ring-violet-500/40'
+                : 'bg-zinc-900 text-zinc-500 ring-zinc-700 hover:bg-zinc-800 hover:text-zinc-300'
+            }`}
+          >
+            Ideal (review only)
+          </button>
+        </div>
+        <p className="text-[10px] text-zinc-500">
+          Ideal setups are hypothetical and excluded from P&amp;L and daily totals.
+        </p>
       </div>
 
       {/* ── Identity row ── */}

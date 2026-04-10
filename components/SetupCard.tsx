@@ -372,6 +372,11 @@ export default function SetupCard({
               <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-zinc-800 text-zinc-400 ring-1 ring-inset ring-zinc-700">
                 {SETUP_TYPE_LABELS[setup.setupType] ?? setup.setupType}
               </span>
+              {setup.isIdeal && (
+                <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold bg-violet-500/10 text-violet-300 ring-1 ring-inset ring-violet-500/25">
+                  Ideal
+                </span>
+              )}
               {setup.setupName && (
                 <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-indigo-500/10 text-indigo-300 ring-1 ring-inset ring-indigo-500/25">
                   {setup.setupName}
@@ -393,7 +398,7 @@ export default function SetupCard({
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
-            {hasRealizedPnl && (
+            {hasRealizedPnl && !setup.isIdeal && (
               <span
                 className={`text-sm font-bold tabular-nums ${
                   pnl.realizedPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'

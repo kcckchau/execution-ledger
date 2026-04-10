@@ -327,11 +327,16 @@ model TradeSetup {
   /// Free-text post-trade note.
   reviewNote    String?
 
+  /// When true this setup is an ideal/hypothetical trade for review purposes only.
+  /// Ideal setups are excluded from P&L calculations and calendar summaries.
+  isIdeal Boolean @default(false)
+
   executions Execution[]
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
 
   @@index([setupDate, setupType])
+  @@index([setupDate, isIdeal])
   @@index([trueRegime, vwapState])
   @@index([alignment, shouldTrade])
   @@index([entryTrigger])
@@ -418,50 +423,3 @@ model ChartMarker {
   @@index([setupId])
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MarketOpportunity — valid setups that existed regardless of whether a trade
-// was taken. Kept strictly separate from TradeSetup so missed opportunities
-// do not pollute trade analytics.
-// ─────────────────────────────────────────────────────────────────────────────
-
-model MarketOpportunity {
-  id     String   @id @default(cuid())
-  symbol String
-  /// Stored as DateTime (new model; no legacy String convention to preserve here).
-  date   DateTime
-
-  // ── Required market state — no opportunity record without full context ──
-  trueRegime Regime
-  vwapState  VWAPState
-  dayType    DayType
-  structure  StructureType
-
-  // ── Classification ──
-  setupType   SetupType
-  triggerType TriggerType?
-  /// Direction stored as enum — no legacy String concern for this new model.
-  direction   Direction
-  alignment   Alignment?
-
-  // ── Outcome of the opportunity itself (independent of whether trader acted) ──
-  outcome      OutcomeType?
-  maxFavorable Float?
-  maxAdverse   Float?
-
-  // ── Execution decision ──
-  taken      Boolean    @default(false)
-  missReason MissReason?
-  notes      String?
-
-  // ── Quality ──
-  qualityScore Int?
-  isAPlus      Boolean?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([date])
-  @@index([symbol, date])
-  @@index([setupType, trueRegime])
-  @@index([taken, missReason])
-}

@@ -76,6 +76,7 @@ export type DbSetup = {
   marketOutcome: string | null;
   reviewNote: string | null;
   // Meta
+  isIdeal: boolean;
   initialGrade: string | null;
   status: string;
   overallNotes: string;
@@ -172,6 +173,7 @@ export function mapSetup(s: DbSetup, dayContext: DayContext | null = null): Trad
     marketOutcome: (s.marketOutcome as MarketOutcome) ?? null,
     reviewNote: s.reviewNote ?? null,
     // Meta
+    isIdeal: s.isIdeal,
     initialGrade: (s.initialGrade as TradeSetup['initialGrade']) ?? null,
     status: s.status as TradeSetup['status'],
     overallNotes: s.overallNotes,
