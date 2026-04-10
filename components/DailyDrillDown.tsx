@@ -141,7 +141,7 @@ export default function DailyDrillDown({
             })
             .map((s) => (
               <SetupSessionChart
-                key={`${s.symbol}::${s.setupDate}::${mode}`}
+                key={`${s.symbol}::${s.setupDate}`}
                 symbol={s.symbol}
                 setupDate={s.setupDate}
                 setups={visibleSetups.filter((gs) => gs.symbol === s.symbol)}

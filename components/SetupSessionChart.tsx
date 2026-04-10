@@ -68,6 +68,14 @@ export default function SetupSessionChart({
   const [toggledSetups, setToggledSetups] = useState<Set<string>>(new Set());
   const [chartMode, setChartMode] = useState<ChartMode>('executed');
 
+  // If this symbol/date only has ideal setups, default to Ideal — otherwise "executed"
+  // mode hides their executions and the Executed/Ideal toggle is not shown.
+  useEffect(() => {
+    const hasIdeal = setups.some((s) => s.isIdeal);
+    const hasExecuted = setups.some((s) => !s.isIdeal);
+    if (!hasExecuted && hasIdeal) setChartMode('ideal');
+  }, [setups]);
+
   // Observe visibility — fetch only once when the container comes into view.
   useEffect(() => {
     const el = containerRef.current;

@@ -147,7 +147,7 @@ export default function ExecutionForm({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-zinc-400">Time</label>
+          <label className="text-xs font-medium text-zinc-400">Time (ET)</label>
           <input
             type="time"
             value={form.time}

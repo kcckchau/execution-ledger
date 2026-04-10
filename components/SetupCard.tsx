@@ -33,7 +33,7 @@ const REGIME_TAG: Record<Regime, string> = {
   TRANSITION: 'bg-violet-500/10 text-violet-400 ring-violet-500/20',
 };
 import { calcSetupPnl, formatPnl } from '@/lib/pnl';
-import { formatSetupDate } from '@/lib/dateUtils';
+import { easternTimeFromIso, formatSetupDate } from '@/lib/dateUtils';
 import ExecutionForm from './ExecutionForm';
 import SetupForm from './SetupForm';
 import ConfirmDialog from './ConfirmDialog';
@@ -51,13 +51,6 @@ interface SetupCardProps {
 type ConfirmTarget =
   | { type: 'deleteSetup' }
   | { type: 'deleteExecution'; execId: string };
-
-function formatTime(iso: string): string {
-  const d = new Date(iso);
-  const h = d.getHours().toString().padStart(2, '0');
-  const m = d.getMinutes().toString().padStart(2, '0');
-  return `${h}:${m}`;
-}
 
 function ExecutionRow({
   exec,
@@ -94,8 +87,11 @@ function ExecutionRow({
     <div
       className={`group flex flex-wrap items-baseline gap-x-3 gap-y-0 px-3 py-1.5 border-l-2 ${ACTION_BORDER_COLORS[exec.actionType]}`}
     >
-      <span className="text-xs tabular-nums text-zinc-500 w-9 shrink-0 font-mono">
-        {formatTime(exec.executionTime)}
+      <span
+        className="text-xs tabular-nums text-zinc-500 w-9 shrink-0 font-mono"
+        title="Eastern Time"
+      >
+        {easternTimeFromIso(exec.executionTime)}
       </span>
       <span className="text-xs font-semibold text-zinc-400 w-12 shrink-0">
         {ACTION_LABELS[exec.actionType]}
