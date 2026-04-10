@@ -328,7 +328,7 @@ model TradeSetup {
   reviewNote    String?
 
   /// When true this setup is an ideal/hypothetical trade for review purposes only.
-  /// Ideal setups are excluded from P&L calculations and calendar summaries.
+  /// Ideal setups: hypothetical; app UI tracks P&L separately from executed setups.
   isIdeal Boolean @default(false)
 
   executions Execution[]

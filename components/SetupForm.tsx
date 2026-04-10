@@ -354,7 +354,7 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
           </button>
         </div>
         <p className="text-[10px] text-zinc-500">
-          Ideal setups are hypothetical and excluded from P&amp;L and daily totals.
+          Ideal setups are hypothetical; their P&amp;L is shown separately (violet) from executed trades in the log, calendar, and filters.
         </p>
       </div>
 

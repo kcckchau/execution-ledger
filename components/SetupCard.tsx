@@ -394,13 +394,25 @@ export default function SetupCard({
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
-            {hasRealizedPnl && !setup.isIdeal && (
+            {hasRealizedPnl && (
               <span
                 className={`text-sm font-bold tabular-nums ${
-                  pnl.realizedPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                  setup.isIdeal
+                    ? pnl.realizedPnl >= 0
+                      ? 'text-violet-400'
+                      : 'text-violet-300'
+                    : pnl.realizedPnl >= 0
+                      ? 'text-emerald-400'
+                      : 'text-rose-400'
                 }`}
+                title={setup.isIdeal ? 'Ideal (hypothetical) P&L' : 'Executed P&L'}
               >
                 {formatPnl(pnl.realizedPnl)}
+                {setup.isIdeal && (
+                  <span className="ml-1 text-[10px] font-semibold text-violet-500/80 normal-case">
+                    id
+                  </span>
+                )}
               </span>
             )}
             <div className="flex items-center gap-1.5">
@@ -553,10 +565,16 @@ export default function SetupCard({
               )}
               <span
                 className={`font-bold tabular-nums ${
-                  pnl.realizedPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                  setup.isIdeal
+                    ? pnl.realizedPnl >= 0
+                      ? 'text-violet-400'
+                      : 'text-violet-300'
+                    : pnl.realizedPnl >= 0
+                      ? 'text-emerald-400'
+                      : 'text-rose-400'
                 }`}
               >
-                Realized {formatPnl(pnl.realizedPnl)}
+                {setup.isIdeal ? 'Hypothetical' : 'Realized'} {formatPnl(pnl.realizedPnl)}
               </span>
             </div>
           )}

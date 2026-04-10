@@ -496,7 +496,7 @@ export interface TradeSetup {
   reviewNote: string | null;
 
   // ── Meta ──────────────────────────────────────────────────────────────────
-  /** When true this is an ideal/hypothetical trade — excluded from P&L. */
+  /** When true this is an ideal/hypothetical trade — P&L is tracked separately from executed setups. */
   isIdeal: boolean;
   initialGrade: Grade | null;
   status: SetupStatus;

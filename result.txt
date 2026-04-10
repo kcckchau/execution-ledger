@@ -1,0 +1,381 @@
+[dotenv@17.3.1] injecting env (2) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+Total candidates: 379
+2026-04-08T09:33:00-0400 | B | RR=2.00 | ext=-0.147 | no reclaim candle, no hold, bad timing
+2026-04-08T09:34:00-0400 | B | RR=2.00 | ext=-0.113 | no reclaim candle, no hold, bad timing
+2026-04-08T09:35:00-0400 | B | RR=2.00 | ext=-0.073 | no reclaim candle, no hold, bad timing
+2026-04-08T09:36:00-0400 | B | RR=2.00 | ext=-0.087 | no reclaim candle, no hold, bad timing
+2026-04-08T09:37:00-0400 | B | RR=2.00 | ext=-0.140 | no reclaim candle, no hold, bad timing
+2026-04-08T09:38:00-0400 | B | RR=2.00 | ext=-0.160 | no reclaim candle, no hold, bad timing
+2026-04-08T09:39:00-0400 | B | RR=2.00 | ext=-0.240 | no reclaim candle, no hold, bad timing
+2026-04-08T09:40:00-0400 | B | RR=2.00 | ext=-0.239 | no reclaim candle, no hold, bad timing
+2026-04-08T09:41:00-0400 | B | RR=2.00 | ext=-0.287 | no reclaim candle, no hold, bad timing
+2026-04-08T09:42:00-0400 | B | RR=2.00 | ext=-0.314 | no reclaim candle, no hold, bad timing
+2026-04-08T09:43:00-0400 | B | RR=2.00 | ext=-0.253 | no reclaim candle, no hold, bad timing
+2026-04-08T09:44:00-0400 | B | RR=2.00 | ext=-0.278 | no reclaim candle, no hold, bad timing
+2026-04-08T09:45:00-0400 | B | RR=2.00 | ext=-0.230 | no reclaim candle, no hold, bad timing
+2026-04-08T09:46:00-0400 | A | RR=2.00 | ext=-0.076 | no reclaim candle, bad timing
+2026-04-08T09:47:00-0400 | B | RR=2.00 | ext=-0.056 | no reclaim candle, no hold, bad timing
+2026-04-08T09:48:00-0400 | A | RR=2.00 | ext=-0.078 | no reclaim candle, bad timing
+2026-04-08T09:49:00-0400 | B | RR=2.00 | ext=-0.049 | no reclaim candle, no hold, bad timing
+2026-04-08T09:50:00-0400 | B | RR=2.00 | ext=-0.147 | no reclaim candle, no hold, bad timing
+2026-04-08T09:51:00-0400 | B | RR=2.00 | ext=-0.309 | no reclaim candle, no hold, bad timing
+2026-04-08T09:52:00-0400 | B | RR=2.00 | ext=-0.265 | no reclaim candle, no hold, bad timing
+2026-04-08T09:53:00-0400 | B | RR=2.00 | ext=-0.286 | no reclaim candle, no hold, bad timing
+2026-04-08T09:54:00-0400 | B | RR=2.00 | ext=-0.310 | no reclaim candle, no hold, bad timing
+2026-04-08T09:55:00-0400 | B | RR=2.00 | ext=-0.280 | no reclaim candle, no hold, bad timing
+2026-04-08T09:56:00-0400 | B | RR=2.00 | ext=-0.272 | no reclaim candle, no hold, bad timing
+2026-04-08T09:57:00-0400 | B | RR=2.00 | ext=-0.297 | no reclaim candle, no hold, bad timing
+2026-04-08T09:58:00-0400 | B | RR=2.00 | ext=-0.283 | no reclaim candle, no hold, bad timing
+2026-04-08T09:59:00-0400 | B | RR=2.00 | ext=-0.284 | no reclaim candle, no hold, bad timing
+2026-04-08T10:00:00-0400 | B | RR=2.00 | ext=-0.267 | no reclaim candle, no hold, bad timing
+2026-04-08T10:01:00-0400 | B | RR=2.00 | ext=-0.262 | no reclaim candle, no hold, bad timing
+2026-04-08T10:02:00-0400 | B | RR=2.00 | ext=-0.241 | no reclaim candle, no hold, bad timing
+2026-04-08T10:03:00-0400 | B | RR=2.00 | ext=-0.276 | no reclaim candle, no hold, bad timing
+2026-04-08T10:04:00-0400 | B | RR=2.00 | ext=-0.243 | no reclaim candle, no hold, bad timing
+2026-04-08T10:05:00-0400 | B | RR=2.00 | ext=-0.223 | no reclaim candle, no hold, bad timing
+2026-04-08T10:06:00-0400 | B | RR=2.00 | ext=-0.245 | no reclaim candle, no hold, bad timing
+2026-04-08T10:07:00-0400 | B | RR=2.00 | ext=-0.263 | no reclaim candle, no hold, bad timing
+2026-04-08T10:08:00-0400 | B | RR=2.00 | ext=-0.334 | no reclaim candle, no hold, bad timing
+2026-04-08T10:09:00-0400 | B | RR=2.00 | ext=-0.263 | no reclaim candle, no hold, bad timing
+2026-04-08T10:10:00-0400 | B | RR=2.00 | ext=-0.279 | no reclaim candle, no hold, bad timing
+2026-04-08T10:11:00-0400 | B | RR=2.00 | ext=-0.233 | no reclaim candle, no hold, bad timing
+2026-04-08T10:12:00-0400 | B | RR=2.00 | ext=-0.255 | no reclaim candle, no hold, bad timing
+2026-04-08T10:13:00-0400 | B | RR=2.00 | ext=-0.232 | no reclaim candle, no hold, bad timing
+2026-04-08T10:14:00-0400 | B | RR=2.00 | ext=-0.251 | no reclaim candle, no hold, bad timing
+2026-04-08T10:15:00-0400 | B | RR=2.00 | ext=-0.229 | no reclaim candle, no hold, bad timing
+2026-04-08T10:16:00-0400 | B | RR=2.00 | ext=-0.218 | no reclaim candle, no hold, bad timing
+2026-04-08T10:17:00-0400 | B | RR=2.00 | ext=-0.226 | no reclaim candle, no hold, bad timing
+2026-04-08T10:18:00-0400 | B | RR=2.00 | ext=-0.281 | no reclaim candle, no hold, bad timing
+2026-04-08T10:19:00-0400 | B | RR=2.00 | ext=-0.292 | no reclaim candle, no hold, bad timing
+2026-04-08T10:20:00-0400 | B | RR=2.00 | ext=-0.268 | no reclaim candle, no hold, bad timing
+2026-04-08T10:21:00-0400 | B | RR=2.00 | ext=-0.244 | no reclaim candle, no hold, bad timing
+2026-04-08T10:22:00-0400 | B | RR=2.00 | ext=-0.194 | no reclaim candle, no hold, bad timing
+2026-04-08T10:23:00-0400 | B | RR=2.00 | ext=-0.244 | no reclaim candle, no hold, bad timing
+2026-04-08T10:24:00-0400 | B | RR=2.00 | ext=-0.226 | no reclaim candle, no hold, bad timing
+2026-04-08T10:25:00-0400 | B | RR=2.00 | ext=-0.286 | no reclaim candle, no hold, bad timing
+2026-04-08T10:26:00-0400 | B | RR=2.00 | ext=-0.248 | no reclaim candle, no hold, bad timing
+2026-04-08T10:27:00-0400 | B | RR=2.00 | ext=-0.233 | no reclaim candle, no hold, bad timing
+2026-04-08T10:28:00-0400 | B | RR=2.00 | ext=-0.283 | no reclaim candle, no hold, bad timing
+2026-04-08T10:29:00-0400 | B | RR=2.00 | ext=-0.313 | no reclaim candle, no hold, bad timing
+2026-04-08T10:30:00-0400 | B | RR=2.00 | ext=-0.303 | no reclaim candle, no hold, bad timing
+2026-04-08T10:31:00-0400 | B | RR=2.00 | ext=-0.311 | no reclaim candle, no hold, bad timing
+2026-04-08T10:32:00-0400 | B | RR=2.00 | ext=-0.364 | no reclaim candle, no hold, bad timing
+2026-04-08T10:33:00-0400 | B | RR=2.00 | ext=-0.324 | no reclaim candle, no hold, bad timing
+2026-04-08T10:34:00-0400 | B | RR=2.00 | ext=-0.318 | no reclaim candle, no hold, bad timing
+2026-04-08T10:35:00-0400 | B | RR=2.00 | ext=-0.369 | no reclaim candle, no hold, bad timing
+2026-04-08T10:36:00-0400 | B | RR=2.00 | ext=-0.361 | no reclaim candle, no hold, bad timing
+2026-04-08T10:37:00-0400 | B | RR=2.00 | ext=-0.280 | no reclaim candle, no hold, bad timing
+2026-04-08T10:38:00-0400 | B | RR=2.00 | ext=-0.332 | no reclaim candle, no hold, bad timing
+2026-04-08T10:39:00-0400 | B | RR=2.00 | ext=-0.328 | no reclaim candle, no hold, bad timing
+2026-04-08T10:40:00-0400 | B | RR=2.00 | ext=-0.326 | no reclaim candle, no hold, bad timing
+2026-04-08T10:41:00-0400 | B | RR=2.00 | ext=-0.336 | no reclaim candle, no hold, bad timing
+2026-04-08T10:42:00-0400 | B | RR=2.00 | ext=-0.297 | no reclaim candle, no hold, bad timing
+2026-04-08T10:43:00-0400 | B | RR=2.00 | ext=-0.339 | no reclaim candle, no hold, bad timing
+2026-04-08T10:44:00-0400 | B | RR=2.00 | ext=-0.373 | no reclaim candle, no hold, bad timing
+2026-04-08T10:46:00-0400 | B | RR=2.00 | ext=-0.433 | no reclaim candle, no hold, bad timing
+2026-04-08T10:47:00-0400 | B | RR=2.00 | ext=-0.435 | no reclaim candle, no hold, bad timing
+2026-04-08T10:48:00-0400 | B | RR=2.00 | ext=-0.370 | no reclaim candle, no hold, bad timing
+2026-04-08T10:49:00-0400 | B | RR=2.00 | ext=-0.357 | no reclaim candle, no hold, bad timing
+2026-04-08T10:50:00-0400 | B | RR=2.00 | ext=-0.367 | no reclaim candle, no hold, bad timing
+2026-04-08T10:52:00-0400 | B | RR=2.00 | ext=-0.468 | no reclaim candle, no hold, bad timing
+2026-04-08T10:53:00-0400 | B | RR=2.00 | ext=-0.485 | no reclaim candle, no hold, bad timing
+2026-04-08T10:54:00-0400 | B | RR=2.00 | ext=-0.441 | no reclaim candle, no hold, bad timing
+2026-04-08T10:55:00-0400 | B | RR=2.00 | ext=-0.598 | no reclaim candle, no hold, bad timing
+2026-04-08T10:56:00-0400 | B | RR=2.00 | ext=-0.688 | no reclaim candle, no hold, bad timing
+2026-04-08T10:57:00-0400 | B | RR=2.00 | ext=-0.546 | no reclaim candle, no hold, bad timing
+2026-04-08T10:58:00-0400 | B | RR=2.00 | ext=-0.483 | no reclaim candle, no hold, bad timing
+2026-04-08T10:59:00-0400 | B | RR=2.00 | ext=-0.459 | no reclaim candle, no hold, bad timing
+2026-04-08T11:00:00-0400 | B | RR=2.00 | ext=-0.431 | no reclaim candle, no hold, bad timing
+2026-04-08T11:01:00-0400 | B | RR=2.00 | ext=-0.346 | no reclaim candle, no hold, bad timing
+2026-04-08T11:02:00-0400 | B | RR=2.00 | ext=-0.332 | no reclaim candle, no hold, bad timing
+2026-04-08T11:03:00-0400 | B | RR=2.00 | ext=-0.288 | no reclaim candle, no hold, bad timing
+2026-04-08T11:04:00-0400 | B | RR=2.00 | ext=-0.310 | no reclaim candle, no hold, bad timing
+2026-04-08T11:05:00-0400 | B | RR=2.00 | ext=-0.308 | no reclaim candle, no hold, bad timing
+2026-04-08T11:06:00-0400 | B | RR=2.00 | ext=-0.309 | no reclaim candle, no hold, bad timing
+2026-04-08T11:07:00-0400 | B | RR=2.00 | ext=-0.324 | no reclaim candle, no hold, bad timing
+2026-04-08T11:08:00-0400 | B | RR=2.00 | ext=-0.361 | no reclaim candle, no hold, bad timing
+2026-04-08T11:10:00-0400 | B | RR=2.00 | ext=-0.436 | no reclaim candle, no hold, bad timing
+2026-04-08T11:11:00-0400 | B | RR=2.00 | ext=-0.402 | no reclaim candle, no hold, bad timing
+2026-04-08T11:12:00-0400 | B | RR=2.00 | ext=-0.343 | no reclaim candle, no hold, bad timing
+2026-04-08T11:13:00-0400 | B | RR=2.00 | ext=-0.320 | no reclaim candle, no hold, bad timing
+2026-04-08T11:14:00-0400 | B | RR=2.00 | ext=-0.311 | no reclaim candle, no hold, bad timing
+2026-04-08T11:15:00-0400 | B | RR=2.00 | ext=-0.310 | no reclaim candle, no hold, bad timing
+2026-04-08T11:16:00-0400 | B | RR=2.00 | ext=-0.281 | no reclaim candle, no hold, bad timing
+2026-04-08T11:17:00-0400 | B | RR=2.00 | ext=-0.320 | no reclaim candle, no hold, bad timing
+2026-04-08T11:18:00-0400 | B | RR=2.00 | ext=-0.329 | no reclaim candle, no hold, bad timing
+2026-04-08T11:19:00-0400 | B | RR=2.00 | ext=-0.255 | no reclaim candle, no hold, bad timing
+2026-04-08T11:20:00-0400 | B | RR=2.00 | ext=-0.269 | no reclaim candle, no hold, bad timing
+2026-04-08T11:21:00-0400 | B | RR=2.00 | ext=-0.293 | no reclaim candle, no hold, bad timing
+2026-04-08T11:22:00-0400 | B | RR=2.00 | ext=-0.295 | no reclaim candle, no hold, bad timing
+2026-04-08T11:23:00-0400 | B | RR=2.00 | ext=-0.297 | no reclaim candle, no hold, bad timing
+2026-04-08T11:24:00-0400 | B | RR=2.00 | ext=-0.280 | no reclaim candle, no hold, bad timing
+2026-04-08T11:25:00-0400 | B | RR=2.00 | ext=-0.289 | no reclaim candle, no hold, bad timing
+2026-04-08T11:26:00-0400 | B | RR=2.00 | ext=-0.288 | no reclaim candle, no hold, bad timing
+2026-04-08T11:27:00-0400 | B | RR=2.00 | ext=-0.309 | no reclaim candle, no hold, bad timing
+2026-04-08T11:28:00-0400 | B | RR=2.00 | ext=-0.292 | no reclaim candle, no hold, bad timing
+2026-04-08T11:29:00-0400 | B | RR=2.00 | ext=-0.338 | no reclaim candle, no hold, bad timing
+2026-04-08T11:30:00-0400 | B | RR=2.00 | ext=-0.314 | no reclaim candle, no hold, bad timing
+2026-04-08T11:31:00-0400 | B | RR=2.00 | ext=-0.333 | no reclaim candle, no hold, bad timing
+2026-04-08T11:32:00-0400 | B | RR=2.00 | ext=-0.273 | no reclaim candle, no hold, bad timing
+2026-04-08T11:33:00-0400 | B | RR=2.00 | ext=-0.269 | no reclaim candle, no hold, bad timing
+2026-04-08T11:34:00-0400 | B | RR=2.00 | ext=-0.233 | no reclaim candle, no hold, bad timing
+2026-04-08T11:35:00-0400 | B | RR=2.00 | ext=-0.225 | no reclaim candle, no hold, bad timing
+2026-04-08T11:36:00-0400 | B | RR=2.00 | ext=-0.173 | no reclaim candle, no hold, bad timing
+2026-04-08T11:37:00-0400 | B | RR=2.00 | ext=-0.155 | no reclaim candle, no hold, bad timing
+2026-04-08T11:38:00-0400 | B | RR=2.00 | ext=-0.151 | no reclaim candle, no hold, bad timing
+2026-04-08T11:39:00-0400 | B | RR=2.00 | ext=-0.151 | no reclaim candle, no hold, bad timing
+2026-04-08T11:40:00-0400 | B | RR=2.00 | ext=-0.198 | no reclaim candle, no hold, bad timing
+2026-04-08T11:41:00-0400 | B | RR=2.00 | ext=-0.170 | no reclaim candle, no hold, bad timing
+2026-04-08T11:42:00-0400 | B | RR=2.00 | ext=-0.158 | no reclaim candle, no hold, bad timing
+2026-04-08T11:43:00-0400 | B | RR=2.00 | ext=-0.156 | no reclaim candle, no hold, bad timing
+2026-04-08T11:44:00-0400 | B | RR=2.00 | ext=-0.145 | no reclaim candle, no hold, bad timing
+2026-04-08T11:45:00-0400 | B | RR=2.00 | ext=-0.122 | no reclaim candle, no hold, bad timing
+2026-04-08T11:46:00-0400 | A | RR=2.00 | ext=-0.087 | no reclaim candle, bad timing
+2026-04-08T11:47:00-0400 | A | RR=2.00 | ext=-0.069 | no reclaim candle, bad timing
+2026-04-08T11:48:00-0400 | A | RR=2.00 | ext=-0.078 | no reclaim candle, bad timing
+2026-04-08T11:49:00-0400 | A | RR=2.00 | ext=-0.057 | no reclaim candle, bad timing
+2026-04-08T11:50:00-0400 | A | RR=2.00 | ext=-0.050 | no reclaim candle, bad timing
+2026-04-08T11:51:00-0400 | A | RR=2.00 | ext=-0.040 | no reclaim candle, bad timing
+2026-04-08T11:52:00-0400 | A | RR=2.00 | ext=-0.048 | no reclaim candle, bad timing
+2026-04-08T11:53:00-0400 | A | RR=2.00 | ext=-0.036 | no reclaim candle, bad timing
+2026-04-08T11:54:00-0400 | A | RR=2.00 | ext=-0.054 | no reclaim candle, bad timing
+2026-04-08T11:55:00-0400 | A | RR=2.00 | ext=-0.044 | no reclaim candle, bad timing
+2026-04-08T11:56:00-0400 | A | RR=2.00 | ext=-0.042 | no reclaim candle, bad timing
+2026-04-08T11:57:00-0400 | A | RR=2.00 | ext=-0.029 | no reclaim candle, bad timing
+2026-04-08T11:58:00-0400 | A | RR=2.00 | ext=-0.027 | no reclaim candle, bad timing
+2026-04-08T11:59:00-0400 | A | RR=2.00 | ext=-0.057 | no reclaim candle, bad timing
+2026-04-08T12:00:00-0400 | A | RR=2.00 | ext=-0.006 | no reclaim candle, bad timing
+2026-04-08T12:01:00-0400 | A | RR=2.00 | ext=0.037 | bad timing
+2026-04-08T12:02:00-0400 | A | RR=2.00 | ext=0.042 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:03:00-0400 | A | RR=2.00 | ext=0.080 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:04:00-0400 | A | RR=2.00 | ext=0.033 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:05:00-0400 | A | RR=2.00 | ext=0.027 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:06:00-0400 | A | RR=2.00 | ext=0.036 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:07:00-0400 | A | RR=2.00 | ext=0.017 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:08:00-0400 | A | RR=2.00 | ext=0.018 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:09:00-0400 | A | RR=2.00 | ext=0.010 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:10:00-0400 | A | RR=2.00 | ext=0.003 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:11:00-0400 | A | RR=2.00 | ext=0.030 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:12:00-0400 | A | RR=2.00 | ext=0.005 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:13:00-0400 | A | RR=2.00 | ext=0.026 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:14:00-0400 | A | RR=2.00 | ext=-0.046 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:15:00-0400 | A | RR=2.00 | ext=-0.059 | no reclaim candle, bad timing
+2026-04-08T12:16:00-0400 | B | RR=2.00 | ext=-0.075 | no reclaim candle, no hold, bad timing
+2026-04-08T12:17:00-0400 | B | RR=2.00 | ext=-0.101 | no reclaim candle, no hold, bad timing
+2026-04-08T12:18:00-0400 | B | RR=2.00 | ext=-0.077 | no reclaim candle, no hold, bad timing
+2026-04-08T12:19:00-0400 | A | RR=2.00 | ext=-0.058 | no reclaim candle, bad timing
+2026-04-08T12:20:00-0400 | A | RR=2.00 | ext=-0.091 | no reclaim candle, bad timing
+2026-04-08T12:21:00-0400 | A | RR=2.00 | ext=-0.043 | no reclaim candle, bad timing
+2026-04-08T12:22:00-0400 | A | RR=2.00 | ext=-0.051 | no reclaim candle, bad timing
+2026-04-08T12:23:00-0400 | A | RR=2.00 | ext=-0.036 | no reclaim candle, bad timing
+2026-04-08T12:24:00-0400 | A | RR=2.00 | ext=-0.021 | no reclaim candle, bad timing
+2026-04-08T12:25:00-0400 | A | RR=2.00 | ext=-0.041 | no reclaim candle, bad timing
+2026-04-08T12:26:00-0400 | A | RR=2.00 | ext=-0.011 | no reclaim candle, bad timing
+2026-04-08T12:27:00-0400 | A | RR=2.00 | ext=-0.002 | no reclaim candle, bad timing
+2026-04-08T12:28:00-0400 | A | RR=2.00 | ext=0.007 | bad timing
+2026-04-08T12:29:00-0400 | A | RR=2.00 | ext=0.012 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:30:00-0400 | A | RR=2.00 | ext=0.002 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:31:00-0400 | A | RR=2.00 | ext=0.008 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:32:00-0400 | A | RR=2.00 | ext=0.053 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:33:00-0400 | A | RR=2.00 | ext=0.068 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:34:00-0400 | A | RR=2.00 | ext=0.074 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:35:00-0400 | A | RR=2.00 | ext=0.077 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:36:00-0400 | A | RR=2.00 | ext=0.077 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:37:00-0400 | A | RR=2.00 | ext=0.100 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:38:00-0400 | A | RR=2.00 | ext=0.091 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:39:00-0400 | A | RR=2.00 | ext=0.103 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:40:00-0400 | A | RR=2.00 | ext=0.136 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:41:00-0400 | A | RR=2.00 | ext=0.175 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:42:00-0400 | A | RR=2.00 | ext=0.158 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:43:00-0400 | A | RR=2.00 | ext=0.139 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:44:00-0400 | A | RR=2.00 | ext=0.155 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:45:00-0400 | A | RR=2.00 | ext=0.160 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:46:00-0400 | A | RR=2.00 | ext=0.168 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:47:00-0400 | A | RR=2.00 | ext=0.173 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:48:00-0400 | B | RR=2.00 | ext=0.200 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:49:00-0400 | A | RR=2.00 | ext=0.187 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:50:00-0400 | A | RR=2.00 | ext=0.200 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:51:00-0400 | B | RR=2.00 | ext=0.206 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:52:00-0400 | B | RR=2.00 | ext=0.201 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:53:00-0400 | B | RR=2.00 | ext=0.202 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:54:00-0400 | B | RR=2.00 | ext=0.213 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:55:00-0400 | B | RR=2.00 | ext=0.242 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:56:00-0400 | B | RR=2.00 | ext=0.242 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:57:00-0400 | B | RR=2.00 | ext=0.242 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T12:59:00-0400 | A | RR=2.00 | ext=0.193 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T13:00:00-0400 | B | RR=2.00 | ext=0.209 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T13:01:00-0400 | B | RR=2.00 | ext=0.242 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T13:02:00-0400 | B | RR=2.00 | ext=0.225 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T13:03:00-0400 | B | RR=2.00 | ext=0.205 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T13:04:00-0400 | A | RR=2.00 | ext=0.180 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T13:05:00-0400 | A | RR=2.00 | ext=0.158 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T13:06:00-0400 | A | RR=2.00 | ext=0.148 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T13:07:00-0400 | A | RR=2.00 | ext=0.146 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T13:08:00-0400 | A | RR=2.00 | ext=0.127 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T13:09:00-0400 | A | RR=2.00 | ext=0.126 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T13:10:00-0400 | A | RR=2.00 | ext=0.134 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T13:11:00-0400 | A | RR=2.00 | ext=0.130 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T13:12:00-0400 | A | RR=2.00 | ext=0.102 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T13:13:00-0400 | A | RR=2.00 | ext=0.112 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T13:14:00-0400 | A | RR=2.00 | ext=0.115 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T13:15:00-0400 | A | RR=2.00 | ext=0.113 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T13:16:00-0400 | A | RR=2.00 | ext=0.098 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T13:17:00-0400 | A | RR=2.00 | ext=0.066 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T13:18:00-0400 | A | RR=2.00 | ext=0.063 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T13:19:00-0400 | A | RR=2.00 | ext=0.068 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T13:20:00-0400 | A | RR=2.00 | ext=0.059 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T13:21:00-0400 | A | RR=2.00 | ext=0.054 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T13:22:00-0400 | A | RR=2.00 | ext=0.028 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T13:23:00-0400 | A | RR=2.00 | ext=0.013 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T13:24:00-0400 | A | RR=2.00 | ext=-0.009 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T13:25:00-0400 | A | RR=2.00 | ext=0.005 | bad timing
+2026-04-08T13:26:00-0400 | A | RR=2.00 | ext=-0.017 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T13:27:00-0400 | A | RR=2.00 | ext=-0.051 | no reclaim candle, bad timing
+2026-04-08T13:28:00-0400 | A | RR=2.00 | ext=-0.035 | no reclaim candle, bad timing
+2026-04-08T13:29:00-0400 | A | RR=2.00 | ext=-0.053 | no reclaim candle, bad timing
+2026-04-08T13:30:00-0400 | A | RR=2.00 | ext=-0.039 | no reclaim candle, bad timing
+2026-04-08T13:31:00-0400 | A | RR=2.00 | ext=-0.006 | no reclaim candle, bad timing
+2026-04-08T13:32:00-0400 | A | RR=2.00 | ext=-0.011 | no reclaim candle, bad timing
+2026-04-08T13:33:00-0400 | A | RR=2.00 | ext=-0.053 | no reclaim candle, bad timing
+2026-04-08T13:34:00-0400 | A | RR=2.00 | ext=-0.025 | no reclaim candle, bad timing
+2026-04-08T13:35:00-0400 | A | RR=2.00 | ext=-0.051 | no reclaim candle, bad timing
+2026-04-08T13:36:00-0400 | B | RR=2.00 | ext=-0.001 | no reclaim candle, no hold, bad timing
+2026-04-08T13:37:00-0400 | A | RR=2.00 | ext=-0.070 | no reclaim candle, bad timing
+2026-04-08T13:38:00-0400 | A | RR=2.00 | ext=-0.055 | no reclaim candle, bad timing
+2026-04-08T13:39:00-0400 | A | RR=2.00 | ext=-0.034 | no reclaim candle, bad timing
+2026-04-08T13:40:00-0400 | A | RR=2.00 | ext=-0.027 | no reclaim candle, bad timing
+2026-04-08T13:41:00-0400 | A | RR=2.00 | ext=-0.035 | no reclaim candle, bad timing
+2026-04-08T13:42:00-0400 | A | RR=2.00 | ext=-0.022 | no reclaim candle, bad timing
+2026-04-08T13:43:00-0400 | A | RR=2.00 | ext=-0.007 | no reclaim candle, bad timing
+2026-04-08T13:44:00-0400 | A | RR=2.00 | ext=-0.006 | no reclaim candle, bad timing
+2026-04-08T13:45:00-0400 | A | RR=2.00 | ext=-0.009 | no reclaim candle, bad timing
+2026-04-08T13:46:00-0400 | A | RR=2.00 | ext=-0.009 | no reclaim candle, bad timing
+2026-04-08T13:47:00-0400 | A | RR=2.00 | ext=-0.032 | no reclaim candle, bad timing
+2026-04-08T13:48:00-0400 | A | RR=2.00 | ext=-0.019 | no reclaim candle, bad timing
+2026-04-08T13:49:00-0400 | A | RR=2.00 | ext=-0.025 | no reclaim candle, bad timing
+2026-04-08T13:50:00-0400 | A | RR=2.00 | ext=-0.017 | no reclaim candle, bad timing
+2026-04-08T13:51:00-0400 | A | RR=2.00 | ext=-0.010 | no reclaim candle, bad timing
+2026-04-08T13:52:00-0400 | A | RR=2.00 | ext=-0.004 | no reclaim candle, bad timing
+2026-04-08T13:53:00-0400 | A | RR=2.00 | ext=-0.012 | no reclaim candle, bad timing
+2026-04-08T13:54:00-0400 | A | RR=2.00 | ext=-0.027 | no reclaim candle, bad timing
+2026-04-08T13:55:00-0400 | A | RR=2.00 | ext=-0.025 | no reclaim candle, bad timing
+2026-04-08T13:56:00-0400 | A | RR=2.00 | ext=-0.019 | no reclaim candle, bad timing
+2026-04-08T13:57:00-0400 | A | RR=2.00 | ext=-0.014 | no reclaim candle, bad timing
+2026-04-08T13:58:00-0400 | A | RR=2.00 | ext=0.001 | bad timing
+2026-04-08T13:59:00-0400 | A | RR=2.00 | ext=-0.000 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T14:00:00-0400 | A | RR=2.00 | ext=-0.004 | no reclaim candle, bad timing
+2026-04-08T14:01:00-0400 | A | RR=2.00 | ext=0.057 | bad timing
+2026-04-08T14:02:00-0400 | A | RR=2.00 | ext=0.064 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T14:03:00-0400 | A | RR=2.00 | ext=0.074 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T14:04:00-0400 | A | RR=2.00 | ext=0.100 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T14:05:00-0400 | A | RR=2.00 | ext=0.113 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T14:06:00-0400 | A | RR=2.00 | ext=0.099 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T14:07:00-0400 | A | RR=2.00 | ext=0.129 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T14:08:00-0400 | A | RR=2.00 | ext=0.132 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T14:09:00-0400 | A | RR=2.00 | ext=0.140 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T14:10:00-0400 | A | RR=2.00 | ext=0.139 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T14:11:00-0400 | A | RR=2.00 | ext=0.131 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T14:12:00-0400 | A | RR=2.00 | ext=0.114 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T14:13:00-0400 | A | RR=2.00 | ext=0.116 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T14:14:00-0400 | A | RR=2.00 | ext=0.104 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T14:15:00-0400 | A | RR=2.00 | ext=0.110 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T14:16:00-0400 | A | RR=2.00 | ext=0.135 | not below VWAP before, no reclaim candle, bad timing
+2026-04-08T14:17:00-0400 | B | RR=2.00 | ext=0.089 | not below VWAP before, no reclaim candle, no hold, bad timing
+2026-04-08T14:18:00-0400 | B | RR=2.00 | ext=-0.068 | not below VWAP before, no reclaim candle, no hold, bad timing
+2026-04-08T14:19:00-0400 | B | RR=2.00 | ext=-0.161 | no reclaim candle, no hold, bad timing
+2026-04-08T14:20:00-0400 | B | RR=2.00 | ext=-0.165 | no reclaim candle, no hold, bad timing
+2026-04-08T14:21:00-0400 | B | RR=2.00 | ext=-0.102 | no reclaim candle, no hold, bad timing
+2026-04-08T14:22:00-0400 | B | RR=2.00 | ext=-0.137 | no reclaim candle, no hold, bad timing
+2026-04-08T14:23:00-0400 | B | RR=2.00 | ext=-0.098 | no reclaim candle, no hold, bad timing
+2026-04-08T14:24:00-0400 | B | RR=2.00 | ext=-0.119 | no reclaim candle, no hold, bad timing
+2026-04-08T14:25:00-0400 | B | RR=2.00 | ext=-0.158 | no reclaim candle, no hold, bad timing
+2026-04-08T14:26:00-0400 | B | RR=2.00 | ext=-0.087 | no reclaim candle, no hold, bad timing
+2026-04-08T14:27:00-0400 | B | RR=2.00 | ext=-0.126 | no reclaim candle, no hold, bad timing
+2026-04-08T14:28:00-0400 | B | RR=2.00 | ext=-0.111 | no reclaim candle, no hold, bad timing
+2026-04-08T14:29:00-0400 | B | RR=2.00 | ext=-0.155 | no reclaim candle, no hold, bad timing
+2026-04-08T14:30:00-0400 | B | RR=2.00 | ext=-0.119 | no reclaim candle, no hold, bad timing
+2026-04-08T14:31:00-0400 | B | RR=2.00 | ext=-0.112 | no reclaim candle, no hold, bad timing
+2026-04-08T14:32:00-0400 | B | RR=2.00 | ext=-0.125 | no reclaim candle, no hold, bad timing
+2026-04-08T14:33:00-0400 | B | RR=2.00 | ext=-0.146 | no reclaim candle, no hold, bad timing
+2026-04-08T14:34:00-0400 | B | RR=2.00 | ext=-0.138 | no reclaim candle, no hold, bad timing
+2026-04-08T14:35:00-0400 | B | RR=2.00 | ext=-0.134 | no reclaim candle, no hold, bad timing
+2026-04-08T14:36:00-0400 | B | RR=2.00 | ext=-0.128 | no reclaim candle, no hold, bad timing
+2026-04-08T14:37:00-0400 | B | RR=2.00 | ext=-0.144 | no reclaim candle, no hold, bad timing
+2026-04-08T14:38:00-0400 | B | RR=2.00 | ext=-0.150 | no reclaim candle, no hold, bad timing
+2026-04-08T14:39:00-0400 | B | RR=2.00 | ext=-0.203 | no reclaim candle, no hold, bad timing
+2026-04-08T14:40:00-0400 | B | RR=2.00 | ext=-0.247 | no reclaim candle, no hold, bad timing
+2026-04-08T14:41:00-0400 | B | RR=2.00 | ext=-0.258 | no reclaim candle, no hold, bad timing
+2026-04-08T14:42:00-0400 | B | RR=2.00 | ext=-0.246 | no reclaim candle, no hold, bad timing
+2026-04-08T14:43:00-0400 | B | RR=2.00 | ext=-0.274 | no reclaim candle, no hold, bad timing
+2026-04-08T14:44:00-0400 | B | RR=2.00 | ext=-0.299 | no reclaim candle, no hold, bad timing
+2026-04-08T14:45:00-0400 | B | RR=2.00 | ext=-0.294 | no reclaim candle, no hold, bad timing
+2026-04-08T14:46:00-0400 | B | RR=2.00 | ext=-0.290 | no reclaim candle, no hold, bad timing
+2026-04-08T14:47:00-0400 | B | RR=2.00 | ext=-0.294 | no reclaim candle, no hold, bad timing
+2026-04-08T14:48:00-0400 | B | RR=2.00 | ext=-0.318 | no reclaim candle, no hold, bad timing
+2026-04-08T14:49:00-0400 | B | RR=2.00 | ext=-0.357 | no reclaim candle, no hold, bad timing
+2026-04-08T14:50:00-0400 | B | RR=2.00 | ext=-0.332 | no reclaim candle, no hold, bad timing
+2026-04-08T14:51:00-0400 | B | RR=2.00 | ext=-0.355 | no reclaim candle, no hold, bad timing
+2026-04-08T14:52:00-0400 | B | RR=2.00 | ext=-0.370 | no reclaim candle, no hold, bad timing
+2026-04-08T14:53:00-0400 | B | RR=2.00 | ext=-0.376 | no reclaim candle, no hold, bad timing
+2026-04-08T14:55:00-0400 | B | RR=2.00 | ext=-0.420 | no reclaim candle, no hold, bad timing
+2026-04-08T14:56:00-0400 | B | RR=2.00 | ext=-0.447 | no reclaim candle, no hold, bad timing
+2026-04-08T14:57:00-0400 | B | RR=2.00 | ext=-0.476 | no reclaim candle, no hold, bad timing
+2026-04-08T14:58:00-0400 | B | RR=2.00 | ext=-0.503 | no reclaim candle, no hold, bad timing
+2026-04-08T14:59:00-0400 | B | RR=2.00 | ext=-0.536 | no reclaim candle, no hold, bad timing
+2026-04-08T15:00:00-0400 | B | RR=2.00 | ext=-0.564 | no reclaim candle, no hold, bad timing
+2026-04-08T15:01:00-0400 | B | RR=2.00 | ext=-0.482 | no reclaim candle, no hold, bad timing
+2026-04-08T15:02:00-0400 | B | RR=2.00 | ext=-0.475 | no reclaim candle, no hold, bad timing
+2026-04-08T15:03:00-0400 | B | RR=2.00 | ext=-0.461 | no reclaim candle, no hold, bad timing
+2026-04-08T15:04:00-0400 | B | RR=2.00 | ext=-0.480 | no reclaim candle, no hold, bad timing
+2026-04-08T15:05:00-0400 | B | RR=2.00 | ext=-0.485 | no reclaim candle, no hold, bad timing
+2026-04-08T15:06:00-0400 | B | RR=2.00 | ext=-0.478 | no reclaim candle, no hold, bad timing
+2026-04-08T15:07:00-0400 | B | RR=2.00 | ext=-0.430 | no reclaim candle, no hold, bad timing
+2026-04-08T15:08:00-0400 | B | RR=2.00 | ext=-0.412 | no reclaim candle, no hold, bad timing
+2026-04-08T15:09:00-0400 | B | RR=2.00 | ext=-0.423 | no reclaim candle, no hold, bad timing
+2026-04-08T15:10:00-0400 | B | RR=2.00 | ext=-0.369 | no reclaim candle, no hold, bad timing
+2026-04-08T15:11:00-0400 | B | RR=2.00 | ext=-0.301 | no reclaim candle, no hold, bad timing
+2026-04-08T15:12:00-0400 | B | RR=2.00 | ext=-0.300 | no reclaim candle, no hold, bad timing
+2026-04-08T15:13:00-0400 | B | RR=2.00 | ext=-0.292 | no reclaim candle, no hold, bad timing
+2026-04-08T15:14:00-0400 | B | RR=2.00 | ext=-0.299 | no reclaim candle, no hold, bad timing
+2026-04-08T15:15:00-0400 | B | RR=2.00 | ext=-0.310 | no reclaim candle, no hold, bad timing
+2026-04-08T15:16:00-0400 | B | RR=2.00 | ext=-0.337 | no reclaim candle, no hold, bad timing
+2026-04-08T15:17:00-0400 | B | RR=2.00 | ext=-0.383 | no reclaim candle, no hold, bad timing
+2026-04-08T15:18:00-0400 | B | RR=2.00 | ext=-0.405 | no reclaim candle, no hold, bad timing
+2026-04-08T15:19:00-0400 | B | RR=2.00 | ext=-0.410 | no reclaim candle, no hold, bad timing
+2026-04-08T15:20:00-0400 | B | RR=2.00 | ext=-0.439 | no reclaim candle, no hold, bad timing
+2026-04-08T15:21:00-0400 | B | RR=2.00 | ext=-0.441 | no reclaim candle, no hold, bad timing
+2026-04-08T15:22:00-0400 | B | RR=2.00 | ext=-0.472 | no reclaim candle, no hold, bad timing
+2026-04-08T15:23:00-0400 | B | RR=2.00 | ext=-0.444 | no reclaim candle, no hold, bad timing
+2026-04-08T15:24:00-0400 | B | RR=2.00 | ext=-0.444 | no reclaim candle, no hold, bad timing
+2026-04-08T15:25:00-0400 | B | RR=2.00 | ext=-0.410 | no reclaim candle, no hold, bad timing
+2026-04-08T15:26:00-0400 | B | RR=2.00 | ext=-0.437 | no reclaim candle, no hold, bad timing
+2026-04-08T15:28:00-0400 | B | RR=2.00 | ext=-0.485 | no reclaim candle, no hold, bad timing
+2026-04-08T15:29:00-0400 | B | RR=2.00 | ext=-0.486 | no reclaim candle, no hold, bad timing
+2026-04-08T15:30:00-0400 | B | RR=2.00 | ext=-0.399 | no reclaim candle, no hold, bad timing
+2026-04-08T15:31:00-0400 | B | RR=2.00 | ext=-0.370 | no reclaim candle, no hold, bad timing
+2026-04-08T15:32:00-0400 | B | RR=2.00 | ext=-0.344 | no reclaim candle, no hold, bad timing
+2026-04-08T15:33:00-0400 | B | RR=2.00 | ext=-0.363 | no reclaim candle, no hold, bad timing
+2026-04-08T15:34:00-0400 | B | RR=2.00 | ext=-0.338 | no reclaim candle, no hold, bad timing
+2026-04-08T15:35:00-0400 | B | RR=2.00 | ext=-0.320 | no reclaim candle, no hold, bad timing
+2026-04-08T15:36:00-0400 | B | RR=2.00 | ext=-0.283 | no reclaim candle, no hold, bad timing
+2026-04-08T15:37:00-0400 | B | RR=2.00 | ext=-0.279 | no reclaim candle, no hold, bad timing
+2026-04-08T15:38:00-0400 | B | RR=2.00 | ext=-0.335 | no reclaim candle, no hold, bad timing
+2026-04-08T15:39:00-0400 | B | RR=2.00 | ext=-0.287 | no reclaim candle, no hold, bad timing
+2026-04-08T15:40:00-0400 | B | RR=2.00 | ext=-0.306 | no reclaim candle, no hold, bad timing
+2026-04-08T15:41:00-0400 | B | RR=2.00 | ext=-0.368 | no reclaim candle, no hold, bad timing
+2026-04-08T15:42:00-0400 | B | RR=2.00 | ext=-0.326 | no reclaim candle, no hold, bad timing
+2026-04-08T15:43:00-0400 | B | RR=2.00 | ext=-0.281 | no reclaim candle, no hold, bad timing
+2026-04-08T15:44:00-0400 | B | RR=2.00 | ext=-0.253 | no reclaim candle, no hold, bad timing
+2026-04-08T15:45:00-0400 | B | RR=2.00 | ext=-0.189 | no reclaim candle, no hold, bad timing
+2026-04-08T15:46:00-0400 | B | RR=2.00 | ext=-0.198 | no reclaim candle, no hold, bad timing
+2026-04-08T15:47:00-0400 | B | RR=2.00 | ext=-0.164 | no reclaim candle, no hold, bad timing
+2026-04-08T15:48:00-0400 | B | RR=2.00 | ext=-0.184 | no reclaim candle, no hold, bad timing
+2026-04-08T15:49:00-0400 | B | RR=2.00 | ext=-0.167 | no reclaim candle, no hold, bad timing
+2026-04-08T15:50:00-0400 | B | RR=2.00 | ext=-0.130 | no reclaim candle, no hold, bad timing
+2026-04-08T15:51:00-0400 | B | RR=2.00 | ext=-0.163 | no reclaim candle, no hold, bad timing
+2026-04-08T15:52:00-0400 | B | RR=2.00 | ext=-0.162 | no reclaim candle, no hold, bad timing
+2026-04-08T15:53:00-0400 | B | RR=2.00 | ext=-0.119 | no reclaim candle, no hold, bad timing
+2026-04-08T15:54:00-0400 | B | RR=2.00 | ext=-0.143 | no reclaim candle, no hold, bad timing
+2026-04-08T15:55:00-0400 | B | RR=2.00 | ext=-0.151 | no reclaim candle, no hold, bad timing
+2026-04-08T15:56:00-0400 | B | RR=2.00 | ext=-0.132 | no reclaim candle, no hold, bad timing
+2026-04-08T15:57:00-0400 | B | RR=2.00 | ext=-0.106 | no reclaim candle, no hold, bad timing
