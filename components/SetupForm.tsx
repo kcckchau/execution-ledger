@@ -43,9 +43,10 @@ interface SetupFormProps {
   onClose: () => void;
   initialSetup?: TradeSetup;
   onSave?: (setup: TradeSetup) => void;
+  defaultValues?: Partial<TradeSetup>;
 }
 
-function makeDefaultForm(init?: TradeSetup) {
+function makeDefaultForm(init?: TradeSetup, defaults?: Partial<TradeSetup>) {
   if (init) {
     return {
       isIdeal:         init.isIdeal,
@@ -76,17 +77,17 @@ function makeDefaultForm(init?: TradeSetup) {
     };
   }
   return {
-    isIdeal:         false,
-    symbol:          '',
-    direction:       'long' as Direction,
-    setupType:       SETUP_TYPES[0] as SetupType,
-    setupDate:       getTodayInEasternTime(),
-    setupName:       '',
-    initialGrade:    '' as Grade | '',
+    isIdeal:         defaults?.isIdeal ?? false,
+    symbol:          defaults?.symbol ?? '',
+    direction:       defaults?.direction ?? ('long' as Direction),
+    setupType:       defaults?.setupType ?? (SETUP_TYPES[0] as SetupType),
+    setupDate:       defaults?.setupDate ?? getTodayInEasternTime(),
+    setupName:       defaults?.setupName ?? '',
+    initialGrade:    (defaults?.initialGrade ?? '') as Grade | '',
     // Classification
-    contexts:        [] as Context[],
-    locations:       [] as Location[],
-    entryTrigger:    '' as EntryTrigger | '',
+    contexts:        defaults?.contexts ?? ([] as Context[]),
+    locations:       defaults?.locations ?? ([] as Location[]),
+    entryTrigger:    (defaults?.entryTrigger ?? '') as EntryTrigger | '',
     // Trade Plan
     thesis:          '',
     invalidationType: '' as InvalidationType | '',
@@ -97,10 +98,10 @@ function makeDefaultForm(init?: TradeSetup) {
     mistakeTypes:  [] as MistakeType[],
     marketOutcome: '' as MarketOutcome | '',
     reviewNote:    '',
-    riskEntry:       '',
-    riskStop:        '',
-    riskTarget:      '',
-    overallNotes:    '',
+    riskEntry:       defaults?.riskEntry ?? '',
+    riskStop:        defaults?.riskStop ?? '',
+    riskTarget:      defaults?.riskTarget ?? '',
+    overallNotes:    defaults?.overallNotes ?? '',
   };
 }
 
@@ -152,9 +153,15 @@ function TagToggle<T extends string>({
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function SetupForm({ onLog, onClose, initialSetup, onSave }: SetupFormProps) {
+export default function SetupForm({
+  onLog,
+  onClose,
+  initialSetup,
+  onSave,
+  defaultValues,
+}: SetupFormProps) {
   const isEdit = !!initialSetup;
-  const [form, setForm] = useState(() => makeDefaultForm(initialSetup));
+  const [form, setForm] = useState(() => makeDefaultForm(initialSetup, defaultValues));
   const [saving, setSaving] = useState(false);
 
   // ── Derived validity (disable Save reactively) ────────────────────────────
@@ -295,7 +302,7 @@ export default function SetupForm({ onLog, onClose, initialSetup, onSave }: Setu
           updatedAt:       now,
           dayContext:      null,
         });
-        setForm(makeDefaultForm());
+        setForm(makeDefaultForm(undefined, defaultValues));
         onClose();
       }
     } finally {

@@ -18,6 +18,8 @@ interface SetupLogProps {
   onUpdateSetup: (id: string, updated: TradeSetup) => Promise<void>;
   onUpdateExecution: (setupId: string, exec: Execution) => Promise<void>;
   onDeleteExecution: (setupId: string, execId: string) => Promise<void>;
+  onMoveExecutions: (sourceSetupId: string, execIds: string[], targetSetupId: string) => Promise<boolean>;
+  onCreateSetupAndMoveExecutions: (setup: TradeSetup, sourceSetupId: string, execIds: string[]) => Promise<boolean>;
   onUpdateDayContext: (date: string, dc: DayContext) => void;
 }
 
@@ -29,6 +31,8 @@ export default function SetupLog({
   onUpdateSetup,
   onUpdateExecution,
   onDeleteExecution,
+  onMoveExecutions,
+  onCreateSetupAndMoveExecutions,
   onUpdateDayContext,
 }: SetupLogProps) {
   const [filters, setFilters] = useState<TradeFilters>(EMPTY_FILTERS);
@@ -153,12 +157,18 @@ export default function SetupLog({
                 <SetupCard
                   key={setup.id}
                   setup={setup}
+                  relatedSetups={groupSetups.filter(
+                    (candidate) =>
+                      candidate.symbol === setup.symbol && candidate.isIdeal === setup.isIdeal,
+                  )}
                   onAddExecution={onAddExecution}
                   onUpdateStatus={onUpdateStatus}
                   onDeleteSetup={() => onDeleteSetup(setup.id)}
                   onUpdateSetup={(updated) => onUpdateSetup(setup.id, updated)}
                   onUpdateExecution={(exec) => onUpdateExecution(setup.id, exec)}
                   onDeleteExecution={(execId) => onDeleteExecution(setup.id, execId)}
+                  onMoveExecutions={onMoveExecutions}
+                  onCreateSetupAndMoveExecutions={onCreateSetupAndMoveExecutions}
                 />
               ))}
             </div>

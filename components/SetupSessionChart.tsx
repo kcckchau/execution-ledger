@@ -9,7 +9,6 @@ import type { TradeMarker, SetupMarkerMeta } from '@/types/chartMarker';
 interface ChartDataResponse {
   session: SessionChartData | null;
   tradeMarkers: TradeMarker[] | null;
-  setupMeta: SetupMarkerMeta[] | null;
 }
 
 interface SetupSessionChartProps {
@@ -64,7 +63,6 @@ export default function SetupSessionChart({
   const [loading, setLoading] = useState(false);
   const [session, setSession] = useState<SessionChartData | null>(null);
   const [tradeMarkers, setTradeMarkers] = useState<TradeMarker[] | null>(null);
-  const [setupMeta, setSetupMeta] = useState<SetupMarkerMeta[] | null>(null);
   const [toggledSetups, setToggledSetups] = useState<Set<string>>(new Set());
   const [chartMode, setChartMode] = useState<ChartMode>('executed');
 
@@ -106,14 +104,11 @@ export default function SetupSessionChart({
         if (cancelled) return;
         setSession(data.session);
         setTradeMarkers(data.tradeMarkers);
-        setSetupMeta(data.setupMeta);
-        setToggledSetups(new Set(data.setupMeta?.map((s) => s.id) ?? []));
       })
       .catch(() => {
         if (!cancelled) {
           setSession(null);
           setTradeMarkers(null);
-          setSetupMeta(null);
         }
       })
       .finally(() => {
@@ -124,36 +119,45 @@ export default function SetupSessionChart({
     };
   }, [symbol, setupDate, inView]);
 
+  const modeSetups = useMemo(
+    () => setups.filter((s) => (chartMode === 'executed' ? !s.isIdeal : s.isIdeal)),
+    [setups, chartMode],
+  );
+
   // Executions to use as fallback markers — filtered to the current chart mode.
   const executions = useMemo(
-    () =>
-      setups
-        .filter((s) => (chartMode === 'executed' ? !s.isIdeal : s.isIdeal))
-        .flatMap((s) => s.executions),
-    [setups, chartMode],
+    () => modeSetups.flatMap((s) => s.executions),
+    [modeSetups],
   );
 
   // Setup IDs available in the selected mode (executed vs ideal).
   const setupIdsInMode = useMemo(
+    () => new Set(modeSetups.map((s) => s.id)),
+    [modeSetups],
+  );
+
+  // Build chip metadata from actual setups in this mode so moved/manual-only setups
+  // still get filter chips even when there are no DB-backed markers for them yet.
+  const modeSetupMeta = useMemo<SetupMarkerMeta[]>(
     () =>
-      new Set(
-        setups
-          .filter((s) => (chartMode === 'executed' ? !s.isIdeal : s.isIdeal))
-          .map((s) => s.id),
-      ),
-    [setups, chartMode],
+      modeSetups.map((setup) => ({
+        id: setup.id,
+        setupType: setup.setupType,
+        setupName: setup.setupName ?? null,
+      })),
+    [modeSetups],
   );
 
   // Build display labels: prefer setupName, then fall back to setupType + "#N" suffix.
   const setupLabels = useMemo<Record<string, string>>(() => {
-    if (!setupMeta) return {};
+    if (modeSetupMeta.length === 0) return {};
     const typeCount: Record<string, number> = {};
-    for (const s of setupMeta) {
+    for (const s of modeSetupMeta) {
       typeCount[s.setupType] = (typeCount[s.setupType] ?? 0) + 1;
     }
     const typeIdx: Record<string, number> = {};
     const result: Record<string, string> = {};
-    for (const s of setupMeta) {
+    for (const s of modeSetupMeta) {
       if (s.setupName) {
         result[s.id] = s.setupName;
       } else {
@@ -168,21 +172,16 @@ export default function SetupSessionChart({
       }
     }
     return result;
-  }, [setupMeta]);
+  }, [modeSetupMeta]);
 
   // Filter visible markers: unmatched markers (no setupId) are always shown.
-  const modeSetupMeta = useMemo<SetupMarkerMeta[] | null>(() => {
-    if (!setupMeta) return null;
-    return setupMeta.filter((m) => setupIdsInMode.has(m.id));
-  }, [setupMeta, setupIdsInMode]);
-
   const visibleMarkers = useMemo<TradeMarker[] | null>(() => {
     if (!tradeMarkers) return null;
     // Keep unmatched markers visible; hide linked markers outside selected mode.
     const modeFiltered = tradeMarkers.filter(
       (m) => m.setupId == null || setupIdsInMode.has(m.setupId),
     );
-    if (!modeSetupMeta || modeSetupMeta.length <= 1) return modeFiltered;
+    if (modeSetupMeta.length <= 1) return modeFiltered;
     return modeFiltered.filter(
       (m) => m.setupId == null || toggledSetups.has(m.setupId)
     );
@@ -198,6 +197,7 @@ export default function SetupSessionChart({
       visibleMarkers.map((m) => m.executionId).filter((id): id is string => typeof id === 'string' && id.length > 0),
     );
     const fallbackFromExecutions: TradeMarker[] = executions
+      .filter((e) => modeSetupMeta.length <= 1 || toggledSetups.has(e.setupId))
       .filter((e) => !linkedExecutionIds.has(e.id))
       .map((e) => ({
         id: `exec-fallback-${e.id}`,
@@ -212,11 +212,11 @@ export default function SetupSessionChart({
         setupType: null,
       }));
     return [...visibleMarkers, ...fallbackFromExecutions];
-  }, [visibleMarkers, executions]);
+  }, [visibleMarkers, executions, modeSetupMeta.length, setups, toggledSetups]);
 
   // Keep selected setup chips in sync when mode changes.
   useEffect(() => {
-    setToggledSetups(new Set(modeSetupMeta?.map((s) => s.id) ?? []));
+    setToggledSetups(new Set(modeSetupMeta.map((s) => s.id)));
   }, [chartMode, modeSetupMeta]);
 
   function toggleSetup(id: string) {
@@ -231,7 +231,7 @@ export default function SetupSessionChart({
   const hasIdeal = setups.some((s) => s.isIdeal);
   const hasExecuted = setups.some((s) => !s.isIdeal);
   const showModeToggle = hasIdeal && hasExecuted;
-  const showSetupToggles = modeSetupMeta !== null && modeSetupMeta.length > 1;
+  const showSetupToggles = modeSetupMeta.length > 1;
 
   return (
     <div ref={containerRef} className="rounded-lg border border-zinc-800 bg-zinc-900 overflow-hidden">
@@ -272,7 +272,7 @@ export default function SetupSessionChart({
         {/* Per-setup filter chips (DB-backed broker markers only) */}
         {showSetupToggles && (
           <div className="flex flex-wrap gap-1">
-            {modeSetupMeta?.map((s, idx) => {
+            {modeSetupMeta.map((s, idx) => {
               const on = toggledSetups.has(s.id);
               const colorOn = CHIP_COLORS_ON[idx % CHIP_COLORS_ON.length];
               return (
