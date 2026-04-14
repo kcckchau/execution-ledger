@@ -22,6 +22,8 @@ interface DailyDrillDownProps {
   onUpdateSetup: (id: string, updated: TradeSetup) => Promise<void>;
   onUpdateExecution: (setupId: string, exec: Execution) => Promise<void>;
   onDeleteExecution: (setupId: string, execId: string) => Promise<void>;
+  onMoveExecutions: (sourceSetupId: string, execIds: string[], targetSetupId: string) => Promise<boolean>;
+  onCreateSetupAndMoveExecutions: (setup: TradeSetup, sourceSetupId: string, execIds: string[]) => Promise<boolean>;
   onUpdateDayContext: (date: string, dc: DayContext) => void;
 }
 
@@ -35,6 +37,8 @@ export default function DailyDrillDown({
   onUpdateSetup,
   onUpdateExecution,
   onDeleteExecution,
+  onMoveExecutions,
+  onCreateSetupAndMoveExecutions,
   onUpdateDayContext,
 }: DailyDrillDownProps) {
   const [showDeleteDayConfirm, setShowDeleteDayConfirm] = useState(false);
@@ -179,12 +183,18 @@ export default function DailyDrillDown({
               <SetupCard
                 key={setup.id}
                 setup={setup}
+                relatedSetups={visibleSetups.filter(
+                  (candidate) =>
+                    candidate.symbol === setup.symbol && candidate.isIdeal === setup.isIdeal,
+                )}
                 onAddExecution={onAddExecution}
                 onUpdateStatus={onUpdateStatus}
                 onDeleteSetup={() => onDeleteSetup(setup.id)}
                 onUpdateSetup={(updated) => onUpdateSetup(setup.id, updated)}
                 onUpdateExecution={(exec) => onUpdateExecution(setup.id, exec)}
                 onDeleteExecution={(execId) => onDeleteExecution(setup.id, execId)}
+                onMoveExecutions={onMoveExecutions}
+                onCreateSetupAndMoveExecutions={onCreateSetupAndMoveExecutions}
               />
             ))}
           </div>

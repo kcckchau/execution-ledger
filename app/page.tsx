@@ -193,6 +193,82 @@ export default function Home() {
     );
   }
 
+  async function moveExecutions(
+    sourceSetupId: string,
+    execIds: string[],
+    targetSetupId: string,
+  ): Promise<boolean> {
+    setMutationError(null);
+    const res = await fetch(`/api/setups/${sourceSetupId}/executions/move`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ execIds, targetSetupId }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setMutationError(data?.error ?? 'Failed to move executions');
+      return false;
+    }
+
+    const movedExecutions: Execution[] = await res.json();
+    const movedIds = new Set(movedExecutions.map((execution) => execution.id));
+
+    setSetups((prev) =>
+      prev.map((setup) => {
+        if (setup.id === sourceSetupId) {
+          return {
+            ...setup,
+            executions: setup.executions.filter((execution) => !movedIds.has(execution.id)),
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        if (setup.id === targetSetupId) {
+          return {
+            ...setup,
+            executions: [
+              ...setup.executions.filter((execution) => !movedIds.has(execution.id)),
+              ...movedExecutions,
+            ],
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        return setup;
+      }),
+    );
+
+    return true;
+  }
+
+  async function createSetupAndMoveExecutions(
+    setup: TradeSetup,
+    sourceSetupId: string,
+    execIds: string[],
+  ): Promise<boolean> {
+    setMutationError(null);
+
+    const createRes = await fetch('/api/setups', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(setup),
+    });
+    if (!createRes.ok) {
+      const data = await createRes.json().catch(() => ({}));
+      setMutationError(data?.error ?? 'Failed to create setup');
+      return false;
+    }
+
+    const created: TradeSetup = await createRes.json();
+    setSetups((prev) => [created, ...prev]);
+
+    const moved = await moveExecutions(sourceSetupId, execIds, created.id);
+    if (!moved) {
+      setSetups((prev) => prev.filter((candidate) => candidate.id !== created.id));
+      return false;
+    }
+
+    return true;
+  }
+
   // ── Derived ───────────────────────────────────────────────────────────────
 
   const openCount = useMemo(
@@ -313,7 +389,11 @@ export default function Home() {
 
         {/* ── Toolbar: view toggle + New Setup ── */}
         {showSetupForm ? (
-          <SetupForm onLog={logSetup} onClose={() => setShowSetupForm(false)} />
+          <SetupForm
+            onLog={logSetup}
+            onClose={() => setShowSetupForm(false)}
+            defaultValues={selectedDate ? { setupDate: selectedDate } : undefined}
+          />
         ) : (
           <div className="flex items-center justify-between">
             {/* Segmented view control */}
@@ -371,6 +451,8 @@ export default function Home() {
                 onUpdateSetup={updateSetup}
                 onUpdateExecution={updateExecution}
                 onDeleteExecution={deleteExecution}
+                onMoveExecutions={moveExecutions}
+                onCreateSetupAndMoveExecutions={createSetupAndMoveExecutions}
                 onUpdateDayContext={updateDayContext}
               />
             )}
@@ -384,6 +466,8 @@ export default function Home() {
             onUpdateSetup={updateSetup}
             onUpdateExecution={updateExecution}
             onDeleteExecution={deleteExecution}
+            onMoveExecutions={moveExecutions}
+            onCreateSetupAndMoveExecutions={createSetupAndMoveExecutions}
             onUpdateDayContext={updateDayContext}
           />
         )}

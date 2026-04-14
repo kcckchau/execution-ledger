@@ -40,12 +40,15 @@ import ConfirmDialog from './ConfirmDialog';
 
 interface SetupCardProps {
   setup: TradeSetup;
+  relatedSetups: TradeSetup[];
   onAddExecution: (setupId: string, execution: Execution) => void;
   onUpdateStatus: (setupId: string, status: 'open' | 'closed') => void;
   onDeleteSetup: () => Promise<void>;
   onUpdateSetup: (updated: TradeSetup) => Promise<void>;
   onUpdateExecution: (exec: Execution) => Promise<void>;
   onDeleteExecution: (execId: string) => Promise<void>;
+  onMoveExecutions: (sourceSetupId: string, execIds: string[], targetSetupId: string) => Promise<boolean>;
+  onCreateSetupAndMoveExecutions: (setup: TradeSetup, sourceSetupId: string, execIds: string[]) => Promise<boolean>;
 }
 
 type ConfirmTarget =
@@ -56,12 +59,18 @@ function ExecutionRow({
   exec,
   setupId,
   setupDate,
+  selectionMode,
+  selected,
+  onToggleSelected,
   onUpdate,
   onDelete,
 }: {
   exec: Execution;
   setupId: string;
   setupDate: string;
+  selectionMode: boolean;
+  selected: boolean;
+  onToggleSelected: () => void;
   onUpdate: (exec: Execution) => Promise<void>;
   onDelete: () => void;
 }) {
@@ -87,6 +96,15 @@ function ExecutionRow({
     <div
       className={`group flex flex-wrap items-baseline gap-x-3 gap-y-0 px-3 py-1.5 border-l-2 ${ACTION_BORDER_COLORS[exec.actionType]}`}
     >
+      {selectionMode && (
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={onToggleSelected}
+          className="h-3.5 w-3.5 shrink-0 cursor-pointer rounded-sm border-zinc-600 accent-indigo-500"
+          title="Select execution"
+        />
+      )}
       <span
         className="text-xs tabular-nums text-zinc-500 w-9 shrink-0 font-mono"
         title="Eastern Time"
@@ -128,6 +146,13 @@ function ExecutionRow({
       </div>
     </div>
   );
+}
+
+function formatSetupChoiceLabel(setup: TradeSetup): string {
+  const setupLabel = setup.setupName?.trim()
+    ? setup.setupName.trim()
+    : (SETUP_TYPE_LABELS[setup.setupType] ?? setup.setupType);
+  return `${setupLabel} · ${setup.direction === 'long' ? 'Long' : 'Short'}`;
 }
 
 // ── Day-level classification tags ────────────────────────────────────────────
@@ -276,21 +301,30 @@ function SegField({ label, children }: { label: string; children: React.ReactNod
 
 export default function SetupCard({
   setup,
+  relatedSetups,
   onAddExecution,
   onUpdateStatus,
   onDeleteSetup,
   onUpdateSetup,
   onUpdateExecution,
   onDeleteExecution,
+  onMoveExecutions,
+  onCreateSetupAndMoveExecutions,
 }: SetupCardProps) {
   const [showExecForm, setShowExecForm] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null);
   const [confirmPending, setConfirmPending] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedExecutionIds, setSelectedExecutionIds] = useState<Set<string>>(new Set());
+  const [moveTargetId, setMoveTargetId] = useState('');
+  const [movePending, setMovePending] = useState(false);
+  const [showCreateTargetForm, setShowCreateTargetForm] = useState(false);
 
   const pnl = calcSetupPnl(setup.executions, setup.direction);
   const hasExecutions = setup.executions.length > 0;
   const hasRealizedPnl = pnl.totalExitSize > 0;
+  const moveTargets = relatedSetups.filter((candidate) => candidate.id !== setup.id);
   const plannedRR = formatPlannedRiskReward(
     setup.riskEntry,
     setup.riskStop,
@@ -307,6 +341,61 @@ export default function SetupCard({
   function handleToggleStatus() {
     const next = setup.status === 'open' ? 'closed' : 'open';
     onUpdateStatus(setup.id, next);
+  }
+
+  function toggleExecutionSelection(execId: string) {
+    setSelectedExecutionIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(execId)) next.delete(execId);
+      else next.add(execId);
+      return next;
+    });
+  }
+
+  function handleToggleSelectionMode() {
+    setSelectionMode((prev) => {
+      if (prev) {
+        setSelectedExecutionIds(new Set());
+        setMoveTargetId('');
+        setShowCreateTargetForm(false);
+      }
+      return !prev;
+    });
+  }
+
+  async function handleMoveSelected() {
+    if (selectedExecutionIds.size === 0 || !moveTargetId) return;
+    setMovePending(true);
+    try {
+      const ok = await onMoveExecutions(setup.id, [...selectedExecutionIds], moveTargetId);
+      if (ok) {
+        setSelectedExecutionIds(new Set());
+        setMoveTargetId('');
+        setSelectionMode(false);
+        setShowCreateTargetForm(false);
+      }
+    } finally {
+      setMovePending(false);
+    }
+  }
+
+  async function handleCreateSetupAndMove(newSetup: TradeSetup) {
+    setMovePending(true);
+    try {
+      const ok = await onCreateSetupAndMoveExecutions(
+        newSetup,
+        setup.id,
+        [...selectedExecutionIds],
+      );
+      if (ok) {
+        setSelectedExecutionIds(new Set());
+        setMoveTargetId('');
+        setSelectionMode(false);
+        setShowCreateTargetForm(false);
+      }
+    } finally {
+      setMovePending(false);
+    }
   }
 
   async function handleConfirm() {
@@ -515,7 +604,96 @@ export default function SetupCard({
             <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
               Executions{hasExecutions ? ` · ${setup.executions.length}` : ''}
             </span>
+            {hasExecutions && (
+              <button
+                type="button"
+                onClick={handleToggleSelectionMode}
+                className="text-[10px] font-medium text-zinc-500 transition-colors hover:text-zinc-300"
+              >
+                {selectionMode ? 'Done Organizing' : 'Organize'}
+              </button>
+            )}
           </div>
+
+          {selectionMode && (
+            <div className="mx-5 mb-3 flex flex-wrap items-center gap-2 rounded-md border border-zinc-700 bg-zinc-800/80 px-3 py-2">
+              <span className="text-[10px] font-medium text-zinc-400">
+                {selectedExecutionIds.size} selected
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  setSelectedExecutionIds(new Set(sortedExecutions.map((execution) => execution.id)))
+                }
+                className="text-[10px] text-zinc-500 transition-colors hover:text-zinc-300"
+              >
+                Select all
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedExecutionIds(new Set())}
+                className="text-[10px] text-zinc-500 transition-colors hover:text-zinc-300"
+              >
+                Clear
+              </button>
+              {moveTargets.length > 0 && (
+                <>
+                  <select
+                    value={moveTargetId}
+                    onChange={(e) => setMoveTargetId(e.target.value)}
+                    className="ml-auto h-8 min-w-0 rounded-md border border-zinc-700 bg-zinc-900 px-3 text-xs text-zinc-200 focus:border-indigo-500 focus:outline-none"
+                  >
+                    <option value="">Move to setup…</option>
+                    {moveTargets.map((target) => (
+                      <option key={target.id} value={target.id}>
+                        {formatSetupChoiceLabel(target)}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleMoveSelected}
+                    disabled={movePending || selectedExecutionIds.size === 0 || !moveTargetId}
+                    className="h-8 rounded-md bg-indigo-600 px-3 text-[10px] font-medium text-white transition-colors hover:bg-indigo-500 disabled:opacity-50"
+                  >
+                    {movePending ? 'Moving…' : 'Move Selected'}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
+          {selectionMode && selectedExecutionIds.size > 0 && (
+            <div className="mx-5 mb-3">
+              {showCreateTargetForm ? (
+                <SetupForm
+                  onLog={handleCreateSetupAndMove}
+                  onClose={() => setShowCreateTargetForm(false)}
+                  defaultValues={{
+                    isIdeal: setup.isIdeal,
+                    symbol: setup.symbol,
+                    direction: setup.direction,
+                    setupDate: setup.setupDate,
+                    setupType: setup.setupType,
+                    contexts: setup.contexts,
+                    locations: setup.locations,
+                    entryTrigger: setup.entryTrigger ?? undefined,
+                    riskEntry: setup.riskEntry,
+                    riskStop: setup.riskStop,
+                    riskTarget: setup.riskTarget,
+                  }}
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowCreateTargetForm(true)}
+                  className="text-[10px] font-medium text-indigo-300 transition-colors hover:text-indigo-200"
+                >
+                  + Create New Setup From Selected
+                </button>
+              )}
+            </div>
+          )}
 
           {hasExecutions ? (
             <div className="flex flex-col px-5 pb-1 gap-0.5">
@@ -525,6 +703,9 @@ export default function SetupCard({
                   exec={exec}
                   setupId={setup.id}
                   setupDate={setup.setupDate}
+                  selectionMode={selectionMode}
+                  selected={selectedExecutionIds.has(exec.id)}
+                  onToggleSelected={() => toggleExecutionSelection(exec.id)}
                   onUpdate={onUpdateExecution}
                   onDelete={() => setConfirmTarget({ type: 'deleteExecution', execId: exec.id })}
                 />
