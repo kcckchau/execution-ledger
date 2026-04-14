@@ -15,21 +15,23 @@ datasource db {
 // ─────────────────────────────────────────────────────────────────────────────
 
 enum SetupType {
-  // Legacy values — in production; kept to avoid breaking existing rows.
-  RANGE
+  // Legacy values retained for existing rows.
   FLIP
-  // Core structured setup types
   VWAP_RECLAIM
   VWAP_REJECT
   VWAP_PULLBACK
   ORB_BREAK
   SWEEP_FAIL
-  BREAKOUT
-  BREAKDOWN
   FAILED_BREAKOUT
   FAILED_BREAKDOWN
   RANGE_RECLAIM
   RANGE_REJECT
+  TREND_PULLBACK
+  BREAKOUT
+  BREAKDOWN
+  RANGE
+  FAILED_MOVE
+  VWAP_PLAY
 }
 
 enum Regime {
@@ -85,6 +87,55 @@ enum DayType {
   OPEN_DRIVE
   OPEN_REJECTION
   TRANSITION
+}
+
+enum Trigger {
+  RECLAIM_LEVEL
+  BREAK_AND_HOLD
+  STRONG_ENGULF
+  MOMENTUM_SHIFT
+  LIQUIDITY_SWEEP
+  FAILURE_CONFIRM
+}
+
+enum TradeLocation {
+  ABOVE_VWAP
+  BELOW_VWAP
+  AT_VWAP
+}
+
+enum LiquidityContext {
+  SWEEP_HIGH
+  SWEEP_LOW
+  NONE
+}
+
+enum KeyLevel {
+  PDH
+  PDL
+  PREMARKET_HIGH
+  PREMARKET_LOW
+  RANGE_HIGH
+  RANGE_LOW
+  VWAP
+  WHOLE_NUMBER
+}
+
+enum EntryType {
+  AGGRESSIVE
+  PULLBACK
+}
+
+enum EntryTiming {
+  EARLY
+  IDEAL
+  LATE
+}
+
+enum Confirmation {
+  HOLD_ABOVE_LEVEL
+  HOLD_BELOW_LEVEL
+  FOLLOW_THROUGH
 }
 
 enum StructureType {
@@ -196,7 +247,17 @@ enum InvalidationType {
 // Review layer enums — post-trade analysis
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// What the trader was trying to capture.
+enum ReviewIntent {
+  TREND_CONTINUATION
+  REVERSAL
+  RANGE_PLAY
+  BREAKOUT
+  FAILED_MOVE_TRAP
+}
+
 /// Monetary outcome of the trade.
+/// @deprecated Use TradeResult instead.
 enum Outcome {
   WIN
   LOSS
@@ -204,10 +265,25 @@ enum Outcome {
 }
 
 /// Whether the setup idea itself was correct, independent of P&L.
+/// @deprecated Use SetupValidity instead.
 enum SetupResult {
   PLAYED_OUT
   FAILED
   UNCLEAR
+}
+
+/// Monetary outcome of the trade.
+enum TradeResult {
+  WIN
+  LOSS
+  BREAKEVEN
+}
+
+/// Whether the setup read was correct, wrong, or partially right.
+enum SetupValidity {
+  CORRECT_READ
+  WRONG_READ
+  PARTIAL
 }
 
 /// Category of execution or planning mistake.
@@ -230,6 +306,11 @@ enum MarketOutcome {
   VWAP_REJECT
   TREND_CONTINUATION
   RANGE_CONTINUATION
+  TREND_UP
+  TREND_DOWN
+  RANGE_CHOP
+  FAILED_MOVE
+  BREAKOUT_CONTINUATION
   REVERSAL
 }
 
@@ -250,6 +331,14 @@ model TradeSetup {
   direction String
 
   setupType SetupType @default(RANGE)
+  triggers  Trigger[] @default([])
+  dayType   DayType?
+  location  TradeLocation?
+  liquidityContext LiquidityContext?
+  keyLevels KeyLevel[] @default([])
+  entryType EntryType?
+  entryTiming EntryTiming?
+  confirmation Confirmation[] @default([])
 
   // ── Layer 1 legacy: free-text planning fields (retained for backward compat) ──
   /// Free-text trigger description. Structured equivalent: triggerType.
@@ -316,10 +405,16 @@ model TradeSetup {
   shouldTrade     Boolean?
 
   // ── Review layer — post-trade analysis ──
-  /// Monetary outcome: did the trade make or lose money.
+  /// What the trader intended to capture.
+  intent        ReviewIntent?
+  /// @deprecated Legacy review outcome retained for compatibility only.
   outcome       Outcome?
-  /// Whether the trade idea was actually correct (independent of P&L).
+  /// Monetary outcome: did the trade make or lose money.
+  tradeResult   TradeResult?
+  /// @deprecated Legacy setup-quality field retained for compatibility only.
   setupResult   SetupResult?
+  /// Whether the setup read was actually correct.
+  setupValidity SetupValidity?
   /// What execution or planning mistakes were made (multi-select).
   mistakeTypes  MistakeType[] @default([])
   /// What the market actually did after entry.
@@ -340,7 +435,7 @@ model TradeSetup {
   @@index([trueRegime, vwapState])
   @@index([alignment, shouldTrade])
   @@index([entryTrigger])
-  @@index([outcome, setupResult])
+  @@index([tradeResult, setupValidity])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -422,4 +517,3 @@ model ChartMarker {
   @@index([symbol, tradeDate])
   @@index([setupId])
 }
-

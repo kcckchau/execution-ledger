@@ -2,110 +2,126 @@
 
 import { useMemo, useState } from 'react';
 import {
-  type TradeSetup,
-  type SetupType,
-  type Grade,
+  type Confirmation,
+  type DayType,
   type Direction,
-  type Context,
-  type Location,
-  type EntryTrigger,
-  type InvalidationType,
-  type Outcome,
-  type SetupResult,
-  type MistakeType,
+  type EntryTiming,
+  type EntryType,
+  type Grade,
+  type KeyLevel,
+  type LiquidityContext,
+  type ReviewIntent,
+  type SetupType,
+  type TradeLocation,
+  type TradeSetup,
+  type Trigger,
   type MarketOutcome,
-  SETUP_TYPES,
-  SETUP_TYPE_LABELS,
-  GRADES,
+  type TradeResult,
+  type SetupValidity,
+  type MistakeType,
+  CONFIRMATIONS,
+  CONFIRMATION_LABELS,
+  DAY_TYPES,
+  DAY_TYPE_LABELS,
   DIRECTIONS,
-  CONTEXTS,
-  CONTEXT_LABELS,
-  LOCATIONS,
-  LOCATION_LABELS,
-  ENTRY_TRIGGERS,
-  ENTRY_TRIGGER_LABELS,
-  INVALIDATION_TYPES,
-  INVALIDATION_TYPE_LABELS,
-  OUTCOMES,
-  OUTCOME_LABELS,
-  SETUP_RESULTS,
-  SETUP_RESULT_LABELS,
-  MISTAKE_TYPES,
-  MISTAKE_TYPE_LABELS,
+  ENTRY_TIMINGS,
+  ENTRY_TIMING_LABELS,
+  ENTRY_TYPES,
+  ENTRY_TYPE_LABELS,
+  GRADES,
+  KEY_LEVELS,
+  KEY_LEVEL_LABELS,
+  LIQUIDITY_CONTEXTS,
+  LIQUIDITY_CONTEXT_LABELS,
   MARKET_OUTCOMES,
   MARKET_OUTCOME_LABELS,
+  MISTAKE_TYPES,
+  MISTAKE_TYPE_LABELS,
+  REVIEW_INTENTS,
+  REVIEW_INTENT_LABELS,
+  SETUP_TYPES,
+  SETUP_TYPE_LABELS,
+  SETUP_VALIDITIES,
+  SETUP_VALIDITY_LABELS,
+  TRADE_RESULTS,
+  TRADE_RESULT_LABELS,
+  TRADE_LOCATIONS,
+  TRADE_LOCATION_LABELS,
+  TRIGGERS,
+  TRIGGER_LABELS,
 } from '@/types/setup';
 import { getTodayInEasternTime } from '@/lib/dateUtils';
-import { formatPlannedRiskReward } from '@/lib/plannedRiskReward';
+import { deriveDeprecatedSetupFields } from '@/lib/setupPayload';
 
 interface SetupFormProps {
-  onLog: (setup: TradeSetup) => void;
+  onLog: (setup: TradeSetup) => void | Promise<void>;
   onClose: () => void;
   initialSetup?: TradeSetup;
-  onSave?: (setup: TradeSetup) => void;
+  onSave?: (setup: TradeSetup) => void | Promise<void>;
   defaultValues?: Partial<TradeSetup>;
 }
 
 function makeDefaultForm(init?: TradeSetup, defaults?: Partial<TradeSetup>) {
   if (init) {
     return {
-      isIdeal:         init.isIdeal,
-      symbol:          init.symbol,
-      direction:       init.direction,
-      setupType:       init.setupType,
-      setupDate:       init.setupDate,
-      setupName:       init.setupName ?? '',
-      initialGrade:    (init.initialGrade ?? '') as Grade | '',
-      // Classification
-      contexts:        init.contexts ?? ([] as Context[]),
-      locations:       init.locations ?? ([] as Location[]),
-      entryTrigger:    init.entryTrigger ?? ('' as EntryTrigger | ''),
-      // Trade Plan
-      thesis:          init.decisionTarget,
-      invalidationType: init.invalidationType ?? ('' as InvalidationType | ''),
-      invalidationNote: init.invalidationNote ?? '',
-      // Review layer
-      outcome:       (init.outcome ?? '') as Outcome | '',
-      setupResult:   (init.setupResult ?? '') as SetupResult | '',
-      mistakeTypes:  init.mistakeTypes ?? ([] as MistakeType[]),
+      isIdeal: init.isIdeal,
+      symbol: init.symbol,
+      direction: init.direction,
+      setupType: init.setupType,
+      setupDate: init.setupDate,
+      setupName: init.setupName ?? '',
+      initialGrade: (init.initialGrade ?? '') as Grade | '',
+      triggers: init.triggers ?? ([] as Trigger[]),
+      dayType: (init.dayType ?? '') as DayType | '',
+      location: (init.location ?? '') as TradeLocation | '',
+      liquidityContext: (init.liquidityContext ?? '') as LiquidityContext | '',
+      keyLevels: init.keyLevels ?? ([] as KeyLevel[]),
+      entryType: (init.entryType ?? '') as EntryType | '',
+      entryTiming: (init.entryTiming ?? '') as EntryTiming | '',
+      entryPrice: init.entryPrice != null ? String(init.entryPrice) : '',
+      riskStop: init.riskStop,
+      riskTarget: init.riskTarget,
+      confirmation: init.confirmation ?? ([] as Confirmation[]),
+      thesis: init.decisionTarget,
+      overallNotes: init.overallNotes,
+      intent: (init.intent ?? '') as ReviewIntent | '',
       marketOutcome: (init.marketOutcome ?? '') as MarketOutcome | '',
-      reviewNote:    init.reviewNote ?? '',
-      riskEntry:       init.riskEntry,
-      riskStop:        init.riskStop,
-      riskTarget:      init.riskTarget,
-      overallNotes:    init.overallNotes,
+      tradeResult: (init.tradeResult ?? '') as TradeResult | '',
+      setupValidity: (init.setupValidity ?? '') as SetupValidity | '',
+      mistakeTypes: init.mistakeTypes ?? ([] as MistakeType[]),
+      reviewNote: init.reviewNote ?? '',
     };
   }
+
   return {
-    isIdeal:         defaults?.isIdeal ?? false,
-    symbol:          defaults?.symbol ?? '',
-    direction:       defaults?.direction ?? ('long' as Direction),
-    setupType:       defaults?.setupType ?? (SETUP_TYPES[0] as SetupType),
-    setupDate:       defaults?.setupDate ?? getTodayInEasternTime(),
-    setupName:       defaults?.setupName ?? '',
-    initialGrade:    (defaults?.initialGrade ?? '') as Grade | '',
-    // Classification
-    contexts:        defaults?.contexts ?? ([] as Context[]),
-    locations:       defaults?.locations ?? ([] as Location[]),
-    entryTrigger:    (defaults?.entryTrigger ?? '') as EntryTrigger | '',
-    // Trade Plan
-    thesis:          '',
-    invalidationType: '' as InvalidationType | '',
-    invalidationNote: '',
-    // Review layer
-    outcome:       '' as Outcome | '',
-    setupResult:   '' as SetupResult | '',
-    mistakeTypes:  [] as MistakeType[],
+    isIdeal: defaults?.isIdeal ?? false,
+    symbol: defaults?.symbol ?? '',
+    direction: defaults?.direction ?? ('long' as Direction),
+    setupType: defaults?.setupType ?? (SETUP_TYPES[0] as SetupType),
+    setupDate: defaults?.setupDate ?? getTodayInEasternTime(),
+    setupName: defaults?.setupName ?? '',
+    initialGrade: (defaults?.initialGrade ?? '') as Grade | '',
+    triggers: defaults?.triggers ?? ([] as Trigger[]),
+    dayType: (defaults?.dayType ?? '') as DayType | '',
+    location: (defaults?.location ?? '') as TradeLocation | '',
+    liquidityContext: (defaults?.liquidityContext ?? '') as LiquidityContext | '',
+    keyLevels: defaults?.keyLevels ?? ([] as KeyLevel[]),
+    entryType: (defaults?.entryType ?? '') as EntryType | '',
+    entryTiming: (defaults?.entryTiming ?? '') as EntryTiming | '',
+    entryPrice: defaults?.entryPrice != null ? String(defaults.entryPrice) : '',
+    riskStop: defaults?.riskStop ?? '',
+    riskTarget: defaults?.riskTarget ?? '',
+    confirmation: defaults?.confirmation ?? ([] as Confirmation[]),
+    thesis: defaults?.decisionTarget ?? '',
+    overallNotes: defaults?.overallNotes ?? '',
+    intent: '' as ReviewIntent | '',
     marketOutcome: '' as MarketOutcome | '',
-    reviewNote:    '',
-    riskEntry:       defaults?.riskEntry ?? '',
-    riskStop:        defaults?.riskStop ?? '',
-    riskTarget:      defaults?.riskTarget ?? '',
-    overallNotes:    defaults?.overallNotes ?? '',
+    tradeResult: '' as TradeResult | '',
+    setupValidity: '' as SetupValidity | '',
+    mistakeTypes: [] as MistakeType[],
+    reviewNote: '',
   };
 }
-
-// ── Style tokens ──────────────────────────────────────────────────────────────
 
 const inputClass =
   'h-9 rounded-md border border-zinc-700 bg-zinc-800 px-3 text-sm text-white ' +
@@ -118,12 +134,9 @@ const textareaClass =
 const sectionTitleClass =
   'text-[11px] font-semibold uppercase tracking-wider text-zinc-500 border-b border-zinc-800 pb-2';
 
-const labelClass    = 'text-xs font-medium text-zinc-400';
+const labelClass = 'text-xs font-medium text-zinc-400';
 const labelDimClass = 'text-xs font-medium text-zinc-500';
-
 const REQ = <span className="text-red-500 ml-0.5">*</span>;
-
-// ── Tag toggle ────────────────────────────────────────────────────────────────
 
 function TagToggle<T extends string>({
   value,
@@ -134,7 +147,7 @@ function TagToggle<T extends string>({
   value: T;
   label: string;
   selected: boolean;
-  onToggle: (v: T) => void;
+  onToggle: (value: T) => void;
 }) {
   return (
     <button
@@ -151,8 +164,6 @@ function TagToggle<T extends string>({
   );
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
-
 export default function SetupForm({
   onLog,
   onClose,
@@ -164,72 +175,17 @@ export default function SetupForm({
   const [form, setForm] = useState(() => makeDefaultForm(initialSetup, defaultValues));
   const [saving, setSaving] = useState(false);
 
-  // ── Derived validity (disable Save reactively) ────────────────────────────
   const canSave = useMemo(
-    () =>
-      form.symbol.trim() !== '' &&
-      form.entryTrigger !== '' &&
-      form.contexts.length > 0 &&
-      form.thesis.trim() !== '' &&
-      form.invalidationType !== '',
-    [form.symbol, form.entryTrigger, form.contexts, form.thesis, form.invalidationType]
+    () => form.symbol.trim() !== '' && form.triggers.length > 0,
+    [form.symbol, form.triggers],
   );
 
-  // ── Non-blocking warnings (live) ─────────────────────────────────────────
-  const warnings = useMemo(() => {
-    const msgs: string[] = [];
-
-    if (
-      (form.setupType === 'VWAP_REJECT' || form.setupType === 'VWAP_RECLAIM') &&
-      !form.locations.includes('VWAP')
-    ) {
-      msgs.push(`${SETUP_TYPE_LABELS[form.setupType]} usually trades at VWAP — consider adding VWAP to Locations.`);
-    }
-
-    if (form.setupType === 'RANGE_REJECT' && form.locations.includes('MID_RANGE')) {
-      msgs.push('RANGE_REJECT at MID_RANGE is unusual — rejections happen at range extremes.');
-    }
-
-    if (
-      form.invalidationType === 'STRUCTURE_BREAK' &&
-      /vwap/i.test(form.invalidationNote)
-    ) {
-      msgs.push('Your note mentions VWAP — consider using Reclaim VWAP or Hold Above/Below VWAP as the invalidation type.');
-    }
-
-    return msgs;
-  }, [form.setupType, form.locations, form.invalidationType, form.invalidationNote]);
-
-  // ── R:R ───────────────────────────────────────────────────────────────────
-  const plannedRR = useMemo(
-    () => formatPlannedRiskReward(form.riskEntry, form.riskStop, form.riskTarget, form.direction),
-    [form.riskEntry, form.riskStop, form.riskTarget, form.direction]
-  );
-
-  // ── Tag toggles ───────────────────────────────────────────────────────────
-  function toggleContext(ctx: Context) {
-    setForm((f) => ({
-      ...f,
-      contexts: f.contexts.includes(ctx) ? f.contexts.filter((c) => c !== ctx) : [...f.contexts, ctx],
-    }));
-  }
-  function toggleLocation(loc: Location) {
-    setForm((f) => ({
-      ...f,
-      locations: f.locations.includes(loc) ? f.locations.filter((l) => l !== loc) : [...f.locations, loc],
-    }));
+  function toggleInList<T extends string>(items: T[], value: T): T[] {
+    return items.includes(value)
+      ? items.filter((item) => item !== value)
+      : [...items, value];
   }
 
-  function toggleMistakeType(m: MistakeType) {
-    setForm((f) => ({
-      ...f,
-      mistakeTypes: f.mistakeTypes.includes(m)
-        ? f.mistakeTypes.filter((x) => x !== m)
-        : [...f.mistakeTypes, m],
-    }));
-  }
-
-  // ── Submit ────────────────────────────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canSave) return;
@@ -237,70 +193,83 @@ export default function SetupForm({
     setSaving(true);
     try {
       const now = new Date().toISOString();
+      const entryPriceNumber =
+        form.entryPrice.trim() !== '' && Number.isFinite(Number(form.entryPrice))
+          ? Number(form.entryPrice)
+          : null;
+      const tradeResult = form.tradeResult || null;
+      const setupValidity = form.setupValidity || null;
+      const deprecated = deriveDeprecatedSetupFields({
+        triggers: form.triggers,
+        dayType: form.dayType || null,
+        location: form.location || null,
+        keyLevels: form.keyLevels,
+        tradeResult,
+        setupValidity,
+      });
+
       const shared = {
-        isIdeal:          form.isIdeal,
-        setupDate:        form.setupDate,
-        symbol:           form.symbol.trim().toUpperCase(),
-        direction:        form.direction,
-        setupType:        form.setupType,
-        // Classification — structured trigger stored in entryTrigger; legacy text field left blank
-        trigger:          '',
-        decisionTarget:   form.thesis.trim(),
-        contexts:         form.contexts,
-        locations:        form.locations,
-        entryTrigger:     (form.entryTrigger as EntryTrigger) || null,
-        // Trade Plan
-        invalidationType: form.invalidationType as InvalidationType,
-        invalidationNote: form.invalidationNote.trim() || null,
-        riskEntry:        form.riskEntry.trim(),
-        riskStop:         form.riskStop.trim(),
-        riskTarget:       form.riskTarget.trim(),
-        initialGrade:     (form.initialGrade as Grade) || null,
-        overallNotes:     form.overallNotes.trim(),
-        setupName:        form.setupName.trim() || null,
-        // Review layer
-        outcome:       (form.outcome as Outcome) || null,
-        setupResult:   (form.setupResult as SetupResult) || null,
-        mistakeTypes:  form.mistakeTypes,
-        marketOutcome: (form.marketOutcome as MarketOutcome) || null,
-        reviewNote:    form.reviewNote.trim() || null,
+        isIdeal: form.isIdeal,
+        setupDate: form.setupDate,
+        symbol: form.symbol.trim().toUpperCase(),
+        direction: form.direction,
+        setupType: form.setupType,
+        triggers: form.triggers,
+        dayType: form.dayType || null,
+        location: form.location || null,
+        liquidityContext: form.liquidityContext || null,
+        keyLevels: form.keyLevels,
+        entryType: form.entryType || null,
+        entryTiming: form.entryTiming || null,
+        confirmation: form.confirmation,
+        ...deprecated,
+        decisionTarget: form.thesis.trim(),
+        invalidationType: 'STRUCTURE_BREAK' as const,
+        invalidationNote: null,
+        riskEntry: form.entryPrice.trim(),
+        riskStop: form.riskStop.trim(),
+        riskTarget: form.riskTarget.trim(),
+        triggerType: null,
+        entryPrice: entryPriceNumber,
+        stopPrice: null,
+        targetPrice: null,
+        trueRegime: null,
+        vwapState: null,
+        structure: null,
+        alignment: null,
+        mistakeTags: [],
+        executionScore: null,
+        readScore: null,
+        disciplineScore: null,
+        bestSetupType: null,
+        bestDirection: null,
+        shouldTrade: null,
+        intent: form.intent || null,
+        marketOutcome: form.marketOutcome || null,
+        tradeResult,
+        setupValidity,
+        mistakeTypes: form.mistakeTypes,
+        reviewNote: form.reviewNote.trim() || null,
+        initialGrade: form.initialGrade || null,
+        overallNotes: form.overallNotes.trim(),
+        setupName: form.setupName.trim() || null,
       };
 
       if (isEdit && initialSetup && onSave) {
-        await onSave({ ...initialSetup, ...shared, updatedAt: now });
-      } else {
-        onLog({
-          id:              crypto.randomUUID(),
+        await onSave({
+          ...initialSetup,
           ...shared,
-          // Layer 1 structured (not yet wired in form)
-          triggerType:     null,
-          entryPrice:      null,
-          stopPrice:       null,
-          targetPrice:     null,
-          // Layer 2
-          trueRegime:      null,
-          vwapState:       null,
-          structure:       null,
-          alignment:       null,
-          // Layer 3
-          mistakeTags:     [],
-          executionScore:  null,
-          readScore:       null,
-          disciplineScore: null,
-          bestSetupType:   null,
-          bestDirection:   null,
-          shouldTrade:     null,
-          // Review layer
-          outcome:       null,
-          setupResult:   null,
-          mistakeTypes:  [],
-          marketOutcome: null,
-          reviewNote:    null,
-          status:          'open',
-          executions:      [],
-          createdAt:       now,
-          updatedAt:       now,
-          dayContext:      null,
+          updatedAt: now,
+        });
+      } else {
+        await onLog({
+          id: crypto.randomUUID(),
+          ...shared,
+          status: 'open',
+          executions: [],
+          createdAt: now,
+          updatedAt: now,
+          dayContext: null,
         });
         setForm(makeDefaultForm(undefined, defaultValues));
         onClose();
@@ -310,13 +279,11 @@ export default function SetupForm({
     }
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <form
       onSubmit={handleSubmit}
       className="flex flex-col gap-5 rounded-lg border border-zinc-800 bg-zinc-900 p-6"
     >
-      {/* Title */}
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-white">{isEdit ? 'Edit Setup' : 'New Setup'}</h2>
         <button
@@ -329,7 +296,6 @@ export default function SetupForm({
         </button>
       </div>
 
-      {/* ── Tracking mode ── */}
       <div className="flex flex-col gap-1.5">
         <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
           Setup Mode
@@ -338,72 +304,62 @@ export default function SetupForm({
           <button
             type="button"
             onClick={() => setForm((f) => ({ ...f, isIdeal: false }))}
-            aria-pressed={!form.isIdeal}
             className={`rounded-md px-3 py-1.5 text-xs font-semibold ring-1 transition-colors ${
               !form.isIdeal
                 ? 'bg-zinc-700 text-zinc-100 ring-zinc-500/50'
                 : 'bg-zinc-900 text-zinc-500 ring-zinc-700 hover:bg-zinc-800 hover:text-zinc-300'
             }`}
           >
-            Executed (counts in P&amp;L)
+            Executed
           </button>
           <button
             type="button"
             onClick={() => setForm((f) => ({ ...f, isIdeal: true }))}
-            aria-pressed={form.isIdeal}
             className={`rounded-md px-3 py-1.5 text-xs font-semibold ring-1 transition-colors ${
               form.isIdeal
                 ? 'bg-violet-900/60 text-violet-300 ring-violet-500/40'
                 : 'bg-zinc-900 text-zinc-500 ring-zinc-700 hover:bg-zinc-800 hover:text-zinc-300'
             }`}
           >
-            Ideal (review only)
+            Ideal
           </button>
         </div>
-        <p className="text-[10px] text-zinc-500">
-          Ideal setups are hypothetical; their P&amp;L is shown separately (violet) from executed trades in the log, calendar, and filters.
-        </p>
       </div>
 
-      {/* ── Identity row ── */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className="flex flex-col gap-1.5">
           <label className={labelClass}>Symbol{REQ}</label>
           <input
             type="text"
-            placeholder="AAPL"
             value={form.symbol}
             onChange={(e) => setForm((f) => ({ ...f, symbol: e.target.value }))}
             className={inputClass}
+            placeholder="QQQ"
           />
         </div>
-
         <div className="flex flex-col gap-1.5">
           <label className={labelClass}>Direction</label>
           <div className="flex h-9 overflow-hidden rounded-md border border-zinc-700">
-            {DIRECTIONS.map((d) => (
+            {DIRECTIONS.map((direction) => (
               <button
-                key={d}
+                key={direction}
                 type="button"
-                onClick={() => setForm((f) => ({ ...f, direction: d }))}
+                onClick={() => setForm((f) => ({ ...f, direction }))}
                 className={`flex-1 text-xs font-bold transition-colors ${
-                  form.direction === d
-                    ? d === 'long'
-                      ? 'bg-emerald-600 text-white ring-2 ring-inset ring-emerald-300/80'
-                      : 'bg-rose-600 text-white ring-2 ring-inset ring-rose-300/80'
-                    : 'bg-zinc-800 text-zinc-500 hover:bg-zinc-800/90 hover:text-zinc-300'
+                  form.direction === direction
+                    ? direction === 'long'
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-rose-600 text-white'
+                    : 'bg-zinc-800 text-zinc-500 hover:text-zinc-300'
                 }`}
               >
-                {d === 'long' ? '↑ Long' : '↓ Short'}
+                {direction === 'long' ? '↑ Long' : '↓ Short'}
               </button>
             ))}
           </div>
         </div>
-
         <div className="flex flex-col gap-1.5">
-          <label className={labelClass}>
-            Date <span className="font-normal text-zinc-600">(ET)</span>
-          </label>
+          <label className={labelClass}>Date</label>
           <input
             type="date"
             value={form.setupDate}
@@ -411,7 +367,6 @@ export default function SetupForm({
             className={inputClass}
           />
         </div>
-
         <div className="flex flex-col gap-1.5">
           <label className={labelClass}>Grade</label>
           <select
@@ -420,253 +375,256 @@ export default function SetupForm({
             className={inputClass}
           >
             <option value="">—</option>
-            {GRADES.map((g) => (
-              <option key={g} value={g}>{g}</option>
+            {GRADES.map((grade) => (
+              <option key={grade} value={grade}>{grade}</option>
             ))}
           </select>
         </div>
       </div>
 
-      {/* ── Classification ── */}
       <div className="flex flex-col gap-4">
-        <h3 className={sectionTitleClass}>Classification</h3>
-
+        <h3 className={sectionTitleClass}>Thesis / Plan</h3>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {/* Setup type */}
           <div className="flex flex-col gap-1.5">
-            <label className={labelClass}>
-              Setup{REQ}{' '}
-              <span className="text-zinc-600 font-normal">— WHY</span>
-            </label>
+            <label className={labelClass}>Intent</label>
+            <select
+              value={form.intent}
+              onChange={(e) => setForm((f) => ({ ...f, intent: e.target.value as ReviewIntent | '' }))}
+              className={inputClass}
+            >
+              <option value="">—</option>
+              {REVIEW_INTENTS.map((intent) => (
+                <option key={intent} value={intent}>{REVIEW_INTENT_LABELS[intent]}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className={labelDimClass}>Thesis</label>
+            <textarea
+              rows={2}
+              value={form.thesis}
+              onChange={(e) => setForm((f) => ({ ...f, thesis: e.target.value }))}
+              className={textareaClass}
+              placeholder="What are you trying to do and why?"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-4">
+        <h3 className={sectionTitleClass}>Setup</h3>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>Setup Type{REQ}</label>
             <select
               value={form.setupType}
               onChange={(e) => setForm((f) => ({ ...f, setupType: e.target.value as SetupType }))}
               className={inputClass}
             >
-              {SETUP_TYPES.map((s) => (
-                <option key={s} value={s}>{SETUP_TYPE_LABELS[s]}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Trigger */}
-          <div className="flex flex-col gap-1.5">
-            <label className={labelClass}>
-              Trigger{REQ}{' '}
-              <span className="text-zinc-600 font-normal">— execution signal</span>
-            </label>
-            <select
-              value={form.entryTrigger}
-              onChange={(e) => setForm((f) => ({ ...f, entryTrigger: e.target.value as EntryTrigger | '' }))}
-              className={inputClass}
-            >
-              <option value="">Select trigger…</option>
-              {ENTRY_TRIGGERS.map((t) => (
-                <option key={t} value={t}>{ENTRY_TRIGGER_LABELS[t]}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Context */}
-        <div className="flex flex-col gap-1.5">
-          <label className={labelClass}>
-            Context{REQ}{' '}
-            <span className="text-zinc-600 font-normal">— WHEN it works</span>
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {CONTEXTS.map((ctx) => (
-              <TagToggle
-                key={ctx}
-                value={ctx}
-                label={CONTEXT_LABELS[ctx]}
-                selected={form.contexts.includes(ctx)}
-                onToggle={toggleContext}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Location */}
-        <div className="flex flex-col gap-1.5">
-          <label className={labelClass}>
-            Location{' '}
-            <span className="text-zinc-600 font-normal">— WHERE (price levels in play)</span>
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {LOCATIONS.map((loc) => (
-              <TagToggle
-                key={loc}
-                value={loc}
-                label={LOCATION_LABELS[loc]}
-                selected={form.locations.includes(loc)}
-                onToggle={toggleLocation}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Trade Plan ── */}
-      <div className="flex flex-col gap-3">
-        <h3 className={sectionTitleClass}>Trade Plan</h3>
-
-        {/* Thesis */}
-        <div className="flex flex-col gap-1.5">
-          <label className={labelClass}>
-            Thesis{REQ}{' '}
-            <span className="text-zinc-600 font-normal">— what needs to happen</span>
-          </label>
-          <textarea
-            rows={2}
-            placeholder="e.g. reclaim VWAP on volume, hold above and target PDH"
-            value={form.thesis}
-            onChange={(e) => setForm((f) => ({ ...f, thesis: e.target.value }))}
-            className={textareaClass}
-          />
-        </div>
-
-        {/* Invalidation */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <label className={labelClass}>Invalidation Type{REQ}</label>
-            <select
-              value={form.invalidationType}
-              onChange={(e) => setForm((f) => ({ ...f, invalidationType: e.target.value as InvalidationType | '' }))}
-              className={inputClass}
-            >
-              <option value="">Select condition…</option>
-              {INVALIDATION_TYPES.map((t) => (
-                <option key={t} value={t}>{INVALIDATION_TYPE_LABELS[t]}</option>
+              {SETUP_TYPES.map((type) => (
+                <option key={type} value={type}>{SETUP_TYPE_LABELS[type]}</option>
               ))}
             </select>
           </div>
           <div className="flex flex-col gap-1.5">
             <label className={labelClass}>
-              Invalidation Note{' '}
-              <span className="text-zinc-600 font-normal">(optional)</span>
+              Name <span className="text-zinc-600 font-normal">(optional)</span>
             </label>
             <input
               type="text"
-              placeholder="e.g. break AH high with acceptance"
-              value={form.invalidationNote}
-              onChange={(e) => setForm((f) => ({ ...f, invalidationNote: e.target.value }))}
-              className={inputClass}
-            />
-          </div>
-        </div>
-
-        {/* Entry / Stop / Target */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="flex flex-col gap-1.5">
-            <label className={labelClass}>Entry <span className="text-zinc-600 font-normal">(optional)</span></label>
-            <input
-              type="text"
-              placeholder="Price or level"
-              value={form.riskEntry}
-              onChange={(e) => setForm((f) => ({ ...f, riskEntry: e.target.value }))}
-              className={inputClass}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className={labelClass}>Stop <span className="text-zinc-600 font-normal">(optional)</span></label>
-            <input
-              type="text"
-              placeholder="Price or level"
-              value={form.riskStop}
-              onChange={(e) => setForm((f) => ({ ...f, riskStop: e.target.value }))}
-              className={inputClass}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className={labelClass}>Target <span className="text-zinc-600 font-normal">(optional)</span></label>
-            <input
-              type="text"
-              placeholder="Take-profit / exit"
-              value={form.riskTarget}
-              onChange={(e) => setForm((f) => ({ ...f, riskTarget: e.target.value }))}
-              className={inputClass}
-            />
-          </div>
-        </div>
-
-        {/* Planned R:R */}
-        <p className="text-xs text-zinc-500">
-          Planned R:R{' '}
-          <span className="font-mono tabular-nums text-zinc-300">
-            {plannedRR !== null ? `1 : ${plannedRR}` : '—'}
-          </span>
-          <span className="ml-2 text-zinc-600">(computed when entry, stop &amp; target are numeric)</span>
-        </p>
-
-        {/* Notes + Name */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <label className={labelDimClass}>
-              Notes <span className="text-zinc-600 font-normal">(optional)</span>
-            </label>
-            <textarea
-              rows={2}
-              placeholder="Extra context, levels to watch, sizing…"
-              value={form.overallNotes}
-              onChange={(e) => setForm((f) => ({ ...f, overallNotes: e.target.value }))}
-              className={textareaClass}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className={labelDimClass}>
-              Name <span className="text-zinc-600 font-normal">(optional — shown in chart toggle)</span>
-            </label>
-            <input
-              type="text"
-              placeholder="e.g. Morning VWAP play"
               value={form.setupName}
               onChange={(e) => setForm((f) => ({ ...f, setupName: e.target.value }))}
               className={inputClass}
+              placeholder="Morning failed move"
+            />
+          </div>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label className={labelClass}>Triggers{REQ}</label>
+          <div className="flex flex-wrap gap-2">
+            {TRIGGERS.map((trigger) => (
+              <TagToggle
+                key={trigger}
+                value={trigger}
+                label={TRIGGER_LABELS[trigger]}
+                selected={form.triggers.includes(trigger)}
+                onToggle={(value) =>
+                  setForm((f) => ({ ...f, triggers: toggleInList(f.triggers, value) }))
+                }
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-4">
+        <h3 className={sectionTitleClass}>Context</h3>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>Day Type</label>
+            <select
+              value={form.dayType}
+              onChange={(e) => setForm((f) => ({ ...f, dayType: e.target.value as DayType | '' }))}
+              className={inputClass}
+            >
+              <option value="">—</option>
+              {DAY_TYPES.map((dayType) => (
+                <option key={dayType} value={dayType}>{DAY_TYPE_LABELS[dayType]}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>Location</label>
+            <select
+              value={form.location}
+              onChange={(e) => setForm((f) => ({ ...f, location: e.target.value as TradeLocation | '' }))}
+              className={inputClass}
+            >
+              <option value="">—</option>
+              {TRADE_LOCATIONS.map((location) => (
+                <option key={location} value={location}>{TRADE_LOCATION_LABELS[location]}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>Liquidity</label>
+            <select
+              value={form.liquidityContext}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, liquidityContext: e.target.value as LiquidityContext | '' }))
+              }
+              className={inputClass}
+            >
+              <option value="">—</option>
+              {LIQUIDITY_CONTEXTS.map((value) => (
+                <option key={value} value={value}>{LIQUIDITY_CONTEXT_LABELS[value]}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label className={labelClass}>
+            Key Levels <span className="text-zinc-600 font-normal">(optional)</span>
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {KEY_LEVELS.map((level) => (
+              <TagToggle
+                key={level}
+                value={level}
+                label={KEY_LEVEL_LABELS[level]}
+                selected={form.keyLevels.includes(level)}
+                onToggle={(value) =>
+                  setForm((f) => ({ ...f, keyLevels: toggleInList(f.keyLevels, value) }))
+                }
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-4">
+        <h3 className={sectionTitleClass}>Execution</h3>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>Entry Type</label>
+            <select
+              value={form.entryType}
+              onChange={(e) => setForm((f) => ({ ...f, entryType: e.target.value as EntryType | '' }))}
+              className={inputClass}
+            >
+              <option value="">—</option>
+              {ENTRY_TYPES.map((entryType) => (
+                <option key={entryType} value={entryType}>{ENTRY_TYPE_LABELS[entryType]}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>Entry Timing</label>
+            <select
+              value={form.entryTiming}
+              onChange={(e) => setForm((f) => ({ ...f, entryTiming: e.target.value as EntryTiming | '' }))}
+              className={inputClass}
+            >
+              <option value="">—</option>
+              {ENTRY_TIMINGS.map((entryTiming) => (
+                <option key={entryTiming} value={entryTiming}>{ENTRY_TIMING_LABELS[entryTiming]}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-4">
+        <h3 className={sectionTitleClass}>Entry</h3>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>Entry Price</label>
+            <input
+              type="number"
+              step="0.01"
+              value={form.entryPrice}
+              onChange={(e) => setForm((f) => ({ ...f, entryPrice: e.target.value }))}
+              className={inputClass}
+              placeholder="610.75"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>Stop</label>
+            <input
+              type="text"
+              value={form.riskStop}
+              onChange={(e) => setForm((f) => ({ ...f, riskStop: e.target.value }))}
+              className={inputClass}
+              placeholder="609.90"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>Target</label>
+            <input
+              type="text"
+              value={form.riskTarget}
+              onChange={(e) => setForm((f) => ({ ...f, riskTarget: e.target.value }))}
+              className={inputClass}
+              placeholder="612.50"
             />
           </div>
         </div>
       </div>
 
-      {/* ── Review ── */}
+      <div className="flex flex-col gap-4">
+        <h3 className={sectionTitleClass}>Confirmation</h3>
+        <div className="flex flex-wrap gap-2">
+          {CONFIRMATIONS.map((value) => (
+            <TagToggle
+              key={value}
+              value={value}
+              label={CONFIRMATION_LABELS[value]}
+              selected={form.confirmation.includes(value)}
+              onToggle={(confirmation) =>
+                setForm((f) => ({ ...f, confirmation: toggleInList(f.confirmation, confirmation) }))
+              }
+            />
+          ))}
+        </div>
+      </div>
+
       <div className="flex flex-col gap-3">
-        <h3 className={sectionTitleClass}>
-          Review{' '}
-          <span className="font-normal normal-case text-zinc-600 tracking-normal">— fill after trade closes</span>
-        </h3>
+        <h3 className={sectionTitleClass}>Notes</h3>
+        <div className="flex flex-col gap-1.5">
+          <label className={labelDimClass}>Extra Notes</label>
+          <textarea
+            rows={2}
+            value={form.overallNotes}
+            onChange={(e) => setForm((f) => ({ ...f, overallNotes: e.target.value }))}
+            className={textareaClass}
+            placeholder="Context, reminders, sizing notes"
+          />
+        </div>
+      </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {/* Outcome */}
-          <div className="flex flex-col gap-1.5">
-            <label className={labelClass}>Outcome</label>
-            <select
-              value={form.outcome}
-              onChange={(e) => setForm((f) => ({ ...f, outcome: e.target.value as Outcome | '' }))}
-              className={inputClass}
-            >
-              <option value="">—</option>
-              {OUTCOMES.map((o) => (
-                <option key={o} value={o}>{OUTCOME_LABELS[o]}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Setup Result */}
-          <div className="flex flex-col gap-1.5">
-            <label className={labelClass}>Setup Result</label>
-            <select
-              value={form.setupResult}
-              onChange={(e) => setForm((f) => ({ ...f, setupResult: e.target.value as SetupResult | '' }))}
-              className={inputClass}
-            >
-              <option value="">—</option>
-              {SETUP_RESULTS.map((r) => (
-                <option key={r} value={r}>{SETUP_RESULT_LABELS[r]}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Market Outcome */}
+      <div className="flex flex-col gap-3">
+        <h3 className={sectionTitleClass}>Review</h3>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
             <label className={labelClass}>Market Outcome</label>
             <select
@@ -675,66 +633,71 @@ export default function SetupForm({
               className={inputClass}
             >
               <option value="">—</option>
-              {MARKET_OUTCOMES.map((m) => (
-                <option key={m} value={m}>{MARKET_OUTCOME_LABELS[m]}</option>
+              {MARKET_OUTCOMES.map((value) => (
+                <option key={value} value={value}>{MARKET_OUTCOME_LABELS[value]}</option>
               ))}
             </select>
           </div>
         </div>
-
-        {/* Mistake Types */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>Trade Result</label>
+            <select
+              value={form.tradeResult}
+              onChange={(e) => setForm((f) => ({ ...f, tradeResult: e.target.value as TradeResult | '' }))}
+              className={inputClass}
+            >
+              <option value="">—</option>
+              {TRADE_RESULTS.map((value) => (
+                <option key={value} value={value}>{TRADE_RESULT_LABELS[value]}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>Setup Validity</label>
+            <select
+              value={form.setupValidity}
+              onChange={(e) => setForm((f) => ({ ...f, setupValidity: e.target.value as SetupValidity | '' }))}
+              className={inputClass}
+            >
+              <option value="">—</option>
+              {SETUP_VALIDITIES.map((value) => (
+                <option key={value} value={value}>{SETUP_VALIDITY_LABELS[value]}</option>
+              ))}
+            </select>
+          </div>
+        </div>
         <div className="flex flex-col gap-1.5">
-          <label className={labelClass}>
-            Mistakes{' '}
-            <span className="text-zinc-600 font-normal">(optional — pick all that apply)</span>
-          </label>
+          <label className={labelClass}>Mistakes</label>
           <div className="flex flex-wrap gap-2">
-            {MISTAKE_TYPES.map((m) => (
+            {MISTAKE_TYPES.map((value) => (
               <TagToggle
-                key={m}
-                value={m}
-                label={MISTAKE_TYPE_LABELS[m]}
-                selected={form.mistakeTypes.includes(m)}
-                onToggle={toggleMistakeType}
+                key={value}
+                value={value}
+                label={MISTAKE_TYPE_LABELS[value]}
+                selected={form.mistakeTypes.includes(value)}
+                onToggle={(mistakeType) =>
+                  setForm((f) => ({ ...f, mistakeTypes: toggleInList(f.mistakeTypes, mistakeType) }))
+                }
               />
             ))}
           </div>
         </div>
-
-        {/* Review Note */}
         <div className="flex flex-col gap-1.5">
-          <label className={labelClass}>
-            Review Note{' '}
-            <span className="text-zinc-600 font-normal">(optional)</span>
-          </label>
+          <label className={labelClass}>Review Note</label>
           <textarea
             rows={2}
-            placeholder="What happened? What would you do differently?"
             value={form.reviewNote}
             onChange={(e) => setForm((f) => ({ ...f, reviewNote: e.target.value }))}
             className={textareaClass}
+            placeholder="What confirmed or invalidated the read?"
           />
         </div>
       </div>
 
-      {/* ── Warnings ── */}
-      {warnings.length > 0 && (
-        <div className="flex flex-col gap-1.5">
-          {warnings.map((w) => (
-            <p
-              key={w}
-              className="rounded-md bg-amber-500/10 px-3 py-2 text-xs text-amber-400 ring-1 ring-amber-500/30"
-            >
-              {w}
-            </p>
-          ))}
-        </div>
-      )}
-
-      {/* ── Required fields hint ── */}
       {!canSave && (
         <p className="text-xs text-zinc-600">
-          Required: symbol, setup, trigger, at least one context, thesis, invalidation type.
+          Required: symbol and at least one trigger.
         </p>
       )}
 

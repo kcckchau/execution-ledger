@@ -1,8 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { mapSetup, mapDayContext, type DbSetup } from '@/lib/mappers';
-import { CONTEXTS, LOCATIONS, ENTRY_TRIGGERS, INVALIDATION_TYPES, OUTCOMES, SETUP_RESULTS, MISTAKE_TYPES, MARKET_OUTCOMES } from '@/types/setup';
-import type { Context, Location, EntryTrigger, MistakeType as PrismaMistakeType } from '@/lib/generated/prisma/client';
+import { deriveDeprecatedSetupFields } from '@/lib/setupPayload';
+import {
+  INVALIDATION_TYPES,
+  MISTAKE_TYPES,
+  MARKET_OUTCOMES,
+  REVIEW_INTENTS,
+  TRIGGERS,
+  DAY_TYPES,
+  TRADE_LOCATIONS,
+  LIQUIDITY_CONTEXTS,
+  KEY_LEVELS,
+  ENTRY_TYPES,
+  ENTRY_TIMINGS,
+  CONFIRMATIONS,
+  TRADE_RESULTS,
+  SETUP_VALIDITIES,
+} from '@/types/setup';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -10,6 +25,47 @@ export async function PUT(req: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
     const body = await req.json();
+    const existing = await prisma.tradeSetup.findUnique({ where: { id } });
+
+    if (!existing) {
+      return NextResponse.json({ error: 'Setup not found' }, { status: 404 });
+    }
+
+    const triggers = Array.isArray(body.triggers)
+      ? (body.triggers as string[]).filter((value) => (TRIGGERS as readonly string[]).includes(value))
+      : ((existing.triggers as string[]) ?? []);
+    const dayType =
+      body.dayType !== undefined
+        ? ((DAY_TYPES as readonly string[]).includes(body.dayType) ? body.dayType : null)
+        : existing.dayType;
+    const location =
+      body.location !== undefined
+        ? ((TRADE_LOCATIONS as readonly string[]).includes(body.location) ? body.location : null)
+        : existing.location;
+    const keyLevels = Array.isArray(body.keyLevels)
+      ? (body.keyLevels as string[]).filter((value) => (KEY_LEVELS as readonly string[]).includes(value))
+      : ((existing.keyLevels as string[]) ?? []);
+    const tradeResult =
+      body.tradeResult !== undefined
+        ? ((TRADE_RESULTS as readonly string[]).includes(body.tradeResult) ? body.tradeResult : null)
+        : (existing.tradeResult ?? existing.outcome);
+    const setupValidity =
+      body.setupValidity !== undefined
+        ? ((SETUP_VALIDITIES as readonly string[]).includes(body.setupValidity) ? body.setupValidity : null)
+        : (existing.setupValidity ?? existing.setupResult);
+    const deprecated = deriveDeprecatedSetupFields({
+      triggers,
+      dayType,
+      location,
+      keyLevels,
+      tradeResult,
+      setupValidity,
+    });
+    const shouldUpdateLegacyContexts =
+      body.triggers !== undefined || body.dayType !== undefined || body.location !== undefined;
+    const shouldUpdateLegacyLocations = body.keyLevels !== undefined;
+    const shouldUpdateLegacyReview =
+      body.tradeResult !== undefined || body.setupValidity !== undefined;
 
     const row = await prisma.tradeSetup.update({
       where: { id },
@@ -21,8 +77,31 @@ export async function PUT(req: NextRequest, { params }: Params) {
         ...(body.setupDate !== undefined && { setupDate: body.setupDate }),
         ...(body.direction !== undefined && { direction: body.direction }),
         ...(body.setupType !== undefined && { setupType: body.setupType }),
-        ...(body.trigger !== undefined && { trigger: String(body.trigger).trim() }),
+        ...(body.triggers !== undefined && { triggers }),
+        ...(body.dayType !== undefined && { dayType }),
+        ...(body.location !== undefined && { location }),
+        ...(body.liquidityContext !== undefined && {
+          liquidityContext: (LIQUIDITY_CONTEXTS as readonly string[]).includes(body.liquidityContext)
+            ? body.liquidityContext
+            : null,
+        }),
+        ...(body.keyLevels !== undefined && { keyLevels }),
+        ...(body.entryType !== undefined && {
+          entryType: (ENTRY_TYPES as readonly string[]).includes(body.entryType) ? body.entryType : null,
+        }),
+        ...(body.entryTiming !== undefined && {
+          entryTiming: (ENTRY_TIMINGS as readonly string[]).includes(body.entryTiming) ? body.entryTiming : null,
+        }),
+        ...(body.confirmation !== undefined && {
+          confirmation: Array.isArray(body.confirmation)
+            ? (body.confirmation as string[]).filter((value) => (CONFIRMATIONS as readonly string[]).includes(value))
+            : [],
+        }),
+        ...(body.triggers !== undefined && { trigger: deprecated.trigger }),
         ...(body.decisionTarget !== undefined && { decisionTarget: String(body.decisionTarget).trim() }),
+        ...(body.entryPrice !== undefined && { entryPrice: body.entryPrice || null }),
+        ...(body.stopPrice !== undefined && { stopPrice: body.stopPrice || null }),
+        ...(body.targetPrice !== undefined && { targetPrice: body.targetPrice || null }),
         // Structured invalidation
         ...(body.invalidationType !== undefined && {
           invalidationType: (INVALIDATION_TYPES as readonly string[]).includes(body.invalidationType)
@@ -38,37 +117,28 @@ export async function PUT(req: NextRequest, { params }: Params) {
         ...(body.initialGrade !== undefined && { initialGrade: body.initialGrade || null }),
         ...(body.setupName !== undefined && { setupName: body.setupName || null }),
         // 4-part classification
-        ...(body.contexts !== undefined && {
-          contexts: (Array.isArray(body.contexts)
-            ? (body.contexts as string[]).filter((c) => (CONTEXTS as readonly string[]).includes(c))
-            : []) as Context[],
+        ...(shouldUpdateLegacyContexts && {
+          contexts: deprecated.contexts,
         }),
-        ...(body.locations !== undefined && {
-          locations: (Array.isArray(body.locations)
-            ? (body.locations as string[]).filter((l) => (LOCATIONS as readonly string[]).includes(l))
-            : []) as Location[],
-        }),
-        ...(body.entryTrigger !== undefined && {
-          entryTrigger: ((ENTRY_TRIGGERS as readonly string[]).includes(body.entryTrigger)
-            ? body.entryTrigger
-            : null) as EntryTrigger | null,
-        }),
+        ...(shouldUpdateLegacyLocations && { locations: deprecated.locations }),
+        ...(body.entryTrigger !== undefined && { entryTrigger: deprecated.entryTrigger }),
         // Layer 2 — market reality
         ...(body.trueRegime !== undefined && { trueRegime: body.trueRegime || null }),
         ...(body.vwapState !== undefined && { vwapState: body.vwapState || null }),
         ...(body.structure !== undefined && { structure: body.structure || null }),
         ...(body.alignment !== undefined && { alignment: body.alignment || null }),
         // Review layer
-        ...(body.outcome !== undefined && {
-          outcome: (OUTCOMES as readonly string[]).includes(body.outcome) ? body.outcome : null,
+        ...(body.intent !== undefined && {
+          intent: (REVIEW_INTENTS as readonly string[]).includes(body.intent) ? body.intent : null,
         }),
-        ...(body.setupResult !== undefined && {
-          setupResult: (SETUP_RESULTS as readonly string[]).includes(body.setupResult) ? body.setupResult : null,
-        }),
+        ...(body.tradeResult !== undefined && { tradeResult }),
+        ...(body.setupValidity !== undefined && { setupValidity }),
+        ...(shouldUpdateLegacyReview && { outcome: deprecated.outcome }),
+        ...(shouldUpdateLegacyReview && { setupResult: deprecated.setupResult }),
         ...(body.mistakeTypes !== undefined && {
-          mistakeTypes: (Array.isArray(body.mistakeTypes)
+          mistakeTypes: Array.isArray(body.mistakeTypes)
             ? (body.mistakeTypes as string[]).filter((m) => (MISTAKE_TYPES as readonly string[]).includes(m))
-            : []) as PrismaMistakeType[],
+            : [],
         }),
         ...(body.marketOutcome !== undefined && {
           marketOutcome: (MARKET_OUTCOMES as readonly string[]).includes(body.marketOutcome) ? body.marketOutcome : null,

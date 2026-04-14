@@ -10,39 +10,23 @@ export const MARKET_CONTEXT_LABELS: Record<MarketContext, string> = {
 
 // ── Setup type ────────────────────────────────────────────────────────────────
 export const SETUP_TYPES = [
-  // Original values (kept for legacy data)
-  'VWAP_RECLAIM',
-  'VWAP_REJECT',
+  'TREND_PULLBACK',
   'BREAKOUT',
   'BREAKDOWN',
   'RANGE',
-  'FLIP',
-  // New analytical values
-  'VWAP_PULLBACK',
-  'ORB_BREAK',
-  'SWEEP_FAIL',
-  'RANGE_RECLAIM',
-  'RANGE_REJECT',
-  'FAILED_BREAKOUT',
-  'FAILED_BREAKDOWN',
+  'FAILED_MOVE',
+  'VWAP_PLAY',
 ] as const;
 
 export type SetupType = (typeof SETUP_TYPES)[number];
 
 export const SETUP_TYPE_LABELS: Record<SetupType, string> = {
-  VWAP_RECLAIM:     'VWAP Reclaim',
-  VWAP_REJECT:      'VWAP Reject',
-  BREAKOUT:         'Breakout',
-  BREAKDOWN:        'Breakdown',
-  RANGE:            'Range',
-  FLIP:             'Flip',
-  VWAP_PULLBACK:    'VWAP Pullback',
-  ORB_BREAK:        'ORB Break',
-  SWEEP_FAIL:       'Sweep Fail',
-  RANGE_RECLAIM:    'Range Reclaim',
-  RANGE_REJECT:     'Range Reject',
-  FAILED_BREAKOUT:  'Failed Breakout',
-  FAILED_BREAKDOWN: 'Failed Breakdown',
+  TREND_PULLBACK: 'Trend Pullback',
+  BREAKOUT: 'Breakout',
+  BREAKDOWN: 'Breakdown',
+  RANGE: 'Range',
+  FAILED_MOVE: 'Failed Move',
+  VWAP_PLAY: 'VWAP Play',
 };
 
 // ── Regime ────────────────────────────────────────────────────────────────────
@@ -87,21 +71,98 @@ export const ALIGNMENT_LABELS: Record<Alignment, string> = {
 // ── Day type ──────────────────────────────────────────────────────────────────
 export const DAY_TYPES = [
   'TREND',
-  'CHOP',
   'RANGE',
-  'OPEN_DRIVE',
-  'OPEN_REJECTION',
   'TRANSITION',
 ] as const;
 export type DayType = (typeof DAY_TYPES)[number];
 
 export const DAY_TYPE_LABELS: Record<DayType, string> = {
-  TREND:          'Trend',
-  CHOP:           'Chop',
-  RANGE:          'Range',
-  OPEN_DRIVE:     'Open Drive',
-  OPEN_REJECTION: 'Open Rejection',
-  TRANSITION:     'Transition',
+  TREND: 'Trend',
+  RANGE: 'Range',
+  TRANSITION: 'Transition',
+};
+
+export const TRIGGERS = [
+  'RECLAIM_LEVEL',
+  'BREAK_AND_HOLD',
+  'STRONG_ENGULF',
+  'MOMENTUM_SHIFT',
+  'LIQUIDITY_SWEEP',
+  'FAILURE_CONFIRM',
+] as const;
+export type Trigger = (typeof TRIGGERS)[number];
+export const TRIGGER_LABELS: Record<Trigger, string> = {
+  RECLAIM_LEVEL: 'Reclaim Level',
+  BREAK_AND_HOLD: 'Break & Hold',
+  STRONG_ENGULF: 'Strong Engulf',
+  MOMENTUM_SHIFT: 'Momentum Shift',
+  LIQUIDITY_SWEEP: 'Liquidity Sweep',
+  FAILURE_CONFIRM: 'Failure Confirm',
+};
+
+export const TRADE_LOCATIONS = ['ABOVE_VWAP', 'BELOW_VWAP', 'AT_VWAP'] as const;
+export type TradeLocation = (typeof TRADE_LOCATIONS)[number];
+export const TRADE_LOCATION_LABELS: Record<TradeLocation, string> = {
+  ABOVE_VWAP: 'Above VWAP',
+  BELOW_VWAP: 'Below VWAP',
+  AT_VWAP: 'At VWAP',
+};
+
+export const LIQUIDITY_CONTEXTS = ['SWEEP_HIGH', 'SWEEP_LOW', 'NONE'] as const;
+export type LiquidityContext = (typeof LIQUIDITY_CONTEXTS)[number];
+export const LIQUIDITY_CONTEXT_LABELS: Record<LiquidityContext, string> = {
+  SWEEP_HIGH: 'Sweep High',
+  SWEEP_LOW: 'Sweep Low',
+  NONE: 'None',
+};
+
+export const KEY_LEVELS = [
+  'PDH',
+  'PDL',
+  'PREMARKET_HIGH',
+  'PREMARKET_LOW',
+  'RANGE_HIGH',
+  'RANGE_LOW',
+  'VWAP',
+  'WHOLE_NUMBER',
+] as const;
+export type KeyLevel = (typeof KEY_LEVELS)[number];
+export const KEY_LEVEL_LABELS: Record<KeyLevel, string> = {
+  PDH: 'PDH',
+  PDL: 'PDL',
+  PREMARKET_HIGH: 'Premarket High',
+  PREMARKET_LOW: 'Premarket Low',
+  RANGE_HIGH: 'Range High',
+  RANGE_LOW: 'Range Low',
+  VWAP: 'VWAP',
+  WHOLE_NUMBER: 'Whole Number',
+};
+
+export const ENTRY_TYPES = ['AGGRESSIVE', 'PULLBACK'] as const;
+export type EntryType = (typeof ENTRY_TYPES)[number];
+export const ENTRY_TYPE_LABELS: Record<EntryType, string> = {
+  AGGRESSIVE: 'Aggressive',
+  PULLBACK: 'Pullback',
+};
+
+export const ENTRY_TIMINGS = ['EARLY', 'IDEAL', 'LATE'] as const;
+export type EntryTiming = (typeof ENTRY_TIMINGS)[number];
+export const ENTRY_TIMING_LABELS: Record<EntryTiming, string> = {
+  EARLY: 'Early',
+  IDEAL: 'Ideal',
+  LATE: 'Late',
+};
+
+export const CONFIRMATIONS = [
+  'HOLD_ABOVE_LEVEL',
+  'HOLD_BELOW_LEVEL',
+  'FOLLOW_THROUGH',
+] as const;
+export type Confirmation = (typeof CONFIRMATIONS)[number];
+export const CONFIRMATION_LABELS: Record<Confirmation, string> = {
+  HOLD_ABOVE_LEVEL: 'Hold Above Level',
+  HOLD_BELOW_LEVEL: 'Hold Below Level',
+  FOLLOW_THROUGH: 'Follow Through',
 };
 
 // ── VWAP state ────────────────────────────────────────────────────────────────
@@ -332,20 +393,54 @@ export const ENTRY_TRIGGER_LABELS: Record<EntryTrigger, string> = {
 
 // ── Review layer ──────────────────────────────────────────────────────────────
 
-export const OUTCOMES = ['WIN', 'LOSS', 'BREAKEVEN'] as const;
-export type Outcome = (typeof OUTCOMES)[number];
-export const OUTCOME_LABELS: Record<Outcome, string> = {
-  WIN:       'Win',
-  LOSS:      'Loss',
+export const REVIEW_INTENTS = [
+  'TREND_CONTINUATION',
+  'REVERSAL',
+  'RANGE_PLAY',
+  'BREAKOUT',
+  'FAILED_MOVE_TRAP',
+] as const;
+export type ReviewIntent = (typeof REVIEW_INTENTS)[number];
+export const REVIEW_INTENT_LABELS: Record<ReviewIntent, string> = {
+  TREND_CONTINUATION: 'Trend Continuation',
+  REVERSAL: 'Reversal',
+  RANGE_PLAY: 'Range Play',
+  BREAKOUT: 'Breakout',
+  FAILED_MOVE_TRAP: 'Failed Move / Trap',
+};
+
+export const MARKET_OUTCOMES = [
+  'TREND_UP',
+  'TREND_DOWN',
+  'RANGE_CHOP',
+  'FAILED_MOVE',
+  'BREAKOUT_CONTINUATION',
+  'REVERSAL',
+] as const;
+export type MarketOutcome = (typeof MARKET_OUTCOMES)[number];
+export const MARKET_OUTCOME_LABELS: Record<MarketOutcome, string> = {
+  TREND_UP: 'Trend Up',
+  TREND_DOWN: 'Trend Down',
+  RANGE_CHOP: 'Range / Chop',
+  FAILED_MOVE: 'Failed Move',
+  BREAKOUT_CONTINUATION: 'Breakout Continuation',
+  REVERSAL: 'Reversal',
+};
+
+export const TRADE_RESULTS = ['WIN', 'LOSS', 'BREAKEVEN'] as const;
+export type TradeResult = (typeof TRADE_RESULTS)[number];
+export const TRADE_RESULT_LABELS: Record<TradeResult, string> = {
+  WIN: 'Win',
+  LOSS: 'Loss',
   BREAKEVEN: 'Breakeven',
 };
 
-export const SETUP_RESULTS = ['PLAYED_OUT', 'FAILED', 'UNCLEAR'] as const;
-export type SetupResult = (typeof SETUP_RESULTS)[number];
-export const SETUP_RESULT_LABELS: Record<SetupResult, string> = {
-  PLAYED_OUT: 'Played Out',
-  FAILED:     'Failed',
-  UNCLEAR:    'Unclear',
+export const SETUP_VALIDITIES = ['CORRECT_READ', 'WRONG_READ', 'PARTIAL'] as const;
+export type SetupValidity = (typeof SETUP_VALIDITIES)[number];
+export const SETUP_VALIDITY_LABELS: Record<SetupValidity, string> = {
+  CORRECT_READ: 'Correct Read',
+  WRONG_READ: 'Wrong Read',
+  PARTIAL: 'Partial',
 };
 
 export const MISTAKE_TYPES = [
@@ -370,22 +465,6 @@ export const MISTAKE_TYPE_LABELS: Record<MistakeType, string> = {
   WRONG_STOP:    'Wrong Stop',
   NO_PLAN:       'No Plan',
   EMOTIONAL:     'Emotional',
-};
-
-export const MARKET_OUTCOMES = [
-  'VWAP_RECLAIM',
-  'VWAP_REJECT',
-  'TREND_CONTINUATION',
-  'RANGE_CONTINUATION',
-  'REVERSAL',
-] as const;
-export type MarketOutcome = (typeof MARKET_OUTCOMES)[number];
-export const MARKET_OUTCOME_LABELS: Record<MarketOutcome, string> = {
-  VWAP_RECLAIM:       'VWAP Reclaim',
-  VWAP_REJECT:        'VWAP Reject',
-  TREND_CONTINUATION: 'Trend Continuation',
-  RANGE_CONTINUATION: 'Range Continuation',
-  REVERSAL:           'Reversal',
 };
 
 // ── Direction (new structured enum, uppercase) ────────────────────────────────
@@ -431,22 +510,36 @@ export interface TradeSetup {
   direction: Direction;
   setupType: SetupType;
 
+  // ── Canonical market-structure model ─────────────────────────────────────
+  /** Canonical source of truth for the trade trigger(s). */
+  triggers: Trigger[];
+  dayType: DayType | null;
+  /** Canonical single location field. */
+  location: TradeLocation | null;
+  liquidityContext: LiquidityContext | null;
+  keyLevels: KeyLevel[];
+  entryType: EntryType | null;
+  entryTiming: EntryTiming | null;
+  confirmation: Confirmation[];
+
   // ── Layer 1: intent / plan ─────────────────────────────────────────────────
-  /** What must happen to enter (legacy text field). */
+  /** Canonical thesis / plan classification. */
+  intent: ReviewIntent | null;
+  /** @deprecated Legacy string fallback derived from `triggers`. */
   trigger: string;
   /** Structured enum that voids the trade idea. */
   invalidationType: InvalidationType;
   /** Optional free-text nuance on top of the structured type. */
   invalidationNote: string | null;
-  /** Planned objective in the idea phase (legacy text field). */
+  /** Thesis note / planned objective. Kept as free text on top of structured intent. */
   decisionTarget: string;
-  /** Planned entry level (legacy text field). */
+  /** @deprecated Legacy entry text fallback derived from structured entry fields when possible. */
   riskEntry: string;
-  /** Planned stop (legacy text field). */
+  /** Legacy stop text field retained for compatibility. */
   riskStop: string;
-  /** Planned take-profit / exit objective (legacy text field). */
+  /** Legacy target text field retained for compatibility. */
   riskTarget: string;
-  /** Structured trigger classification. */
+  /** @deprecated Legacy single trigger enum retained for compatibility only. */
   triggerType: TriggerType | null;
   /** Structured numeric entry level. */
   entryPrice: number | null;
@@ -456,11 +549,11 @@ export interface TradeSetup {
   targetPrice: number | null;
 
   // ── 4-part classification model ───────────────────────────────────────────
-  /** WHEN it works — market conditions at entry. Required ≥1 for new records. */
+  /** @deprecated Legacy multi-context field derived from `dayType` and `location`. */
   contexts: Context[];
-  /** WHERE — exact price levels at play. Optional. */
+  /** @deprecated Legacy multi-location field derived from `keyLevels`. */
   locations: Location[];
-  /** HOW to enter — execution timing signal. Required for new records. */
+  /** @deprecated Legacy single execution-trigger field retained for compatibility only. */
   entryTrigger: EntryTrigger | null;
 
   // ── Layer 2: market reality at entry ──────────────────────────────────────
@@ -484,14 +577,18 @@ export interface TradeSetup {
   shouldTrade: boolean | null;
 
   // ── Review layer ──────────────────────────────────────────────────────────
-  /** Monetary outcome of the trade. */
-  outcome: Outcome | null;
-  /** Whether the trade idea itself was correct (independent of P&L). */
-  setupResult: SetupResult | null;
-  /** Execution or planning mistakes (multi-select). */
-  mistakeTypes: MistakeType[];
   /** What the market actually did after entry. */
   marketOutcome: MarketOutcome | null;
+  /** Monetary outcome of the trade. */
+  tradeResult: TradeResult | null;
+  /** Whether the setup read was right, wrong, or partially right. */
+  setupValidity: SetupValidity | null;
+  /** @deprecated Legacy review outcome retained only for migration compatibility. */
+  outcome?: TradeResult | null;
+  /** @deprecated Legacy setup-quality field retained only for migration compatibility. */
+  setupResult?: 'PLAYED_OUT' | 'FAILED' | 'UNCLEAR' | null;
+  /** Execution or planning mistakes (multi-select). */
+  mistakeTypes: MistakeType[];
   /** Free-text post-trade note. */
   reviewNote: string | null;
 

@@ -5,25 +5,28 @@ import {
   type TradeSetup,
   type Execution,
   type Regime,
-  type VWAPState,
-  type StructureType,
-  type Alignment,
   GRADE_COLORS,
   ACTION_BORDER_COLORS,
   ACTION_LABELS,
+  CONFIRMATION_LABELS,
+  DAY_TYPE_LABELS,
+  ENTRY_TIMING_LABELS,
+  ENTRY_TYPE_LABELS,
+  KEY_LEVEL_LABELS,
+  LIQUIDITY_CONTEXT_LABELS,
   SETUP_TYPE_LABELS,
   REGIME_LABELS,
+  TRADE_LOCATION_LABELS,
   TRANSITION_LABELS,
-  VWAP_STATE_LABELS,
-  STRUCTURE_TYPE_LABELS,
-  ALIGNMENT_LABELS,
   REGIMES,
-  VWAP_STATES,
-  STRUCTURE_TYPES,
-  ALIGNMENTS,
 } from '@/types/setup';
 import type { DayContext } from '@/types/dayContext';
 import { formatPlannedRiskReward } from '@/lib/plannedRiskReward';
+import { calcSetupPnl, formatPnl } from '@/lib/pnl';
+import { easternTimeFromIso, formatSetupDate } from '@/lib/dateUtils';
+import ExecutionForm from './ExecutionForm';
+import SetupForm from './SetupForm';
+import ConfirmDialog from './ConfirmDialog';
 
 const REGIME_TAG: Record<Regime, string> = {
   UP:         'bg-emerald-500/10 text-emerald-400 ring-emerald-500/20',
@@ -32,11 +35,6 @@ const REGIME_TAG: Record<Regime, string> = {
   CHOP:       'bg-yellow-500/10 text-yellow-400 ring-yellow-500/20',
   TRANSITION: 'bg-violet-500/10 text-violet-400 ring-violet-500/20',
 };
-import { calcSetupPnl, formatPnl } from '@/lib/pnl';
-import { easternTimeFromIso, formatSetupDate } from '@/lib/dateUtils';
-import ExecutionForm from './ExecutionForm';
-import SetupForm from './SetupForm';
-import ConfirmDialog from './ConfirmDialog';
 
 interface SetupCardProps {
   setup: TradeSetup;
@@ -182,119 +180,6 @@ function DayContextTags({ dc }: { dc: DayContext | null }) {
           {TRANSITION_LABELS[transition]}
         </span>
       )}
-    </div>
-  );
-}
-
-// ── Shared seg control ────────────────────────────────────────────────────────
-
-function Seg<T extends string>({
-  value,
-  options,
-  getLabel,
-  colorOn,
-  onChange,
-}: {
-  value: T | null;
-  options: readonly T[];
-  getLabel: (v: T) => string;
-  colorOn?: (v: T) => string;
-  onChange: (v: T | null) => void;
-}) {
-  const defaultOn = 'bg-indigo-700/60 text-indigo-200';
-  return (
-    <div className="flex h-6 overflow-hidden rounded border border-zinc-700/60">
-      {options.map((o) => (
-        <button
-          key={o}
-          type="button"
-          onClick={() => onChange(value === o ? null : o)}
-          className={`flex-1 truncate px-1.5 text-[10px] font-medium transition-colors ${
-            value === o
-              ? (colorOn ? colorOn(o) : defaultOn)
-              : 'bg-zinc-900 text-zinc-600 hover:text-zinc-400'
-          }`}
-        >
-          {getLabel(o)}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function regimeColor(r: Regime): string {
-  if (r === 'UP')         return 'bg-emerald-700/60 text-emerald-200';
-  if (r === 'DOWN')       return 'bg-rose-700/60    text-rose-200';
-  if (r === 'CHOP')       return 'bg-yellow-700/60  text-yellow-200';
-  if (r === 'TRANSITION') return 'bg-violet-700/60  text-violet-200';
-  return                          'bg-amber-700/60  text-amber-200';
-}
-function alignColor(a: Alignment): string {
-  if (a === 'WITH_TREND' || a === 'WITH') return 'bg-teal-700/60   text-teal-200';
-  if (a === 'COUNTER')                    return 'bg-orange-700/60 text-orange-200';
-  return                                         'bg-zinc-700      text-zinc-300';
-}
-
-// ── Layer 2: Market Reality inline panel ─────────────────────────────────────
-
-function MarketRealityPanel({
-  setup,
-  onSave,
-}: {
-  setup: TradeSetup;
-  onSave: (patch: Partial<Pick<TradeSetup, 'trueRegime' | 'vwapState' | 'structure' | 'alignment'>>) => void;
-}) {
-  return (
-    <div className="flex flex-col gap-2 border-t border-zinc-800 px-5 py-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-        Market Reality
-        <span className="ml-2 font-normal normal-case text-zinc-600">at entry</span>
-      </p>
-      <div className="flex flex-wrap gap-x-4 gap-y-2">
-        <SegField label="Regime">
-          <Seg
-            value={setup.trueRegime}
-            options={REGIMES}
-            getLabel={(r) => REGIME_LABELS[r]}
-            colorOn={regimeColor}
-            onChange={(v) => onSave({ trueRegime: v })}
-          />
-        </SegField>
-        <SegField label="VWAP">
-          <Seg
-            value={setup.vwapState}
-            options={VWAP_STATES}
-            getLabel={(v) => VWAP_STATE_LABELS[v]}
-            onChange={(v) => onSave({ vwapState: v })}
-          />
-        </SegField>
-        <SegField label="Structure">
-          <Seg
-            value={setup.structure}
-            options={STRUCTURE_TYPES}
-            getLabel={(s) => STRUCTURE_TYPE_LABELS[s]}
-            onChange={(v) => onSave({ structure: v })}
-          />
-        </SegField>
-        <SegField label="Alignment">
-          <Seg
-            value={setup.alignment}
-            options={['WITH_TREND', 'COUNTER', 'NEUTRAL'] as const}
-            getLabel={(a) => ALIGNMENT_LABELS[a]}
-            colorOn={alignColor}
-            onChange={(v) => onSave({ alignment: v as Alignment | null })}
-          />
-        </SegField>
-      </div>
-    </div>
-  );
-}
-
-function SegField({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-0.5 min-w-0">
-      <span className="text-[9px] font-semibold uppercase tracking-wider text-zinc-600">{label}</span>
-      {children}
     </div>
   );
 }
@@ -527,26 +412,44 @@ export default function SetupCard({
             <dl className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2">
               <div className="flex gap-2 sm:col-span-2">
                 <dt className="shrink-0 text-zinc-500">Setup</dt>
-                <dd className="text-zinc-200">{setup.setupType}</dd>
+                <dd className="text-zinc-200">{SETUP_TYPE_LABELS[setup.setupType] ?? setup.setupType}</dd>
               </div>
               <div className="flex flex-col gap-0.5 sm:col-span-2">
                 <dt className="text-zinc-500">Trigger</dt>
-                <dd className="text-zinc-300">{setup.trigger}</dd>
-              </div>
-              <div className="flex flex-col gap-0.5 sm:col-span-2">
-                <dt className="text-zinc-500">Invalidation</dt>
                 <dd className="text-zinc-300">
-                  {setup.invalidationType
-                    ? <span className="font-medium">{setup.invalidationType.replace(/_/g, ' ')}</span>
-                    : <span className="text-zinc-600">—</span>}
-                  {setup.invalidationNote && (
-                    <span className="ml-2 text-zinc-400 font-normal">— {setup.invalidationNote}</span>
-                  )}
+                  {setup.triggers.length > 0 ? setup.triggers.join(' · ').replaceAll('_', ' ') : '—'}
                 </dd>
               </div>
               <div className="flex flex-col gap-0.5 sm:col-span-2">
-                <dt className="text-zinc-500">Target (idea)</dt>
-                <dd className="text-zinc-300">{setup.decisionTarget}</dd>
+                <dt className="text-zinc-500">Context</dt>
+                <dd className="text-zinc-300">
+                  {[
+                    setup.dayType ? DAY_TYPE_LABELS[setup.dayType] : null,
+                    setup.location ? TRADE_LOCATION_LABELS[setup.location] : null,
+                    setup.liquidityContext ? LIQUIDITY_CONTEXT_LABELS[setup.liquidityContext] : null,
+                  ].filter(Boolean).join(' · ') || '—'}
+                </dd>
+              </div>
+              <div className="flex flex-col gap-0.5 sm:col-span-2">
+                <dt className="text-zinc-500">Key Levels</dt>
+                <dd className="text-zinc-300">
+                  {setup.keyLevels.length > 0
+                    ? setup.keyLevels.map((level) => KEY_LEVEL_LABELS[level] ?? level).join(' · ')
+                    : '—'}
+                </dd>
+              </div>
+              <div className="flex flex-col gap-0.5 sm:col-span-2">
+                <dt className="text-zinc-500">Execution</dt>
+                <dd className="text-zinc-300">
+                  {[
+                    setup.entryType ? ENTRY_TYPE_LABELS[setup.entryType] : null,
+                    setup.entryTiming ? ENTRY_TIMING_LABELS[setup.entryTiming] : null,
+                  ].filter(Boolean).join(' · ') || '—'}
+                </dd>
+              </div>
+              <div className="flex flex-col gap-0.5 sm:col-span-2">
+                <dt className="text-zinc-500">Setup Note</dt>
+                <dd className="text-zinc-300">{setup.decisionTarget || '—'}</dd>
               </div>
             </dl>
           </div>
@@ -590,13 +493,18 @@ export default function SetupCard({
           {setup.overallNotes && (
             <p className="text-xs leading-relaxed text-zinc-500">{setup.overallNotes}</p>
           )}
-        </div>
 
-        {/* ── Market Reality (Layer 2) ── */}
-        <MarketRealityPanel
-          setup={setup}
-          onSave={(patch) => onUpdateSetup({ ...setup, ...patch })}
-        />
+          {setup.confirmation.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                Confirmation
+              </p>
+              <p className="mt-2 text-sm text-zinc-300">
+                {setup.confirmation.map((value) => CONFIRMATION_LABELS[value] ?? value).join(' · ')}
+              </p>
+            </div>
+          )}
+        </div>
 
         {/* ── Executions ── */}
         <div className="border-t border-zinc-800">
@@ -675,9 +583,16 @@ export default function SetupCard({
                     direction: setup.direction,
                     setupDate: setup.setupDate,
                     setupType: setup.setupType,
-                    contexts: setup.contexts,
-                    locations: setup.locations,
-                    entryTrigger: setup.entryTrigger ?? undefined,
+                    triggers: setup.triggers,
+                    dayType: setup.dayType ?? undefined,
+                    location: setup.location ?? undefined,
+                    liquidityContext: setup.liquidityContext ?? undefined,
+                    keyLevels: setup.keyLevels,
+                    entryType: setup.entryType ?? undefined,
+                    entryTiming: setup.entryTiming ?? undefined,
+                    confirmation: setup.confirmation,
+                    decisionTarget: setup.decisionTarget,
+                    entryPrice: setup.entryPrice ?? undefined,
                     riskEntry: setup.riskEntry,
                     riskStop: setup.riskStop,
                     riskTarget: setup.riskTarget,

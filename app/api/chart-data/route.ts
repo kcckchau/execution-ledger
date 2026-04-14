@@ -3,6 +3,28 @@ import { loadMarketSession, findPrevTradingDate } from '@/lib/marketSession';
 import { prisma } from '@/lib/prisma';
 import type { TradeMarker, SetupMarkerMeta } from '@/types/chartMarker';
 
+function normalizeSetupType(value: string | null): string | null {
+  if (!value) return null;
+  switch (value) {
+    case 'VWAP_RECLAIM':
+    case 'VWAP_REJECT':
+    case 'VWAP_PULLBACK':
+      return 'VWAP_PLAY';
+    case 'ORB_BREAK':
+      return 'BREAKOUT';
+    case 'SWEEP_FAIL':
+    case 'FAILED_BREAKOUT':
+    case 'FAILED_BREAKDOWN':
+    case 'FLIP':
+      return 'FAILED_MOVE';
+    case 'RANGE_RECLAIM':
+    case 'RANGE_REJECT':
+      return 'RANGE';
+    default:
+      return value;
+  }
+}
+
 /**
  * GET /api/chart-data?symbol=QQQ&date=2026-03-27
  *
@@ -61,7 +83,9 @@ export async function GET(req: NextRequest) {
       })
     : [];
 
-  const setupTypeMap = new Map(setupRows.map((s) => [s.id, s.setupType as string]));
+  const setupTypeMap = new Map(
+    setupRows.map((s) => [s.id, normalizeSetupType(s.setupType as string)])
+  );
 
   // Map ChartMarker rows to the canonical TradeMarker shape.
   const tradeMarkers: TradeMarker[] = dbMarkers.map((m) => ({
