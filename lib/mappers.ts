@@ -2,10 +2,18 @@ import type {
   TradeSetup,
   Execution,
   TriggerType,
+  Trigger,
   Regime,
   VWAPState,
   StructureType,
   Alignment,
+  DayType,
+  TradeLocation,
+  LiquidityContext,
+  KeyLevel,
+  EntryType,
+  EntryTiming,
+  Confirmation,
   MistakeTag,
   SetupType,
   DirectionEnum,
@@ -13,8 +21,9 @@ import type {
   Location,
   EntryTrigger,
   InvalidationType,
-  Outcome,
-  SetupResult,
+  ReviewIntent,
+  TradeResult,
+  SetupValidity,
   MistakeType,
   MarketOutcome,
 } from '@/types/setup';
@@ -38,6 +47,14 @@ export type DbSetup = {
   symbol: string;
   direction: string;
   setupType: string;
+  triggers: string[];
+  dayType: string | null;
+  location: string | null;
+  liquidityContext: string | null;
+  keyLevels: string[];
+  entryType: string | null;
+  entryTiming: string | null;
+  confirmation: string[];
   // Layer 1 legacy text
   trigger: string;
   decisionTarget: string;
@@ -70,11 +87,14 @@ export type DbSetup = {
   bestDirection: string | null;
   shouldTrade: boolean | null;
   // Review layer
-  outcome: string | null;
-  setupResult: string | null;
+  intent?: string | null;
+  tradeResult?: string | null;
+  setupValidity?: string | null;
   mistakeTypes: string[];
   marketOutcome: string | null;
   reviewNote: string | null;
+  outcome?: string | null;
+  setupResult?: string | null;
   // Meta
   isIdeal: boolean;
   initialGrade: string | null;
@@ -99,6 +119,144 @@ type DbDayContext = {
   updatedAt: Date;
 };
 
+function normalizeSetupType(value: string): TradeSetup['setupType'] {
+  switch (value) {
+    case 'VWAP_RECLAIM':
+    case 'VWAP_REJECT':
+    case 'VWAP_PULLBACK':
+      return 'VWAP_PLAY';
+    case 'ORB_BREAK':
+      return 'BREAKOUT';
+    case 'SWEEP_FAIL':
+    case 'FAILED_BREAKOUT':
+    case 'FAILED_BREAKDOWN':
+    case 'FLIP':
+      return 'FAILED_MOVE';
+    case 'RANGE_RECLAIM':
+    case 'RANGE_REJECT':
+      return 'RANGE';
+    case 'BREAKOUT':
+      return 'BREAKOUT';
+    case 'BREAKDOWN':
+      return 'BREAKDOWN';
+    case 'TREND_PULLBACK':
+      return 'TREND_PULLBACK';
+    case 'FAILED_MOVE':
+      return 'FAILED_MOVE';
+    case 'VWAP_PLAY':
+      return 'VWAP_PLAY';
+    case 'RANGE':
+    default:
+      return 'RANGE';
+  }
+}
+
+function normalizeDayType(value: string | null): DayType | null {
+  switch (value) {
+    case 'TREND':
+      return 'TREND';
+    case 'TRANSITION':
+      return 'TRANSITION';
+    case 'CHOP':
+    case 'OPEN_DRIVE':
+    case 'OPEN_REJECTION':
+    case 'RANGE':
+      return 'RANGE';
+    default:
+      return null;
+  }
+}
+
+function normalizeIntent(value: string | null | undefined, setupType: string): ReviewIntent | null {
+  switch (value) {
+    case 'TREND_CONTINUATION':
+    case 'REVERSAL':
+    case 'RANGE_PLAY':
+    case 'BREAKOUT':
+    case 'FAILED_MOVE_TRAP':
+      return value;
+    default:
+      break;
+  }
+
+  switch (setupType) {
+    case 'TREND_PULLBACK':
+      return 'TREND_CONTINUATION';
+    case 'BREAKOUT':
+    case 'ORB_BREAK':
+      return 'BREAKOUT';
+    case 'BREAKDOWN':
+    case 'FLIP':
+      return 'REVERSAL';
+    case 'RANGE':
+    case 'RANGE_RECLAIM':
+    case 'RANGE_REJECT':
+      return 'RANGE_PLAY';
+    case 'FAILED_MOVE':
+    case 'FAILED_BREAKOUT':
+    case 'FAILED_BREAKDOWN':
+    case 'SWEEP_FAIL':
+      return 'FAILED_MOVE_TRAP';
+    case 'VWAP_PLAY':
+    case 'VWAP_RECLAIM':
+    case 'VWAP_REJECT':
+    case 'VWAP_PULLBACK':
+      return 'TREND_CONTINUATION';
+    default:
+      return null;
+  }
+}
+
+function normalizeTradeResult(value: string | null | undefined): TradeResult | null {
+  switch (value) {
+    case 'WIN':
+    case 'LOSS':
+    case 'BREAKEVEN':
+      return value;
+    default:
+      return null;
+  }
+}
+
+function normalizeSetupValidity(value: string | null | undefined): SetupValidity | null {
+  switch (value) {
+    case 'CORRECT_READ':
+    case 'WRONG_READ':
+    case 'PARTIAL':
+      return value;
+    case 'PLAYED_OUT':
+      return 'CORRECT_READ';
+    case 'FAILED':
+      return 'WRONG_READ';
+    case 'UNCLEAR':
+      return 'PARTIAL';
+    default:
+      return null;
+  }
+}
+
+function normalizeMarketOutcome(value: string | null | undefined): MarketOutcome | null {
+  switch (value) {
+    case 'TREND_UP':
+    case 'TREND_DOWN':
+    case 'RANGE_CHOP':
+    case 'FAILED_MOVE':
+    case 'BREAKOUT_CONTINUATION':
+    case 'REVERSAL':
+      return value;
+    case 'TREND_CONTINUATION':
+      return 'TREND_UP';
+    case 'RANGE_CONTINUATION':
+      return 'RANGE_CHOP';
+    case 'VWAP_RECLAIM':
+      return 'TREND_UP';
+    case 'VWAP_REJECT':
+      return 'FAILED_MOVE';
+    default:
+      return null;
+  }
+}
+
 export function mapExecution(e: DbExecution): Execution {
   return {
     id: e.id,
@@ -117,7 +275,7 @@ export function mapDayContext(d: DbDayContext): DayContext {
   return {
     id: d.id,
     date: d.date,
-    dayType: (d.dayType as DayContext['dayType']) ?? null,
+    dayType: normalizeDayType(d.dayType) as DayContext['dayType'],
     marketContext: (d.marketContext as DayContext['marketContext']) ?? null,
     initialRegime: (d.initialRegime as DayContext['initialRegime']) ?? null,
     entryRegime: (d.entryRegime as DayContext['entryRegime']) ?? null,
@@ -129,12 +287,24 @@ export function mapDayContext(d: DbDayContext): DayContext {
 }
 
 export function mapSetup(s: DbSetup, dayContext: DayContext | null = null): TradeSetup {
+  const marketOutcome = normalizeMarketOutcome(s.marketOutcome);
+  const tradeResult = normalizeTradeResult(s.tradeResult ?? s.outcome);
+  const setupValidity = normalizeSetupValidity(s.setupValidity ?? s.setupResult);
+
   return {
     id: s.id,
     setupDate: s.setupDate,
     symbol: s.symbol,
     direction: s.direction as TradeSetup['direction'],
-    setupType: s.setupType as TradeSetup['setupType'],
+    setupType: normalizeSetupType(s.setupType),
+    triggers: (s.triggers as Trigger[]) ?? [],
+    dayType: normalizeDayType(s.dayType),
+    location: (s.location as TradeLocation) ?? null,
+    liquidityContext: (s.liquidityContext as LiquidityContext) ?? null,
+    keyLevels: (s.keyLevels as KeyLevel[]) ?? [],
+    entryType: (s.entryType as EntryType) ?? null,
+    entryTiming: (s.entryTiming as EntryTiming) ?? null,
+    confirmation: (s.confirmation as Confirmation[]) ?? [],
     // Layer 1 legacy
     trigger: s.trigger,
     decisionTarget: s.decisionTarget,
@@ -167,10 +337,13 @@ export function mapSetup(s: DbSetup, dayContext: DayContext | null = null): Trad
     bestDirection: (s.bestDirection as DirectionEnum) ?? null,
     shouldTrade: s.shouldTrade ?? null,
     // Review layer
-    outcome: (s.outcome as Outcome) ?? null,
-    setupResult: (s.setupResult as SetupResult) ?? null,
+    intent: normalizeIntent(s.intent, s.setupType),
+    marketOutcome,
+    tradeResult,
+    setupValidity,
+    outcome: tradeResult,
+    setupResult: s.setupResult ?? null,
     mistakeTypes: (s.mistakeTypes as MistakeType[]) ?? [],
-    marketOutcome: (s.marketOutcome as MarketOutcome) ?? null,
     reviewNote: s.reviewNote ?? null,
     // Meta
     isIdeal: s.isIdeal,

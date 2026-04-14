@@ -1,7 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { mapSetup, mapDayContext, type DbSetup } from '@/lib/mappers';
-import { SETUP_TYPES, CONTEXTS, LOCATIONS, ENTRY_TRIGGERS, INVALIDATION_TYPES } from '@/types/setup';
+import { deriveDeprecatedSetupFields } from '@/lib/setupPayload';
+import {
+  SETUP_TYPES,
+  TRIGGERS,
+  DAY_TYPES,
+  TRADE_LOCATIONS,
+  LIQUIDITY_CONTEXTS,
+  KEY_LEVELS,
+  ENTRY_TYPES,
+  ENTRY_TIMINGS,
+  CONFIRMATIONS,
+  REVIEW_INTENTS,
+  MARKET_OUTCOMES,
+  TRADE_RESULTS,
+  SETUP_VALIDITIES,
+} from '@/types/setup';
 
 export async function GET(req: NextRequest) {
   try {
@@ -47,53 +62,87 @@ export async function DELETE(req: NextRequest) {
 // ── Validation helpers ────────────────────────────────────────────────────────
 
 function validateSetupBody(body: Record<string, unknown>): string | null {
-  // Core required fields
   if (!body.setupType || !(SETUP_TYPES as readonly string[]).includes(body.setupType as string)) {
     return 'setupType is required and must be a valid SetupType';
   }
-  if (!body.invalidationType || !(INVALIDATION_TYPES as readonly string[]).includes(body.invalidationType as string)) {
-    return 'invalidationType is required and must be a valid InvalidationType';
+  if (!Array.isArray(body.triggers) || body.triggers.length === 0) {
+    return 'triggers must be a non-empty array';
   }
-  if (!body.entryTrigger || !(ENTRY_TRIGGERS as readonly string[]).includes(body.entryTrigger as string)) {
-    return 'entryTrigger is required and must be a valid EntryTrigger';
-  }
-
-  // contexts must be an array of ≥1 valid Context values
-  const contexts = body.contexts;
-  if (!Array.isArray(contexts) || contexts.length === 0) {
-    return 'contexts must be a non-empty array';
-  }
-  const invalidCtx = (contexts as unknown[]).find(
-    (c) => typeof c !== 'string' || !(CONTEXTS as readonly string[]).includes(c)
+  const invalidTrigger = (body.triggers as unknown[]).find(
+    (trigger) => typeof trigger !== 'string' || !(TRIGGERS as readonly string[]).includes(trigger),
   );
-  if (invalidCtx !== undefined) {
-    return `Invalid context value: ${String(invalidCtx)}`;
+  if (invalidTrigger !== undefined) {
+    return `Invalid trigger value: ${String(invalidTrigger)}`;
   }
 
-  // locations must be an array of valid Location values (optional, but if provided must be valid)
-  const locations = body.locations;
-  if (locations !== undefined && locations !== null) {
-    if (!Array.isArray(locations)) {
-      return 'locations must be an array';
-    }
-    const invalidLoc = (locations as unknown[]).find(
-      (l) => typeof l !== 'string' || !(LOCATIONS as readonly string[]).includes(l)
-    );
-    if (invalidLoc !== undefined) {
-      return `Invalid location value: ${String(invalidLoc)}`;
-    }
+  const invalidKeyLevel = Array.isArray(body.keyLevels)
+    ? body.keyLevels.find(
+        (level: unknown) => typeof level !== 'string' || !(KEY_LEVELS as readonly string[]).includes(level),
+      )
+    : undefined;
+  if (invalidKeyLevel !== undefined) {
+    return `Invalid key level value: ${String(invalidKeyLevel)}`;
   }
 
-  // Cross-field rule: RANGE_REJECT cannot occur at MID_RANGE
+  const invalidConfirmation = Array.isArray(body.confirmation)
+    ? body.confirmation.find(
+        (value: unknown) => typeof value !== 'string' || !(CONFIRMATIONS as readonly string[]).includes(value),
+      )
+    : undefined;
+  if (invalidConfirmation !== undefined) {
+    return `Invalid confirmation value: ${String(invalidConfirmation)}`;
+  }
+
+  if (body.dayType != null && !(DAY_TYPES as readonly string[]).includes(body.dayType as string)) {
+    return 'dayType must be a valid DayType';
+  }
   if (
-    body.setupType === 'RANGE_REJECT' &&
-    Array.isArray(contexts) &&
-    (contexts as string[]).includes('RANGE')
+    body.location != null &&
+    !(TRADE_LOCATIONS as readonly string[]).includes(body.location as string)
   ) {
-    const locs = Array.isArray(locations) ? (locations as string[]) : [];
-    if (locs.includes('MID_RANGE')) {
-      return 'Invalid trade: RANGE_REJECT cannot occur at MID_RANGE — rejections happen at range extremes';
-    }
+    return 'location must be a valid TradeLocation';
+  }
+  if (
+    body.liquidityContext != null &&
+    !(LIQUIDITY_CONTEXTS as readonly string[]).includes(body.liquidityContext as string)
+  ) {
+    return 'liquidityContext must be a valid LiquidityContext';
+  }
+  if (
+    body.entryType != null &&
+    !(ENTRY_TYPES as readonly string[]).includes(body.entryType as string)
+  ) {
+    return 'entryType must be a valid EntryType';
+  }
+  if (
+    body.entryTiming != null &&
+    !(ENTRY_TIMINGS as readonly string[]).includes(body.entryTiming as string)
+  ) {
+    return 'entryTiming must be a valid EntryTiming';
+  }
+  if (
+    body.intent != null &&
+    !(REVIEW_INTENTS as readonly string[]).includes(body.intent as string)
+  ) {
+    return 'intent must be a valid ReviewIntent';
+  }
+  if (
+    body.marketOutcome != null &&
+    !(MARKET_OUTCOMES as readonly string[]).includes(body.marketOutcome as string)
+  ) {
+    return 'marketOutcome must be a valid MarketOutcome';
+  }
+  if (
+    body.tradeResult != null &&
+    !(TRADE_RESULTS as readonly string[]).includes(body.tradeResult as string)
+  ) {
+    return 'tradeResult must be a valid TradeResult';
+  }
+  if (
+    body.setupValidity != null &&
+    !(SETUP_VALIDITIES as readonly string[]).includes(body.setupValidity as string)
+  ) {
+    return 'setupValidity must be a valid SetupValidity';
   }
 
   return null;
@@ -107,6 +156,16 @@ export async function POST(req: NextRequest) {
     if (validationError) {
       return NextResponse.json({ error: validationError }, { status: 400 });
     }
+    const tradeResult = body.tradeResult ?? null;
+    const setupValidity = body.setupValidity ?? null;
+    const deprecated = deriveDeprecatedSetupFields({
+      triggers: body.triggers ?? [],
+      dayType: body.dayType ?? null,
+      location: body.location ?? null,
+      keyLevels: body.keyLevels ?? [],
+      tradeResult,
+      setupValidity,
+    });
 
     const row = await prisma.tradeSetup.create({
       data: {
@@ -115,25 +174,39 @@ export async function POST(req: NextRequest) {
         symbol: body.symbol,
         direction: body.direction,
         setupType: body.setupType,
-        trigger: body.trigger ?? '',
+        triggers: body.triggers ?? [],
+        dayType: body.dayType ?? null,
+        location: body.location ?? null,
+        liquidityContext: body.liquidityContext ?? null,
+        keyLevels: body.keyLevels ?? [],
+        entryType: body.entryType ?? null,
+        entryTiming: body.entryTiming ?? null,
+        confirmation: body.confirmation ?? [],
+        trigger: deprecated.trigger,
         decisionTarget: body.decisionTarget ?? '',
-        invalidationType: body.invalidationType,
+        invalidationType: body.invalidationType ?? 'STRUCTURE_BREAK',
         invalidationNote: body.invalidationNote ? String(body.invalidationNote).trim() : null,
         riskEntry: body.riskEntry ?? '',
         riskStop: body.riskStop ?? '',
         riskTarget: body.riskTarget ?? '',
-        // 4-part classification
-        contexts: body.contexts,
-        locations: body.locations ?? [],
-        entryTrigger: body.entryTrigger,
+        entryPrice: typeof body.entryPrice === 'number' ? body.entryPrice : null,
+        stopPrice: typeof body.stopPrice === 'number' ? body.stopPrice : null,
+        targetPrice: typeof body.targetPrice === 'number' ? body.targetPrice : null,
+        // Deprecated compatibility fields are derived from canonical fields in one place.
+        contexts: deprecated.contexts,
+        locations: deprecated.locations,
+        entryTrigger: deprecated.entryTrigger,
         isIdeal: body.isIdeal === true,
         initialGrade: body.initialGrade ?? null,
         status: body.status ?? 'open',
         overallNotes: body.overallNotes ?? '',
         setupName: body.setupName ?? null,
         // Review layer (all optional)
-        outcome: body.outcome ?? null,
-        setupResult: body.setupResult ?? null,
+        intent: body.intent ?? null,
+        tradeResult,
+        setupValidity,
+        outcome: deprecated.outcome,
+        setupResult: deprecated.setupResult,
         mistakeTypes: body.mistakeTypes ?? [],
         marketOutcome: body.marketOutcome ?? null,
         reviewNote: body.reviewNote ? String(body.reviewNote).trim() : null,
