@@ -16,19 +16,19 @@ export interface SessionCandle {
 }
 
 export interface SessionLevels {
-  previous_close: number;
-  previous_day_high: number;
-  previous_day_low: number;
-  premarket_high: number;
-  premarket_low: number;
-  opening_range_high: number;
-  opening_range_low: number;
+  previous_close?: number | null;
+  previous_day_high?: number | null;
+  previous_day_low?: number | null;
+  premarket_high?: number | null;
+  premarket_low?: number | null;
+  opening_range_high?: number | null;
+  opening_range_low?: number | null;
   /** RTH session high/low when present in extended-hours files */
-  regular_high?: number;
-  regular_low?: number;
+  regular_high?: number | null;
+  regular_low?: number | null;
   /** After-hours session high/low */
-  aftermarket_high?: number;
-  aftermarket_low?: number;
+  aftermarket_high?: number | null;
+  aftermarket_low?: number | null;
 }
 
 /** Session payload for the intraday chart (1-minute bars + levels). */
