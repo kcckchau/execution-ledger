@@ -87,6 +87,8 @@ export interface SetupDraft {
   overallNotes: string;
   /** Planned thesis / objective. */
   decisionTarget: string;
+  /** Candle timestamp that triggered the detected setup. Used for review chart markers only. */
+  detectedAt: string;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -99,7 +101,6 @@ function roundPrice(n: number): number {
 function isRegularCandle(candle: SessionCandle): boolean {
   if (candle.session != null) return candle.session === 'regular';
   // Fallback: parse the time string and check hour/minute.
-  const date = new Date(candle.time);
   // Use UTC offset -0500 (EST) or -0400 (EDT) — both are captured by checking
   // whether the local hour (ET) is between 09:30 and 15:59.
   // Since the time string includes the offset we can extract the hour from the string.
@@ -512,6 +513,7 @@ export function mapCandidateToSetupDraft(
     initialGrade: 'A',
     overallNotes: candidate.notesDetail,
     decisionTarget,
+    detectedAt: candidate.candleTime,
   };
 }
 
