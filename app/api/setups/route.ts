@@ -61,8 +61,18 @@ export async function DELETE(req: NextRequest) {
 
 // ── Validation helpers ────────────────────────────────────────────────────────
 
+// Extends the frontend display enum with the DB-level legacy values that the
+// detect endpoint produces (VWAP_RECLAIM, VWAP_REJECT, SWEEP_FAIL are valid
+// Prisma enum values and can be created directly).
+const ACCEPTED_SETUP_TYPES: readonly string[] = [
+  ...SETUP_TYPES,
+  'VWAP_RECLAIM',
+  'VWAP_REJECT',
+  'SWEEP_FAIL',
+];
+
 function validateSetupBody(body: Record<string, unknown>): string | null {
-  if (!body.setupType || !(SETUP_TYPES as readonly string[]).includes(body.setupType as string)) {
+  if (!body.setupType || !ACCEPTED_SETUP_TYPES.includes(body.setupType as string)) {
     return 'setupType is required and must be a valid SetupType';
   }
   if (!Array.isArray(body.triggers) || body.triggers.length === 0) {

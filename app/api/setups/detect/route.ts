@@ -63,5 +63,5 @@ export async function POST(req: NextRequest) {
 
   const suggestions = detectSetupsFromSession(result.data, date, symbol);
 
-  return NextResponse.json({ suggestions });
+  return NextResponse.json({ suggestions, session: result.data });
 }

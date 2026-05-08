@@ -8,6 +8,8 @@ import SetupForm from '@/components/SetupForm';
 import SetupLog from '@/components/SetupLog';
 import CalendarView from '@/components/CalendarView';
 import DailyDrillDown from '@/components/DailyDrillDown';
+import DetectSetupsModal from '@/components/DetectSetupsModal';
+import type { SetupDraft } from '@/lib/detectSetups';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -21,6 +23,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [showSetupForm, setShowSetupForm] = useState(false);
+  const [showDetectModal, setShowDetectModal] = useState(false);
   const [activeView, setActiveView] = useState<ActiveView>('log');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
@@ -55,6 +58,20 @@ export default function Home() {
     const created: TradeSetup = await res.json();
     setSetups((prev) => [created, ...prev]);
     setActiveView('log');
+  }
+
+  async function confirmDetectedSetup(draft: SetupDraft): Promise<void> {
+    const res = await fetch('/api/setups', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(draft),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data?.error ?? 'Failed to create setup');
+    }
+    const created: TradeSetup = await res.json();
+    setSetups((prev) => [created, ...prev]);
   }
 
   async function addExecution(setupId: string, execution: Execution) {
@@ -422,13 +439,22 @@ export default function Home() {
               </button>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setShowSetupForm(true)}
-              className="h-9 px-4 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-500 transition-colors"
-            >
-              + New Setup
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowDetectModal(true)}
+                className="h-9 px-4 rounded-md border border-violet-700/50 bg-violet-900/20 text-violet-300 text-sm font-medium hover:bg-violet-800/30 transition-colors"
+              >
+                Detect Setups
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowSetupForm(true)}
+                className="h-9 px-4 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-500 transition-colors"
+              >
+                + New Setup
+              </button>
+            </div>
           </div>
         )}
 
@@ -472,6 +498,13 @@ export default function Home() {
           />
         )}
       </main>
+
+      <DetectSetupsModal
+        open={showDetectModal}
+        onClose={() => setShowDetectModal(false)}
+        defaultDate={selectedDate ?? undefined}
+        onConfirm={confirmDetectedSetup}
+      />
     </div>
   );
 }

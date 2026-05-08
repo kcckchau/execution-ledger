@@ -10,6 +10,7 @@ import {
   HistogramSeries,
   LineSeries,
   LineStyle,
+  type LineWidth,
   type Logical,
   type SeriesMarker,
   type SeriesMarkerShape,
@@ -110,6 +111,17 @@ function tradeMarkerToSeriesMarker(m: TradeMarker): SeriesMarker<UTCTimestamp> {
   };
 }
 
+/** Additional price lines to render on top of the session levels (e.g. entry/stop/target). */
+export interface ExtraPriceLine {
+  price: number;
+  title: string;
+  color: string;
+  /** LineStyle numeric value: 0=Solid, 1=Dotted, 2=Dashed, 3=LargeDashed. Default: 2 (Dashed). */
+  lineStyle?: number;
+  /** 1 | 2 | 3 | 4. Default: 2 */
+  lineWidth?: LineWidth;
+}
+
 export interface SessionChartProps {
   session: SessionChartData;
   /**
@@ -120,6 +132,17 @@ export interface SessionChartProps {
   executions?: SessionChartExecutionProp[];
   /** Extra classes for the outer wrapper (chart is `w-full` × `min-h`). */
   className?: string;
+  /**
+   * Tailwind height class applied to both the outer wrapper and the inner chart div.
+   * When provided, the default `min-h-[420px]` / `h-[min(70vh,560px)]` are replaced.
+   * Example: `"h-[280px]"`
+   */
+  height?: string;
+  /**
+   * Extra horizontal price lines drawn above session levels (e.g. entry, stop, target).
+   * Pass a stable reference (useMemo) to avoid unnecessary chart rebuilds.
+   */
+  extraPriceLines?: ExtraPriceLine[];
 }
 
 export default function SessionChart({
@@ -127,8 +150,12 @@ export default function SessionChart({
   tradeMarkers,
   executions = [],
   className = '',
+  height,
+  extraPriceLines = [],
 }: SessionChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  // Serialise to a string so the effect only re-runs when content actually changes.
+  const extraPriceLinesKey = JSON.stringify(extraPriceLines);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -369,6 +396,19 @@ export default function SessionChart({
       });
     }
 
+    // Extra price lines (e.g. entry / stop / target from detected setups).
+    for (const line of extraPriceLines) {
+      if (!Number.isFinite(line.price)) continue;
+      candleSeries.createPriceLine({
+        price: line.price,
+        color: line.color,
+        lineWidth: (line.lineWidth ?? 2) as LineWidth,
+        lineStyle: (line.lineStyle ?? 2) as LineStyle,
+        axisLabelVisible: true,
+        title: line.title,
+      });
+    }
+
     const markers: SeriesMarker<UTCTimestamp>[] =
       tradeMarkers !== undefined
         ? tradeMarkers.map(tradeMarkerToSeriesMarker)
@@ -413,12 +453,15 @@ export default function SessionChart({
       ro.disconnect();
       chart.remove();
     };
-  }, [session, executions, tradeMarkers]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, executions, tradeMarkers, extraPriceLinesKey]);
+
+  const heightCls = height ?? 'h-[min(70vh,560px)] min-h-[420px]';
 
   if (session.candles.length === 0) {
     return (
       <div
-        className={`flex min-h-[420px] w-full items-center justify-center rounded-lg border border-zinc-800 bg-zinc-950 text-sm text-zinc-500 ${className}`}
+        className={`flex w-full items-center justify-center rounded-lg border border-zinc-800 bg-zinc-950 text-sm text-zinc-500 ${heightCls} ${className}`}
       >
         No candles for this session
       </div>
@@ -427,9 +470,9 @@ export default function SessionChart({
 
   return (
     <div
-      className={`relative w-full min-h-[420px] overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950 ${className}`}
+      className={`relative w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950 ${heightCls} ${className}`}
     >
-      <div ref={containerRef} className="h-[min(70vh,560px)] w-full min-h-[420px]" />
+      <div ref={containerRef} className={`${heightCls} w-full`} />
     </div>
   );
 }
