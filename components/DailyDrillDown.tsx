@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { type TradeSetup, type Execution } from '@/types/setup';
 import type { DayContext } from '@/types/dayContext';
 import { calcSetupPnl, formatPnl } from '@/lib/pnl';
@@ -47,6 +48,7 @@ export default function DailyDrillDown({
 
   const executedSetups = setups.filter((s) => !s.isIdeal);
   const idealSetups = setups.filter((s) => s.isIdeal);
+  const chartSymbol = executedSetups[0]?.symbol ?? setups[0]?.symbol ?? 'QQQ';
   const visibleSetups = mode === 'executed' ? executedSetups : idealSetups;
 
   const totalPnlExecuted = executedSetups.reduce(
@@ -140,6 +142,12 @@ export default function DailyDrillDown({
             </span>
           )}
           <div className="h-px flex-1 bg-zinc-800" />
+          <Link
+            href={`/chart/${encodeURIComponent(chartSymbol)}/${encodeURIComponent(date)}`}
+            className="shrink-0 rounded border border-zinc-800 px-2.5 py-1 text-[10px] font-medium text-zinc-500 transition-colors hover:border-indigo-700 hover:text-indigo-400"
+          >
+            View Chart
+          </Link>
           {visibleSetups.length > 0 && (
             <button
               type="button"
