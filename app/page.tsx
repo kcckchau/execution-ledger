@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { type TradeSetup, type Execution } from '@/types/setup';
+import { type TradeSetup, type Execution, SETUP_TYPE_LABELS, type SetupType } from '@/types/setup';
 import type { DayContext } from '@/types/dayContext';
 import { calcSetupPnl, formatPnl } from '@/lib/pnl';
 import SetupForm from '@/components/SetupForm';
@@ -14,6 +14,23 @@ import type { SetupDraft } from '@/lib/detectSetups';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type ActiveView = 'log' | 'calendar';
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const SETUP_TYPE_COLORS: Record<string, string> = {
+  VWAP_PLAY:      '#6366f1',
+  TREND_PULLBACK: '#22c55e',
+  FAILED_MOVE:    '#f59e0b',
+  BREAKOUT:       '#ef4444',
+  BREAKDOWN:      '#f87171',
+  RANGE:          '#22d3ee',
+};
+
+function fmtSidebarDate(iso: string) {
+  return new Date(iso + 'T12:00:00Z').toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric',
+  });
+}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -316,164 +333,364 @@ export default function Home() {
     [setups, selectedDate],
   );
 
+  const recentDays = useMemo(() => {
+    const byDate = new Map<string, TradeSetup[]>();
+    for (const s of setups) {
+      if (!byDate.has(s.setupDate)) byDate.set(s.setupDate, []);
+      byDate.get(s.setupDate)!.push(s);
+    }
+    return [...byDate.entries()]
+      .map(([date, daySetups]) => {
+        const executed = daySetups.filter((s) => !s.isIdeal);
+        const pnl = executed.reduce(
+          (sum, s) => sum + calcSetupPnl(s.executions, s.direction).realizedPnl, 0,
+        );
+        const symbols = [...new Set(executed.map((s) => s.symbol))].slice(0, 2).join(', ');
+        const hasClosed = executed.some((s) =>
+          s.executions.some((e) => e.actionType === 'exit' || e.actionType === 'trim'),
+        );
+        return { date, count: executed.length, pnl, symbols, hasClosed };
+      })
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .slice(0, 12);
+  }, [setups]);
+
+  const setupTypeCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const s of setups.filter((s) => !s.isIdeal && s.setupType)) {
+      const t = s.setupType as string;
+      counts.set(t, (counts.get(t) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+  }, [setups]);
+
+  const winRate = useMemo(() => {
+    const closed = setups.filter(
+      (s) => !s.isIdeal && s.executions.some((e) => e.actionType === 'exit' || e.actionType === 'trim'),
+    );
+    if (closed.length === 0) return null;
+    const wins = closed.filter(
+      (s) => calcSetupPnl(s.executions, s.direction).realizedPnl > 0,
+    ).length;
+    return Math.round((wins / closed.length) * 100);
+  }, [setups]);
+
+  const executedCount = useMemo(() => setups.filter((s) => !s.isIdeal).length, [setups]);
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0B0B0C] flex items-center justify-center">
-        <p className="text-zinc-500 text-sm">Loading…</p>
+      <div className="flex h-screen items-center justify-center bg-[#08080a]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#1c1c24] border-t-[#6366f1]" />
+          <p className="font-mono text-xs text-[#55555f]">Loading…</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#0B0B0C] flex items-center justify-center px-6">
-        <div className="text-center space-y-2">
-          <p className="text-rose-400 text-sm font-medium">Database connection failed</p>
-          <p className="text-zinc-500 text-xs max-w-sm">{error}</p>
-          <p className="text-zinc-600 text-xs">Check that DATABASE_URL is set correctly in your .env file.</p>
+      <div className="flex h-screen items-center justify-center bg-[#08080a] px-6">
+        <div className="text-center">
+          <p className="font-mono text-sm text-red-400">Database connection failed</p>
+          <p className="mt-1 font-mono text-xs text-[#55555f]">{error}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0B0C]">
-      {/* ── Header ── */}
-      <header className="border-b border-zinc-800 bg-zinc-950">
-        <div className="mx-auto max-w-4xl px-6 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-base font-semibold text-white">Execution Ledger</h1>
-            <p className="text-xs text-zinc-500">Trading Journal</p>
-          </div>
+    <div
+      className="flex h-screen flex-col overflow-hidden"
+      style={{ background: '#08080a', color: '#d1d1d8', fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: '12px' }}
+    >
+      {/* ── Topbar ── */}
+      <header
+        className="flex h-[46px] shrink-0 items-center gap-0 px-1"
+        style={{ background: '#0d0d10', borderBottom: '1px solid #1c1c24' }}
+      >
+        {/* Logo */}
+        <span
+          className="shrink-0 px-4 text-[12px] font-bold tracking-[0.12em]"
+          style={{ fontFamily: '"Syne", "JetBrains Mono", sans-serif', color: '#818cf8' }}
+        >
+          LEDGER
+        </span>
+        <div className="mx-1 h-5 w-px shrink-0" style={{ background: '#25252f' }} />
 
-          {setups.length > 0 && (
-            <div className="flex items-center gap-6">
-              <div className="text-right">
-                <p className="text-xs text-zinc-500">
-                  {setups.length} setup{setups.length !== 1 ? 's' : ''}
-                </p>
-                <p className="text-xs text-zinc-500">{openCount} open</p>
-              </div>
-              {hasPnl && (
-                <div className="text-right space-y-1">
-                  <div>
-                    <p className="text-xs text-zinc-500">Executed P&L</p>
-                    <p
-                      className={`text-sm font-semibold tabular-nums ${
-                        totalPnlExecuted >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                      }`}
-                    >
-                      {formatPnl(totalPnlExecuted)}
-                    </p>
-                  </div>
-                  {totalPnlIdeal !== 0 && (
-                    <div>
-                      <p className="text-[10px] text-violet-500/90">Ideal (hypothetical)</p>
-                      <p
-                        className={`text-xs font-semibold tabular-nums ${
-                          totalPnlIdeal >= 0 ? 'text-violet-400' : 'text-violet-300'
-                        }`}
-                      >
-                        {formatPnl(totalPnlIdeal)}
-                      </p>
-                    </div>
-                  )}
+        {/* Nav tabs */}
+        <nav className="flex gap-0.5 px-2">
+          {(['log', 'calendar'] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setActiveView(v)}
+              className="rounded px-3 py-1.5 text-[11px] capitalize transition-all"
+              style={
+                activeView === v
+                  ? { background: '#1e1e25', color: '#d1d1d8', border: '1px solid #25252f' }
+                  : { background: 'transparent', color: '#55555f', border: '1px solid transparent' }
+              }
+            >
+              {v}
+            </button>
+          ))}
+        </nav>
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Stats */}
+        {setups.length > 0 && (
+          <div className="flex items-center gap-5 px-4">
+            {hasPnl && (
+              <>
+                <div className="text-right">
+                  <span className="block text-[9px] tracking-[0.05em]" style={{ color: '#55555f' }}>EXECUTED P&amp;L</span>
+                  <span
+                    className="text-[12px] font-semibold tabular-nums"
+                    style={{ color: totalPnlExecuted >= 0 ? '#22c55e' : '#ef4444' }}
+                  >
+                    {formatPnl(totalPnlExecuted)}
+                  </span>
                 </div>
-              )}
+                <div className="h-5 w-px shrink-0" style={{ background: '#25252f' }} />
+                {totalPnlIdeal !== 0 && (
+                  <>
+                    <div className="text-right">
+                      <span className="block text-[9px] tracking-[0.05em]" style={{ color: '#55555f' }}>IDEAL P&amp;L</span>
+                      <span className="text-[12px] font-semibold tabular-nums" style={{ color: '#a78bfa' }}>
+                        {formatPnl(totalPnlIdeal)}
+                      </span>
+                    </div>
+                    <div className="h-5 w-px shrink-0" style={{ background: '#25252f' }} />
+                  </>
+                )}
+              </>
+            )}
+            <div className="text-right">
+              <span className="block text-[9px] tracking-[0.05em]" style={{ color: '#55555f' }}>SETUPS</span>
+              <span className="text-[12px] font-semibold">{executedCount}</span>
             </div>
-          )}
+            {winRate !== null && (
+              <>
+                <div className="h-5 w-px shrink-0" style={{ background: '#25252f' }} />
+                <div className="text-right">
+                  <span className="block text-[9px] tracking-[0.05em]" style={{ color: '#55555f' }}>WIN RATE</span>
+                  <span className="text-[12px] font-semibold">{winRate}%</span>
+                </div>
+              </>
+            )}
+            {openCount > 0 && (
+              <>
+                <div className="h-5 w-px shrink-0" style={{ background: '#25252f' }} />
+                <div className="text-right">
+                  <span className="block text-[9px] tracking-[0.05em]" style={{ color: '#55555f' }}>OPEN</span>
+                  <span className="text-[12px] font-semibold" style={{ color: '#f59e0b' }}>{openCount}</span>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="flex items-center gap-1.5 px-3">
+          <button
+            type="button"
+            onClick={() => setShowDetectModal(true)}
+            className="rounded px-3 py-1.5 text-[11px] transition-all"
+            style={{ border: '1px solid #25252f', background: 'transparent', color: '#55555f' }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#818cf8'; e.currentTarget.style.color = '#818cf8'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#25252f'; e.currentTarget.style.color = '#55555f'; }}
+          >
+            Detect Setups
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowSetupForm((v) => !v)}
+            className="rounded px-3 py-1.5 text-[11px] font-medium transition-all"
+            style={{ background: '#6366f1', border: '1px solid #6366f1', color: '#fff' }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#4f46e5'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = '#6366f1'; }}
+          >
+            + New Setup
+          </button>
         </div>
       </header>
 
-      {/* ── Main ── */}
-      <main className="mx-auto max-w-4xl px-6 py-8 flex flex-col gap-6">
+      {/* ── Body ── */}
+      <div className="flex flex-1 overflow-hidden">
 
-        {/* ── Mutation error banner ── */}
-        {mutationError && (
-          <div className="flex items-center justify-between gap-4 rounded-md border border-rose-500/30 bg-rose-500/10 px-4 py-2.5">
-            <p className="text-xs text-rose-400">{mutationError}</p>
-            <button
-              type="button"
-              onClick={() => setMutationError(null)}
-              className="text-xs text-rose-500 hover:text-rose-300 transition-colors shrink-0"
+        {/* ── Sidebar ── */}
+        <aside
+          className="flex w-52 shrink-0 flex-col overflow-hidden"
+          style={{ background: '#0d0d10', borderRight: '1px solid #1c1c24' }}
+        >
+          <div className="flex flex-1 flex-col overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: '#25252f #08080a' }}>
+
+            {/* Recent days */}
+            <div className="px-3.5 pb-1 pt-3.5 text-[9px] font-medium uppercase tracking-[0.1em]" style={{ color: '#38383f' }}>
+              Recent Days
+            </div>
+            {recentDays.length === 0 && (
+              <p className="px-3.5 py-2 text-[10px]" style={{ color: '#38383f' }}>No setups yet</p>
+            )}
+            {recentDays.map(({ date, count, pnl, symbols, hasClosed }) => {
+              const isSelected = selectedDate === date;
+              const dotColor = !hasClosed
+                ? '#38383f'
+                : pnl > 0 ? '#22c55e' : pnl < 0 ? '#ef4444' : '#f59e0b';
+              return (
+                <button
+                  key={date}
+                  type="button"
+                  onClick={() => {
+                    setSelectedDate(date);
+                    setActiveView('calendar');
+                  }}
+                  className="flex w-full items-center gap-2 px-3.5 py-1.5 text-left transition-all"
+                  style={{
+                    borderLeft: `2px solid ${isSelected ? '#6366f1' : 'transparent'}`,
+                    background: isSelected ? '#6366f112' : 'transparent',
+                    color: isSelected ? '#818cf8' : '#55555f',
+                  }}
+                  onMouseEnter={(e) => { if (!isSelected) { e.currentTarget.style.background = '#111115'; e.currentTarget.style.color = '#d1d1d8'; }}}
+                  onMouseLeave={(e) => { if (!isSelected) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#55555f'; }}}
+                >
+                  <div className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: dotColor }} />
+                  <div className="min-w-0 flex-1">
+                    <span className="block text-[11px]" style={{ color: isSelected ? '#818cf8' : '#d1d1d8' }}>
+                      {fmtSidebarDate(date)}
+                    </span>
+                    <span className="block text-[9px]" style={{ color: '#38383f' }}>
+                      {count} setup{count !== 1 ? 's' : ''}{symbols ? ` · ${symbols}` : ''}
+                    </span>
+                  </div>
+                  {hasClosed && (
+                    <span
+                      className="shrink-0 text-[10px] font-semibold tabular-nums"
+                      style={{ color: pnl > 0 ? '#22c55e' : pnl < 0 ? '#ef4444' : '#55555f' }}
+                    >
+                      {pnl > 0 ? '+' : ''}{formatPnl(pnl)}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+
+            {/* Setup types */}
+            {setupTypeCounts.length > 0 && (
+              <>
+                <div className="px-3.5 pb-1 pt-4 text-[9px] font-medium uppercase tracking-[0.1em]" style={{ color: '#38383f' }}>
+                  Setup Types
+                </div>
+                {setupTypeCounts.map(([type, count]) => (
+                  <div key={type} className="flex items-center gap-2 px-3.5 py-1 text-[10px]" style={{ color: '#55555f' }}>
+                    <div
+                      className="h-1.5 w-1.5 shrink-0 rounded-sm"
+                      style={{ background: SETUP_TYPE_COLORS[type] ?? '#55555f' }}
+                    />
+                    <span className="flex-1 truncate">
+                      {SETUP_TYPE_LABELS[type as SetupType] ?? type}
+                    </span>
+                    <span style={{ color: '#38383f' }}>{count}</span>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+
+          {/* Footer summary */}
+          {setups.length > 0 && (
+            <div className="shrink-0 border-t p-3.5" style={{ borderColor: '#1c1c24' }}>
+              {[
+                { label: 'Total setups', value: String(executedCount) },
+                winRate !== null ? { label: 'Win rate', value: `${winRate}%` } : null,
+                openCount > 0 ? { label: 'Open positions', value: String(openCount), warn: true } : null,
+              ].filter(Boolean).map((item) => (
+                <div key={item!.label} className="mb-1 flex justify-between text-[10px]">
+                  <span style={{ color: '#55555f' }}>{item!.label}</span>
+                  <span
+                    className="font-medium"
+                    style={{ color: item!.warn ? '#f59e0b' : '#d1d1d8' }}
+                  >
+                    {item!.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </aside>
+
+        {/* ── Main ── */}
+        <main className="flex flex-1 flex-col overflow-hidden">
+
+          {/* Mutation error */}
+          {mutationError && (
+            <div
+              className="flex shrink-0 items-center justify-between gap-4 px-5 py-2"
+              style={{ background: '#2d0a0a', borderBottom: '1px solid #ef444430' }}
             >
-              Dismiss
-            </button>
-          </div>
-        )}
-
-        {/* ── Toolbar: view toggle + New Setup ── */}
-        {showSetupForm ? (
-          <SetupForm
-            onLog={logSetup}
-            onClose={() => setShowSetupForm(false)}
-            defaultValues={selectedDate ? { setupDate: selectedDate } : undefined}
-          />
-        ) : (
-          <div className="flex items-center justify-between">
-            {/* Segmented view control */}
-            <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-lg p-1 gap-0.5">
+              <p className="text-[11px]" style={{ color: '#f87171' }}>{mutationError}</p>
               <button
                 type="button"
-                onClick={() => setActiveView('log')}
-                className={`px-4 py-1.5 rounded text-xs font-medium transition-colors ${
-                  activeView === 'log'
-                    ? 'bg-zinc-700 text-white'
-                    : 'text-zinc-500 hover:text-zinc-300'
-                }`}
+                onClick={() => setMutationError(null)}
+                className="shrink-0 text-[11px] transition-colors"
+                style={{ color: '#ef4444' }}
               >
-                Log
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveView('calendar')}
-                className={`px-4 py-1.5 rounded text-xs font-medium transition-colors ${
-                  activeView === 'calendar'
-                    ? 'bg-zinc-700 text-white'
-                    : 'text-zinc-500 hover:text-zinc-300'
-                }`}
-              >
-                Calendar
+                Dismiss
               </button>
             </div>
+          )}
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowDetectModal(true)}
-                className="h-9 px-4 rounded-md border border-violet-700/50 bg-violet-900/20 text-violet-300 text-sm font-medium hover:bg-violet-800/30 transition-colors"
-              >
-                Detect Setups
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowSetupForm(true)}
-                className="h-9 px-4 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-500 transition-colors"
-              >
-                + New Setup
-              </button>
+          {/* Setup form (inline, dismissible) */}
+          {showSetupForm && (
+            <div
+              className="shrink-0 border-b px-5 py-4"
+              style={{ borderColor: '#1c1c24', background: '#0d0d10' }}
+            >
+              <SetupForm
+                onLog={logSetup}
+                onClose={() => setShowSetupForm(false)}
+                defaultValues={selectedDate ? { setupDate: selectedDate } : undefined}
+              />
             </div>
-          </div>
-        )}
+          )}
 
-        {/* ── Active view ── */}
-        {activeView === 'calendar' ? (
-          <>
-            <CalendarView
-              setups={setups}
-              selectedDate={selectedDate}
-              onSelectDate={setSelectedDate}
-            />
-            {selectedDate !== null && (
-              <DailyDrillDown
-                date={selectedDate}
-                setups={selectedDateSetups}
+          {/* Scrollable content */}
+          <div className="flex-1 overflow-y-auto px-5 py-5" style={{ scrollbarWidth: 'thin', scrollbarColor: '#25252f #08080a' }}>
+            {activeView === 'calendar' ? (
+              <div className="flex flex-col gap-5">
+                <CalendarView
+                  setups={setups}
+                  selectedDate={selectedDate}
+                  onSelectDate={setSelectedDate}
+                />
+                {selectedDate !== null && (
+                  <DailyDrillDown
+                    date={selectedDate}
+                    setups={selectedDateSetups}
+                    onAddExecution={addExecution}
+                    onUpdateStatus={updateStatus}
+                    onDeleteSetup={deleteSetup}
+                    onDeleteSetups={deleteSetups}
+                    onUpdateSetup={updateSetup}
+                    onUpdateExecution={updateExecution}
+                    onDeleteExecution={deleteExecution}
+                    onMoveExecutions={moveExecutions}
+                    onCreateSetupAndMoveExecutions={createSetupAndMoveExecutions}
+                    onUpdateDayContext={updateDayContext}
+                  />
+                )}
+              </div>
+            ) : (
+              <SetupLog
+                setups={setups}
                 onAddExecution={addExecution}
                 onUpdateStatus={updateStatus}
                 onDeleteSetup={deleteSetup}
-                onDeleteSetups={deleteSetups}
                 onUpdateSetup={updateSetup}
                 onUpdateExecution={updateExecution}
                 onDeleteExecution={deleteExecution}
@@ -482,22 +699,9 @@ export default function Home() {
                 onUpdateDayContext={updateDayContext}
               />
             )}
-          </>
-        ) : (
-          <SetupLog
-            setups={setups}
-            onAddExecution={addExecution}
-            onUpdateStatus={updateStatus}
-            onDeleteSetup={deleteSetup}
-            onUpdateSetup={updateSetup}
-            onUpdateExecution={updateExecution}
-            onDeleteExecution={deleteExecution}
-            onMoveExecutions={moveExecutions}
-            onCreateSetupAndMoveExecutions={createSetupAndMoveExecutions}
-            onUpdateDayContext={updateDayContext}
-          />
-        )}
-      </main>
+          </div>
+        </main>
+      </div>
 
       <DetectSetupsModal
         open={showDetectModal}
