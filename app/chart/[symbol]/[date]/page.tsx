@@ -24,6 +24,9 @@ import {
   CHART_TIMEFRAMES,
   type ChartTimeframeId,
 } from '@/lib/sessionTimeframe';
+import { createSessionTimezoneChartFormatters } from '@/lib/chartTimeLocalization';
+import DetectSetupsModal from '@/components/DetectSetupsModal';
+import type { SetupDraft } from '@/lib/detectSetups';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -119,6 +122,7 @@ export default function ChartPage({
   });
   const [showTrades, setShowTrades] = useState(true);
   const [timeframe, setTimeframe] = useState<ChartTimeframeId>('1m');
+  const [showDetectModal, setShowDetectModal] = useState(false);
   const [ohlcv, setOhlcv] = useState<OhlcvState | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -186,8 +190,16 @@ export default function ChartPage({
       .filter((c) => typeof c.vwap === 'number')
       .map((c) => ({ time: toUtcTimestamp(c.time), value: c.vwap }));
 
+    const sessionTimeZone = session.timezone?.trim() || 'America/New_York';
+    const { timeFormatter, tickMarkFormatter } =
+      createSessionTimezoneChartFormatters(sessionTimeZone);
+
     const chart = createChart(el, {
       autoSize: true,
+      localization: {
+        locale: 'en-US',
+        timeFormatter,
+      },
       layout: {
         background: { type: ColorType.Solid, color: '#0a0b0d' },
         textColor: '#4a5a6a',
@@ -213,6 +225,7 @@ export default function ChartPage({
         secondsVisible: false,
         rightOffset: 2,
         minBarSpacing: 0.5,
+        tickMarkFormatter,
       },
     });
 
@@ -270,7 +283,7 @@ export default function ChartPage({
 
     // VWAP line
     const vwapSeries = chart.addSeries(LineSeries, {
-      color: '#ffd740',
+      color: 'rgba(255,255,255,0.75)',
       lineWidth: 1,
       lineStyle: LineStyle.Dashed,
       priceLineVisible: false,
@@ -393,6 +406,18 @@ export default function ChartPage({
     setSessionActive((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
+  async function confirmDetectedSetup(draft: SetupDraft): Promise<void> {
+    const res = await fetch('/api/setups', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(draft),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data?.error ?? 'Failed to create setup');
+    }
+  }
+
   const totalCandles = session?.candles.length ?? 0;
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -473,6 +498,18 @@ export default function ChartPage({
             </button>
           ))}
         </div>
+
+        {/* Detect Setups */}
+        <button
+          type="button"
+          onClick={() => setShowDetectModal(true)}
+          className="rounded px-2.5 py-1 text-[10px] font-medium tracking-widest transition-all"
+          style={{ background: '#111418', color: '#818cf8', border: '1px solid #2a2a40' }}
+          onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#6366f1'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#2a2a40'; }}
+        >
+          DETECT
+        </button>
 
         {/* Trades toggle */}
         <button
@@ -571,6 +608,7 @@ export default function ChartPage({
             )}
             <span className="ml-auto font-mono text-[10px]" style={{ color: '#00d4ff' }}>
               {new Date(ohlcv.time * 1000).toLocaleTimeString('en-US', {
+                timeZone: session.timezone?.trim() || 'America/New_York',
                 hour: '2-digit',
                 minute: '2-digit',
                 hour12: false,
@@ -744,6 +782,13 @@ export default function ChartPage({
         </span>
         <span className="ml-auto">{totalCandles} bars total</span>
       </div>
+
+      <DetectSetupsModal
+        open={showDetectModal}
+        onClose={() => setShowDetectModal(false)}
+        defaultDate={date}
+        onConfirm={confirmDetectedSetup}
+      />
     </div>
   );
 }
