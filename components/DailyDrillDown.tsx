@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { type TradeSetup, type Execution } from '@/types/setup';
 import type { DayContext } from '@/types/dayContext';
@@ -48,8 +48,13 @@ export default function DailyDrillDown({
 
   const executedSetups = setups.filter((s) => !s.isIdeal);
   const idealSetups = setups.filter((s) => s.isIdeal);
-  const chartSymbol = executedSetups[0]?.symbol ?? setups[0]?.symbol ?? 'QQQ';
   const visibleSetups = mode === 'executed' ? executedSetups : idealSetups;
+
+  // Always show at least one session chart for the selected day (default QQQ when no trades).
+  const chartSymbols = useMemo(() => {
+    const symbols = [...new Set(setups.map((s) => s.symbol))];
+    return symbols.length > 0 ? symbols : ['QQQ'];
+  }, [setups]);
 
   const totalPnlExecuted = executedSetups.reduce(
     (sum, s) => sum + calcSetupPnl(s.executions, s.direction).realizedPnl,
@@ -143,7 +148,7 @@ export default function DailyDrillDown({
           )}
           <div className="h-px flex-1 bg-zinc-800" />
           <Link
-            href={`/chart/${encodeURIComponent(chartSymbol)}/${encodeURIComponent(date)}`}
+            href={`/chart/${encodeURIComponent(chartSymbols[0])}/${encodeURIComponent(date)}`}
             className="shrink-0 rounded border border-zinc-800 px-2.5 py-1 text-[10px] font-medium text-zinc-500 transition-colors hover:border-indigo-700 hover:text-indigo-400"
           >
             View Chart
@@ -159,24 +164,15 @@ export default function DailyDrillDown({
           )}
         </div>
 
-        {/* ── Session charts — one per unique symbol in the visible set, lazy loaded ── */}
-        {visibleSetups.length > 0 && (() => {
-          const seenSymbols = new Set<string>();
-          return visibleSetups
-            .filter((s) => {
-              if (seenSymbols.has(s.symbol)) return false;
-              seenSymbols.add(s.symbol);
-              return true;
-            })
-            .map((s) => (
-              <SetupSessionChart
-                key={`${s.symbol}::${s.setupDate}`}
-                symbol={s.symbol}
-                setupDate={s.setupDate}
-                setups={visibleSetups.filter((gs) => gs.symbol === s.symbol)}
-              />
-            ));
-        })()}
+        {/* ── Session charts — always shown for the selected day ── */}
+        {chartSymbols.map((symbol) => (
+          <SetupSessionChart
+            key={`${symbol}::${date}`}
+            symbol={symbol}
+            setupDate={date}
+            setups={visibleSetups.filter((s) => s.symbol === symbol)}
+          />
+        ))}
 
         {/* ── Setup cards or empty state ── */}
         {visibleSetups.length === 0 ? (

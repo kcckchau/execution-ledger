@@ -127,6 +127,8 @@ export default function CalendarView({
   const [viewMonth, setViewMonth] = useState<number>(() =>
     parseInt(today.split('-')[1], 10),
   );
+  const [typedDate, setTypedDate] = useState<string>('');
+  const [typedDateError, setTypedDateError] = useState<string | null>(null);
 
   const days = useMemo(
     () => getCalendarDays(viewYear, viewMonth),
@@ -155,6 +157,28 @@ export default function CalendarView({
 
   function handleDayClick(date: string) {
     onSelectDate(selectedDate === date ? null : date);
+  }
+
+  function jumpToTypedDate() {
+    const raw = typedDate.trim();
+    if (!raw) {
+      setTypedDateError('Enter a date first');
+      return;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+      setTypedDateError('Use YYYY-MM-DD');
+      return;
+    }
+    const parsed = new Date(`${raw}T12:00:00Z`);
+    if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== raw) {
+      setTypedDateError('Invalid date');
+      return;
+    }
+
+    setTypedDateError(null);
+    setViewYear(parsed.getUTCFullYear());
+    setViewMonth(parsed.getUTCMonth() + 1);
+    onSelectDate(raw);
   }
 
   // Count trade days in the current view month
@@ -238,6 +262,42 @@ export default function CalendarView({
               </div>
             )}
           </div>
+        )}
+      </div>
+
+      {/* ── Typed date jump ── */}
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="text-[11px] text-zinc-500" htmlFor="calendar-date-input">
+          Jump to date
+        </label>
+        <input
+          id="calendar-date-input"
+          type="date"
+          value={typedDate}
+          onChange={(e) => {
+            setTypedDate(e.target.value);
+            if (typedDateError) setTypedDateError(null);
+          }}
+          className="h-8 rounded-md border border-zinc-700 bg-zinc-950 px-2 text-xs text-zinc-200 outline-none transition-colors focus:border-indigo-500"
+        />
+        <button
+          type="button"
+          onClick={jumpToTypedDate}
+          className="h-8 rounded-md border border-zinc-700 px-3 text-xs text-zinc-300 transition-colors hover:border-indigo-600 hover:text-indigo-300"
+        >
+          Go
+        </button>
+        {selectedDate && (
+          <button
+            type="button"
+            onClick={() => onSelectDate(null)}
+            className="h-8 rounded-md border border-zinc-800 px-3 text-xs text-zinc-500 transition-colors hover:text-zinc-300"
+          >
+            Clear
+          </button>
+        )}
+        {typedDateError && (
+          <span className="text-[11px] text-rose-400">{typedDateError}</span>
         )}
       </div>
 

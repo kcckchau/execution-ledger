@@ -58,7 +58,8 @@ export default function SetupSessionChart({
   setups,
 }: SetupSessionChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [inView, setInView] = useState(false);
+  // No logged setups: load session chart immediately (calendar drill-down).
+  const [inView, setInView] = useState(setups.length === 0);
 
   const [loading, setLoading] = useState(false);
   const [session, setSession] = useState<SessionChartData | null>(null);
@@ -74,8 +75,12 @@ export default function SetupSessionChart({
     if (!hasExecuted && hasIdeal) setChartMode('ideal');
   }, [setups]);
 
-  // Observe visibility — fetch only once when the container comes into view.
+  // Observe visibility — fetch once when scrolled into view (skip when eager-loading).
   useEffect(() => {
+    if (setups.length === 0) {
+      setInView(true);
+      return;
+    }
     const el = containerRef.current;
     if (!el) return;
     const obs = new IntersectionObserver(
@@ -89,7 +94,7 @@ export default function SetupSessionChart({
     );
     obs.observe(el);
     return () => obs.disconnect();
-  }, []);
+  }, [setups.length, symbol, setupDate]);
 
   // Fetch chart data — only fires once inView becomes true.
   useEffect(() => {
