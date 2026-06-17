@@ -64,6 +64,9 @@ export function aggregateCandlesSequential(
       close,
       volume,
       vwap,
+      // Preserve the session tag so session-based filtering/coloring still works
+      // after resampling. The first candle of the bucket determines the bar's session.
+      ...(chunk[0].session ? { session: chunk[0].session } : {}),
     });
   }
   return out;

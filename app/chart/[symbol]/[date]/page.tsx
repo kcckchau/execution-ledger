@@ -18,6 +18,12 @@ import {
 } from 'lightweight-charts';
 import type { SessionChartData, SessionCandle } from '@/types/sessionChart';
 import type { TradeMarker, SetupMarkerMeta } from '@/types/chartMarker';
+import { computeEma } from '@/lib/ema';
+import {
+  applyTimeframeToSession,
+  CHART_TIMEFRAMES,
+  type ChartTimeframeId,
+} from '@/lib/sessionTimeframe';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -51,6 +57,12 @@ const SETUP_PALETTE = [
   '#00d4ff', '#ffd740', '#bb86fc', '#00e676',
   '#ff9800', '#03dac6', '#f06292', '#aed581',
 ];
+
+const SESSION_BAND_COLORS = {
+  premarket:   'rgba(250, 204, 21, 0.09)',
+  regular:     'rgba(34, 197, 94, 0.05)',
+  aftermarket: 'rgba(139, 92, 246, 0.10)',
+} as const;
 
 const LEVEL_LINE_CONFIG = [
   { key: 'premarket_high' as const,    title: 'PM H',  color: '#5090c0', style: LineStyle.Dotted },
@@ -106,6 +118,7 @@ export default function ChartPage({
     post: true,
   });
   const [showTrades, setShowTrades] = useState(true);
+  const [timeframe, setTimeframe] = useState<ChartTimeframeId>('1m');
   const [ohlcv, setOhlcv] = useState<OhlcvState | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -135,15 +148,17 @@ export default function ChartPage({
 
     const el = containerRef.current;
 
+    // Apply timeframe aggregation first, then filter by active sessions.
+    const tfSession = applyTimeframeToSession(session, timeframe);
+    const allCandles = [...tfSession.candles].sort(
+      (a, b) => new Date(a.time).getTime() - new Date(b.time).getTime(),
+    );
+
     // Determine which session types are active
     const activeTypes = new Set(
       (Object.keys(SESSION_TO_TYPE) as SessionKey[])
         .filter((k) => sessionActive[k])
         .map((k) => SESSION_TO_TYPE[k]),
-    );
-
-    const allCandles = [...session.candles].sort(
-      (a, b) => new Date(a.time).getTime() - new Date(b.time).getTime(),
     );
 
     // Candles without a session tag are always shown (legacy flat format)
@@ -201,6 +216,35 @@ export default function ChartPage({
       },
     });
 
+    // Session background bands (premarket / regular / aftermarket)
+    const sessionGroups: Record<keyof typeof SESSION_BAND_COLORS, UTCTimestamp[]> = {
+      premarket: [],
+      regular: [],
+      aftermarket: [],
+    };
+    for (const c of visible) {
+      if (c.session === 'premarket') sessionGroups.premarket.push(toUtcTimestamp(c.time));
+      else if (c.session === 'regular') sessionGroups.regular.push(toUtcTimestamp(c.time));
+      else if (c.session === 'aftermarket') sessionGroups.aftermarket.push(toUtcTimestamp(c.time));
+    }
+    let bandScaleConfigured = false;
+    for (const key of ['premarket', 'regular', 'aftermarket'] as const) {
+      const times = sessionGroups[key];
+      if (times.length === 0) continue;
+      const bandSeries = chart.addSeries(HistogramSeries, {
+        color: SESSION_BAND_COLORS[key],
+        priceScaleId: 'session-bands',
+        priceLineVisible: false,
+        lastValueVisible: false,
+        base: 0,
+      });
+      if (!bandScaleConfigured) {
+        bandSeries.priceScale().applyOptions({ visible: false, scaleMargins: { top: 0, bottom: 0 } });
+        bandScaleConfigured = true;
+      }
+      bandSeries.setData(times.map((t) => ({ time: t, value: 1 })));
+    }
+
     // Volume histogram
     if (volData.length > 0) {
       const volSeries = chart.addSeries(HistogramSeries, {
@@ -213,6 +257,17 @@ export default function ChartPage({
       volSeries.setData(volData);
     }
 
+    // EMA 9 / EMA 21
+    const closes = visible.map((c) => c.close);
+    const ema9Values = computeEma(closes, 9);
+    const ema21Values = computeEma(closes, 21);
+    const ema9Data = visible
+      .map((c, i) => ({ time: toUtcTimestamp(c.time), value: ema9Values[i] }))
+      .filter((d): d is { time: UTCTimestamp; value: number } => d.value !== null);
+    const ema21Data = visible
+      .map((c, i) => ({ time: toUtcTimestamp(c.time), value: ema21Values[i] }))
+      .filter((d): d is { time: UTCTimestamp; value: number } => d.value !== null);
+
     // VWAP line
     const vwapSeries = chart.addSeries(LineSeries, {
       color: '#ffd740',
@@ -223,6 +278,24 @@ export default function ChartPage({
       title: 'VWAP',
     });
     vwapSeries.setData(vwapData);
+
+    const ema9Series = chart.addSeries(LineSeries, {
+      color: '#22d3ee',
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      title: 'EMA 9',
+    });
+    ema9Series.setData(ema9Data);
+
+    const ema21Series = chart.addSeries(LineSeries, {
+      color: '#eab308',
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      title: 'EMA 21',
+    });
+    ema21Series.setData(ema21Data);
 
     // Candlestick series
     const candleSeries = chart.addSeries(CandlestickSeries, {
@@ -306,7 +379,7 @@ export default function ChartPage({
     return () => {
       chart.remove();
     };
-  }, [apiData, sessionActive, showTrades]);
+  }, [apiData, sessionActive, showTrades, timeframe]);
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
@@ -381,16 +454,25 @@ export default function ChartPage({
           {symbol}
         </div>
         <span style={{ color: '#4a5a6a', fontSize: '11px' }}>{date}</span>
-        <span
-          className="rounded px-2 py-0.5 text-[10px]"
-          style={{
-            background: '#161a1f',
-            border: '1px solid #252d38',
-            color: '#00d4ff',
-          }}
-        >
-          {session.barSize}
-        </span>
+
+        {/* Timeframe buttons */}
+        <div className="flex rounded overflow-hidden" style={{ border: '1px solid #252d38' }}>
+          {CHART_TIMEFRAMES.map((tf) => (
+            <button
+              key={tf.id}
+              type="button"
+              onClick={() => setTimeframe(tf.id)}
+              className="px-2.5 py-1 text-[10px] font-medium tracking-widest transition-all"
+              style={
+                timeframe === tf.id
+                  ? { background: '#1e2c38', color: '#00d4ff', borderRight: '1px solid #252d38' }
+                  : { background: 'transparent', color: '#4a5a6a', borderRight: '1px solid #252d38' }
+              }
+            >
+              {tf.label}
+            </button>
+          ))}
+        </div>
 
         {/* Trades toggle */}
         <button
