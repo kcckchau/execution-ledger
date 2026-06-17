@@ -17,8 +17,9 @@ function sortCandles(candles: SessionCandle[]): SessionCandle[] {
 }
 
 /**
- * Groups consecutive 1-minute candles into `minutesPerBar`-minute bars (OHLC, summed volume,
- * volume-weighted VWAP over the chunk). First candle time is the aggregated bar open time.
+ * Groups 1-minute candles into `minutesPerBar`-minute bars aligned to UTC clock boundaries
+ * (e.g. 5-min bars always start at :00, :05, :10 …). This ensures bars stay on standard
+ * market times even when there are gaps in the source data (thin premarket/aftermarket etc.).
  */
 export function aggregateCandlesSequential(
   candles: SessionCandle[],
@@ -26,10 +27,22 @@ export function aggregateCandlesSequential(
 ): SessionCandle[] {
   if (minutesPerBar <= 1) return sortCandles(candles);
   const sorted = sortCandles(candles);
+  const bucketMs = minutesPerBar * 60 * 1000;
+
+  // Group candles by their clock-aligned bucket key (ms since epoch, truncated to N-min boundary).
+  const buckets = new Map<number, SessionCandle[]>();
+  for (const candle of sorted) {
+    const key = Math.floor(new Date(candle.time).getTime() / bucketMs) * bucketMs;
+    const existing = buckets.get(key);
+    if (existing) {
+      existing.push(candle);
+    } else {
+      buckets.set(key, [candle]);
+    }
+  }
+
   const out: SessionCandle[] = [];
-  for (let i = 0; i < sorted.length; i += minutesPerBar) {
-    const chunk = sorted.slice(i, i + minutesPerBar);
-    if (chunk.length === 0) break;
+  for (const [, chunk] of [...buckets.entries()].sort((a, b) => a[0] - b[0])) {
     const open = chunk[0].open;
     const close = chunk[chunk.length - 1].close;
     let high = chunk[0].high;

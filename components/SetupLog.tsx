@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import Link from 'next/link';
 import { type TradeSetup, type Execution } from '@/types/setup';
 import type { DayContext } from '@/types/dayContext';
 import { EMPTY_FILTERS, filterTrades, computeTradeStats, type TradeFilters } from '@/lib/tradeFilters';
@@ -131,6 +132,12 @@ export default function SetupLog({
                   </span>
                 )}
                 <div className="h-px flex-1 bg-zinc-800" />
+                <Link
+                  href={`/chart/${encodeURIComponent(groupSetups[0].symbol)}/${encodeURIComponent(date)}`}
+                  className="shrink-0 rounded border border-zinc-800 px-2.5 py-1 text-[10px] font-medium text-zinc-500 transition-colors hover:border-indigo-700 hover:text-indigo-400"
+                >
+                  View Chart
+                </Link>
               </div>
 
               {/* ── Session charts — one per unique symbol, lazy loaded ── */}

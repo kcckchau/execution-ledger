@@ -5,6 +5,11 @@ import SessionChart from '@/components/SessionChart';
 import { SETUP_TYPE_LABELS, type TradeSetup } from '@/types/setup';
 import type { SessionChartData } from '@/types/sessionChart';
 import type { TradeMarker, SetupMarkerMeta } from '@/types/chartMarker';
+import {
+  applyTimeframeToSession,
+  CHART_TIMEFRAMES,
+  type ChartTimeframeId,
+} from '@/lib/sessionTimeframe';
 
 interface ChartDataResponse {
   session: SessionChartData | null;
@@ -66,6 +71,8 @@ export default function SetupSessionChart({
   const [tradeMarkers, setTradeMarkers] = useState<TradeMarker[] | null>(null);
   const [toggledSetups, setToggledSetups] = useState<Set<string>>(new Set());
   const [chartMode, setChartMode] = useState<ChartMode>('executed');
+  const [timeframe, setTimeframe] = useState<ChartTimeframeId>('1m');
+  const [showTrades, setShowTrades] = useState(true);
 
   // If this symbol/date only has ideal setups, default to Ideal — otherwise "executed"
   // mode hides their executions and the Executed/Ideal toggle is not shown.
@@ -123,6 +130,11 @@ export default function SetupSessionChart({
       cancelled = true;
     };
   }, [symbol, setupDate, inView]);
+
+  const displaySession = useMemo(
+    () => (session ? applyTimeframeToSession(session, timeframe) : null),
+    [session, timeframe],
+  );
 
   const modeSetups = useMemo(
     () => setups.filter((s) => (chartMode === 'executed' ? !s.isIdeal : s.isIdeal)),
@@ -274,6 +286,37 @@ export default function SetupSessionChart({
           </div>
         )}
 
+        {/* Timeframe selector + trades toggle */}
+        <div className="flex items-center gap-2 ml-auto">
+          <div className="flex rounded border border-zinc-700 overflow-hidden">
+            {CHART_TIMEFRAMES.map((tf) => (
+              <button
+                key={tf.id}
+                type="button"
+                onClick={() => setTimeframe(tf.id)}
+                className={`px-2 py-0.5 text-[10px] font-semibold tracking-wide transition-colors border-l border-zinc-700 first:border-l-0 ${
+                  timeframe === tf.id
+                    ? 'bg-zinc-700 text-white'
+                    : 'bg-zinc-900 text-zinc-500 hover:text-zinc-300'
+                }`}
+              >
+                {tf.label}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowTrades((v) => !v)}
+            className={`h-5 rounded border px-2 text-[10px] font-medium transition-colors ${
+              showTrades
+                ? 'border-indigo-500/50 bg-indigo-500/10 text-indigo-300'
+                : 'border-zinc-700 bg-zinc-800 text-zinc-600'
+            }`}
+          >
+            Trades
+          </button>
+        </div>
+
         {/* Per-setup filter chips (DB-backed broker markers only) */}
         {showSetupToggles && (
           <div className="flex flex-wrap gap-1">
@@ -315,9 +358,9 @@ export default function SetupSessionChart({
       ) : (
         <div className="px-2 pb-2 pt-1 sm:px-3">
           <SessionChart
-            session={session}
-            tradeMarkers={mergedMarkers === null ? undefined : mergedMarkers}
-            executions={executions}
+            session={displaySession!}
+            tradeMarkers={showTrades && mergedMarkers !== null ? mergedMarkers : undefined}
+            executions={showTrades ? executions : []}
           />
         </div>
       )}

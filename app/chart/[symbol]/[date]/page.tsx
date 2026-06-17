@@ -105,6 +105,7 @@ export default function ChartPage({
     reg: true,
     post: true,
   });
+  const [showTrades, setShowTrades] = useState(true);
   const [ohlcv, setOhlcv] = useState<OhlcvState | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -249,7 +250,7 @@ export default function ChartPage({
 
     // Trade markers — color per setupId
     const tradeMarkers = apiData?.tradeMarkers;
-    if (tradeMarkers && tradeMarkers.length > 0) {
+    if (showTrades && tradeMarkers && tradeMarkers.length > 0) {
       const colorMap = buildSetupColorMap(apiData?.setupMeta ?? null);
       const VALID_SHAPES = new Set(['circle', 'square', 'arrowUp', 'arrowDown']);
 
@@ -305,7 +306,7 @@ export default function ChartPage({
     return () => {
       chart.remove();
     };
-  }, [apiData, sessionActive]);
+  }, [apiData, sessionActive, showTrades]);
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
@@ -391,8 +392,22 @@ export default function ChartPage({
           {session.barSize}
         </span>
 
+        {/* Trades toggle */}
+        <button
+          type="button"
+          onClick={() => setShowTrades((v) => !v)}
+          className="ml-auto rounded px-2.5 py-1 text-[10px] font-medium tracking-widest transition-all"
+          style={
+            showTrades
+              ? { background: '#1a2a1a', color: '#60e090', border: '1px solid #30804a' }
+              : { background: '#111418', color: '#3a4a3a', border: '1px solid #1e2820' }
+          }
+        >
+          TRADES
+        </button>
+
         {/* Session toggles */}
-        <div className="ml-auto flex gap-1.5">
+        <div className="flex gap-1.5">
           {(
             [
               { key: 'pre' as const, label: 'PRE' },
