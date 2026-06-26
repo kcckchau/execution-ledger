@@ -43,17 +43,20 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'symbol and date are required' }, { status: 400 });
   }
 
-  const [sessionResult, dbMarkers, prevDate] = await Promise.all([
+  // Kick off all I/O in parallel — prev day lookup + load happen concurrently with today.
+  const prevSessionPromise = findPrevTradingDate(symbol, date).then((prevDate) =>
+    prevDate ? loadMarketSession(symbol, prevDate) : null,
+  );
+
+  const [sessionResult, dbMarkers, prevSession] = await Promise.all([
     loadMarketSession(symbol, date),
     prisma.chartMarker.findMany({
       where: { symbol, tradeDate: date },
       orderBy: { executionTime: 'asc' },
     }),
-    findPrevTradingDate(symbol, date),
+    prevSessionPromise,
   ]);
 
-  // Load prev day session if a file exists (best-effort, no error on miss).
-  const prevSession = prevDate ? await loadMarketSession(symbol, prevDate) : null;
   const prevCandles = prevSession?.ok ? prevSession.data.candles : null;
 
   // Helper to attach prevCandles to a session payload.
@@ -62,12 +65,18 @@ export async function GET(req: NextRequest) {
     return { ...data.data, prevCandles: prevCandles ?? null };
   }
 
+  // Historical dates are immutable; today may still have live marker imports.
+  const todayUtc = new Date().toISOString().slice(0, 10);
+  const isHistorical = date < todayUtc;
+  const cacheControl = isHistorical
+    ? 'public, max-age=86400, stale-while-revalidate=604800'  // 1 day fresh, 7 days stale
+    : 'public, max-age=60, stale-while-revalidate=300';        // 1 min fresh, 5 min stale
+
   if (dbMarkers.length === 0) {
-    return NextResponse.json({
-      session: withPrev(sessionResult),
-      tradeMarkers: null,
-      setupMeta: null,
-    });
+    return NextResponse.json(
+      { session: withPrev(sessionResult), tradeMarkers: null, setupMeta: null },
+      { headers: { 'Cache-Control': cacheControl } },
+    );
   }
 
   // Collect distinct setupIds that are explicitly linked (non-null).
@@ -114,9 +123,8 @@ export async function GET(req: NextRequest) {
   const setupMeta: SetupMarkerMeta[] | null =
     seenSetups.size > 0 ? [...seenSetups.values()] : null;
 
-  return NextResponse.json({
-    session: withPrev(sessionResult),
-    tradeMarkers,
-    setupMeta,
-  });
+  return NextResponse.json(
+    { session: withPrev(sessionResult), tradeMarkers, setupMeta },
+    { headers: { 'Cache-Control': cacheControl } },
+  );
 }

@@ -16,6 +16,12 @@ export type LoadMarketSessionResult =
 // The previous trading date for a given day is stable — once determined it never changes.
 const prevDateCache = new Map<string, string | null>();
 
+// Module-level cache for fully parsed + normalized session data.
+// Market session files are write-once: once created they never change.
+// Cap at 300 entries (~30-60 MB heap) to bound memory use in long-running processes.
+const SESSION_CACHE_MAX = 300;
+const sessionCache = new Map<string, SessionChartData>();
+
 function resolveMarketSessionPath(symbol: string, date: string): string | null {
   const sym = symbol.trim();
   const d = date.trim();
@@ -72,6 +78,12 @@ export async function loadMarketSession(
     return { ok: false, reason: 'invalid_args' };
   }
 
+  const cacheKey = `${symbol}:${date}`;
+  const cached = sessionCache.get(cacheKey);
+  if (cached) {
+    return { ok: true, data: cached };
+  }
+
   let raw: string;
   try {
     raw = await readFile(filePath, 'utf8');
@@ -95,5 +107,12 @@ export async function loadMarketSession(
   }
 
   const data = normalizeMarketSessionFile(parsed as MarketSessionFileJson);
+
+  // Evict oldest entry if at capacity, then store.
+  if (sessionCache.size >= SESSION_CACHE_MAX) {
+    sessionCache.delete(sessionCache.keys().next().value!);
+  }
+  sessionCache.set(cacheKey, data);
+
   return { ok: true, data };
 }
