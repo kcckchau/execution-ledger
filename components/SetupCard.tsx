@@ -23,6 +23,7 @@ import {
 import type { DayContext } from '@/types/dayContext';
 import { formatPlannedRiskReward } from '@/lib/plannedRiskReward';
 import { calcSetupPnl, formatPnl } from '@/lib/pnl';
+import { getPointValue } from '@/lib/instrumentConfig';
 import { easternTimeFromIso, formatSetupDate } from '@/lib/dateUtils';
 import ExecutionForm from './ExecutionForm';
 import SetupForm from './SetupForm';
@@ -206,7 +207,7 @@ export default function SetupCard({
   const [movePending, setMovePending] = useState(false);
   const [showCreateTargetForm, setShowCreateTargetForm] = useState(false);
 
-  const pnl = calcSetupPnl(setup.executions, setup.direction);
+  const pnl = calcSetupPnl(setup.executions, setup.direction, getPointValue(setup.symbol));
   const hasExecutions = setup.executions.length > 0;
   const hasRealizedPnl = pnl.totalExitSize > 0;
   const moveTargets = relatedSetups.filter((candidate) => candidate.id !== setup.id);

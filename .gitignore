@@ -49,3 +49,8 @@ next-env.d.ts
 scripts/*.csv
 data/trades/**
 data/market/**
+
+# scratch / build artifacts
+result.txt
+src.zip
+diff.txt

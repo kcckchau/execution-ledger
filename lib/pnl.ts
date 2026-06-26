@@ -60,7 +60,7 @@ function compareExecutionTime(a: SetupExecution, b: SetupExecution): number {
   return new Date(a.executionTime).getTime() - new Date(b.executionTime).getTime();
 }
 
-export function calcSetupPnlFIFO(executions: NormalizedExecution[]): PnlSummary {
+export function calcSetupPnlFIFO(executions: NormalizedExecution[], pointValue: number = 1): PnlSummary {
   const inventory: Lot[] = [];
   let realizedPnl = 0;
 
@@ -102,8 +102,8 @@ export function calcSetupPnlFIFO(executions: NormalizedExecution[]): PnlSummary 
 
       realizedPnl +=
         lot.size > 0
-          ? (execution.price - lot.price) * matched
-          : (lot.price - execution.price) * matched;
+          ? (execution.price - lot.price) * matched * pointValue
+          : (lot.price - execution.price) * matched * pointValue;
 
       totalExitValue += execution.price * matched;
       totalExitSize += matched;
@@ -138,12 +138,12 @@ export function calcSetupPnlFIFO(executions: NormalizedExecution[]): PnlSummary 
   };
 }
 
-export function calcSetupPnl(executions: SetupExecution[], direction: Direction): PnlSummary {
+export function calcSetupPnl(executions: SetupExecution[], direction: Direction, pointValue: number = 1): PnlSummary {
   const normalized = [...executions]
     .sort(compareExecutionTime)
     .map((execution) => normalizeExecution(execution, direction));
 
-  return calcSetupPnlFIFO(normalized);
+  return calcSetupPnlFIFO(normalized, pointValue);
 }
 
 export function formatPnl(value: number): string {

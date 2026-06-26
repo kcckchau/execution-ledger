@@ -6,6 +6,7 @@ import { type TradeSetup, type Execution } from '@/types/setup';
 import type { DayContext } from '@/types/dayContext';
 import { EMPTY_FILTERS, filterTrades, computeTradeStats, type TradeFilters } from '@/lib/tradeFilters';
 import { calcSetupPnl } from '@/lib/pnl';
+import { getPointValue } from '@/lib/instrumentConfig';
 import SetupCard from './SetupCard';
 import DayContextCard from './DayContextCard';
 import SetupSessionChart from './SetupSessionChart';
@@ -82,13 +83,13 @@ export default function SetupLog({
             const dailyPnlExecuted = groupSetups
               .filter((s) => !s.isIdeal)
               .reduce(
-                (sum, s) => sum + calcSetupPnl(s.executions, s.direction).realizedPnl,
+                (sum, s) => sum + calcSetupPnl(s.executions, s.direction, getPointValue(s.symbol)).realizedPnl,
                 0,
               );
             const dailyPnlIdeal = groupSetups
               .filter((s) => s.isIdeal)
               .reduce(
-                (sum, s) => sum + calcSetupPnl(s.executions, s.direction).realizedPnl,
+                (sum, s) => sum + calcSetupPnl(s.executions, s.direction, getPointValue(s.symbol)).realizedPnl,
                 0,
               );
 

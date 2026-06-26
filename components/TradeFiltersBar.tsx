@@ -126,6 +126,7 @@ export default function TradeFiltersBar({
   onFiltersChange,
 }: TradeFiltersBarProps) {
   const hasFilters =
+    filters.symbol.length > 0 ||
     filters.setupType.length > 0 ||
     filters.alignment.length > 0 ||
     filters.transition.length > 0;
@@ -140,7 +141,11 @@ export default function TradeFiltersBar({
     });
   }
 
+  // Derive unique symbols present in current setups, sorted alphabetically.
+  const symbols = [...new Set(setups.map((s) => s.symbol))].sort();
+
   // Grouped breakdown — alignment and transition sourced from day-level context.
+  const symbolRows     = computeGroupedStats(setups, (s) => s.symbol, symbols);
   const alignmentRows  = computeGroupedStats(setups, (s) => s.alignment ?? null, ALIGNMENTS);
   const transitionRows = computeGroupedStats(setups, (s) => s.dayContext?.transition ?? null, TRANSITIONS);
   const setupTypeRows  = computeGroupedStats(setups, (s) => s.setupType, SETUP_TYPES);
@@ -151,6 +156,15 @@ export default function TradeFiltersBar({
 
       {/* ── Filter chip rows ── */}
       <div className="flex flex-col gap-1.5">
+        {symbols.length > 1 && (
+          <FilterRow
+            label="Symbol"
+            options={symbols}
+            active={filters.symbol}
+            getLabel={(s) => s}
+            onToggle={(v) => toggle('symbol', v)}
+          />
+        )}
         <FilterRow
           label="Setup"
           options={SETUP_TYPES}
@@ -221,7 +235,7 @@ export default function TradeFiltersBar({
         {hasFilters && (
           <button
             type="button"
-            onClick={() => onFiltersChange({ setupType: [], alignment: [], transition: [] })}
+            onClick={() => onFiltersChange({ symbol: [], setupType: [], alignment: [], transition: [] })}
             className="shrink-0 text-xs text-zinc-500 transition-colors hover:text-zinc-300"
           >
             Clear filters
@@ -234,6 +248,13 @@ export default function TradeFiltersBar({
         <>
           <div className="border-t border-zinc-800/80" />
           <div className="flex flex-col gap-3">
+            {symbols.length > 1 && (
+              <BreakdownSection
+                title="Symbol"
+                rows={symbolRows}
+                getLabel={(k) => k}
+              />
+            )}
             <BreakdownSection
               title="Alignment"
               rows={alignmentRows}

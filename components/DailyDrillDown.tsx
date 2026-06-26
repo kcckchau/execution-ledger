@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { type TradeSetup, type Execution } from '@/types/setup';
 import type { DayContext } from '@/types/dayContext';
 import { calcSetupPnl, formatPnl } from '@/lib/pnl';
+import { getPointValue } from '@/lib/instrumentConfig';
 import { formatSetupDate } from '@/lib/dateUtils';
 import SetupCard from './SetupCard';
 import DayContextCard from './DayContextCard';
@@ -57,11 +58,11 @@ export default function DailyDrillDown({
   }, [setups]);
 
   const totalPnlExecuted = executedSetups.reduce(
-    (sum, s) => sum + calcSetupPnl(s.executions, s.direction).realizedPnl,
+    (sum, s) => sum + calcSetupPnl(s.executions, s.direction, getPointValue(s.symbol)).realizedPnl,
     0,
   );
   const totalPnlIdeal = idealSetups.reduce(
-    (sum, s) => sum + calcSetupPnl(s.executions, s.direction).realizedPnl,
+    (sum, s) => sum + calcSetupPnl(s.executions, s.direction, getPointValue(s.symbol)).realizedPnl,
     0,
   );
   const hasExecutedPnl = executedSetups.some((s) =>

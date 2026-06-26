@@ -1,4 +1,5 @@
 import { calcSetupPnl } from './pnl';
+import { getPointValue } from './instrumentConfig';
 import type { TradeSetup } from '@/types/setup';
 
 // ── Filter state ──────────────────────────────────────────────────────────────
@@ -7,16 +8,23 @@ export interface TradeFilters {
   setupType: string[];
   alignment: string[];
   transition: string[];
+  symbol: string[];
 }
 
 export const EMPTY_FILTERS: TradeFilters = {
   setupType: [],
   alignment: [],
   transition: [],
+  symbol: [],
 };
 
 export function isFiltersEmpty(f: TradeFilters): boolean {
-  return f.setupType.length === 0 && f.alignment.length === 0 && f.transition.length === 0;
+  return (
+    f.setupType.length === 0 &&
+    f.alignment.length === 0 &&
+    f.transition.length === 0 &&
+    f.symbol.length === 0
+  );
 }
 
 export function toggleFilter(
@@ -47,6 +55,7 @@ export function toggleFilter(
 export function filterTrades(setups: TradeSetup[], filters: TradeFilters): TradeSetup[] {
   if (isFiltersEmpty(filters)) return setups;
   return setups.filter((s) => {
+    if (filters.symbol.length > 0 && !filters.symbol.includes(s.symbol)) return false;
     if (filters.setupType.length > 0 && !filters.setupType.includes(s.setupType)) return false;
     const alignment = s.alignment ?? null;
     const transition = s.dayContext?.transition ?? null;
@@ -111,16 +120,16 @@ export function computeTradeStats(setups: TradeSetup[]): TradeStats {
   const executed = setups.filter((s) => !s.isIdeal);
   const ideal = setups.filter((s) => s.isIdeal);
   const totalPnlExecuted = executed.reduce(
-    (sum, s) => sum + calcSetupPnl(s.executions, s.direction).realizedPnl,
+    (sum, s) => sum + calcSetupPnl(s.executions, s.direction, getPointValue(s.symbol)).realizedPnl,
     0,
   );
   const totalPnlIdeal = ideal.reduce(
-    (sum, s) => sum + calcSetupPnl(s.executions, s.direction).realizedPnl,
+    (sum, s) => sum + calcSetupPnl(s.executions, s.direction, getPointValue(s.symbol)).realizedPnl,
     0,
   );
   const totalPnl = totalPnlExecuted + totalPnlIdeal;
 
-  const pnls = setups.map((s) => calcSetupPnl(s.executions, s.direction).realizedPnl);
+  const pnls = setups.map((s) => calcSetupPnl(s.executions, s.direction, getPointValue(s.symbol)).realizedPnl);
   const wins = pnls.filter((p) => p > 0).length;
   const losses = pnls.filter((p) => p < 0).length;
   const denominator = wins + losses;

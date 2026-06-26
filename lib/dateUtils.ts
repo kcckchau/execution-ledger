@@ -1,5 +1,6 @@
 import { type TradeSetup } from '@/types/setup';
 import { calcSetupPnl } from '@/lib/pnl';
+import { getPointValue } from '@/lib/instrumentConfig';
 
 // ─── Eastern Time ─────────────────────────────────────────────────────────────
 
@@ -119,7 +120,7 @@ export function calculateDailyRealizedPnL(
   const out: Record<string, number> = {};
   for (const [date, group] of Object.entries(byDate)) {
     out[date] = group.reduce(
-      (sum, s) => sum + calcSetupPnl(s.executions, s.direction).realizedPnl,
+      (sum, s) => sum + calcSetupPnl(s.executions, s.direction, getPointValue(s.symbol)).realizedPnl,
       0,
     );
   }
@@ -147,11 +148,11 @@ export function getDaySummaries(
       date,
       setups: group,
       realizedPnlExecuted: executed.reduce(
-        (sum, s) => sum + calcSetupPnl(s.executions, s.direction).realizedPnl,
+        (sum, s) => sum + calcSetupPnl(s.executions, s.direction, getPointValue(s.symbol)).realizedPnl,
         0,
       ),
       realizedPnlIdeal: ideal.reduce(
-        (sum, s) => sum + calcSetupPnl(s.executions, s.direction).realizedPnl,
+        (sum, s) => sum + calcSetupPnl(s.executions, s.direction, getPointValue(s.symbol)).realizedPnl,
         0,
       ),
       setupCountExecuted: executed.length,

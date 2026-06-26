@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { type TradeSetup, type Execution, SETUP_TYPE_LABELS, type SetupType } from '@/types/setup';
 import type { DayContext } from '@/types/dayContext';
 import { calcSetupPnl, formatPnl } from '@/lib/pnl';
+import { getPointValue } from '@/lib/instrumentConfig';
 import SetupForm from '@/components/SetupForm';
 import SetupLog from '@/components/SetupLog';
 import CalendarView from '@/components/CalendarView';
@@ -313,14 +314,14 @@ export default function Home() {
     () =>
       setups
         .filter((s) => !s.isIdeal)
-        .reduce((sum, s) => sum + calcSetupPnl(s.executions, s.direction).realizedPnl, 0),
+        .reduce((sum, s) => sum + calcSetupPnl(s.executions, s.direction, getPointValue(s.symbol)).realizedPnl, 0),
     [setups],
   );
   const totalPnlIdeal = useMemo(
     () =>
       setups
         .filter((s) => s.isIdeal)
-        .reduce((sum, s) => sum + calcSetupPnl(s.executions, s.direction).realizedPnl, 0),
+        .reduce((sum, s) => sum + calcSetupPnl(s.executions, s.direction, getPointValue(s.symbol)).realizedPnl, 0),
     [setups],
   );
   const hasPnl = useMemo(
@@ -343,7 +344,7 @@ export default function Home() {
       .map(([date, daySetups]) => {
         const executed = daySetups.filter((s) => !s.isIdeal);
         const pnl = executed.reduce(
-          (sum, s) => sum + calcSetupPnl(s.executions, s.direction).realizedPnl, 0,
+          (sum, s) => sum + calcSetupPnl(s.executions, s.direction, getPointValue(s.symbol)).realizedPnl, 0,
         );
         const symbols = [...new Set(executed.map((s) => s.symbol))].slice(0, 2).join(', ');
         const hasClosed = executed.some((s) =>
@@ -370,7 +371,7 @@ export default function Home() {
     );
     if (closed.length === 0) return null;
     const wins = closed.filter(
-      (s) => calcSetupPnl(s.executions, s.direction).realizedPnl > 0,
+      (s) => calcSetupPnl(s.executions, s.direction, getPointValue(s.symbol)).realizedPnl > 0,
     ).length;
     return Math.round((wins / closed.length) * 100);
   }, [setups]);
