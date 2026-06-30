@@ -432,11 +432,15 @@ model TradeSetup {
   /// Ideal setups: hypothetical; app UI tracks P&L separately from executed setups.
   isIdeal Boolean @default(false)
 
+  /// IBKR account number this trade belongs to (e.g. U1234567). Null for legacy records.
+  acctNumber String?
+
   executions Execution[]
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
 
   @@index([setupDate, setupType])
+  @@index([acctNumber])
   @@index([setupDate, isIdeal])
   @@index([trueRegime, vwapState])
   @@index([alignment, shouldTrade])

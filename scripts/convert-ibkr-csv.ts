@@ -33,6 +33,7 @@ interface CsvRow {
   shares: number;
   price: number;
   permId: string;
+  acctNumber: string;
 }
 
 interface MergedFill {
@@ -149,12 +150,13 @@ function parseCsv(raw: string, symbolFilter?: string): CsvRow[] {
     const side = col(cells, 'side') as Side;
     if (side !== 'BOT' && side !== 'SLD') continue;
     rows.push({
-      localTime: col(cells, 'time'),
+      localTime:   col(cells, 'time'),
       symbol,
       side,
-      shares: parseFloat(col(cells, 'shares')),
-      price:  parseFloat(col(cells, 'price')),
-      permId: col(cells, 'perm_id'),
+      shares:      parseFloat(col(cells, 'shares')),
+      price:       parseFloat(col(cells, 'price')),
+      permId:      col(cells, 'perm_id'),
+      acctNumber:  col(cells, 'acct_number'),
     });
   }
   return rows;
@@ -263,10 +265,12 @@ function main() {
   }));
 
   const compactDate = tradeDate.replace(/-/g, '');
+  const acctNumber = rows[0]?.acctNumber || null;
   const output = {
     symbol,
     tradeDate:    compactDate,
     timezone:     'America/New_York',
+    acctNumber,
     rawCount:     rows.length,
     mergedCount:  markers.length,
     markers,

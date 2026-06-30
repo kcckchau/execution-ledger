@@ -22,6 +22,7 @@ export interface TradeMarkerFilePayload {
   symbol: string;
   tradeDate: string;
   timezone: string;
+  acctNumber?: string | null;
   rawCount: number;
   mergedCount: number;
   markers: TradeMarkerItem[];

@@ -23,9 +23,11 @@ export async function GET(req: NextRequest) {
     const { searchParams } = req.nextUrl;
     const limitParam = parseInt(searchParams.get('limit') ?? '500', 10);
     const limit = isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 1000) : 500;
+    const account = searchParams.get('account') ?? null;
 
     const rows = await prisma.tradeSetup.findMany({
       take: limit,
+      where: account ? { acctNumber: account } : undefined,
       include: { executions: { orderBy: { executionTime: 'asc' } } },
       orderBy: [{ setupDate: 'desc' }, { createdAt: 'asc' }],
     });
