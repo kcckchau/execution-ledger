@@ -271,7 +271,10 @@ export default function SessionChart({
       regular: [] as UTCTimestamp[],
       aftermarket: [] as UTCTimestamp[],
     };
-    for (const c of [...prevSorted, ...sorted]) {
+    const allCandlesSorted = [...prevSorted, ...sorted]
+      .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime())
+      .filter((c, i, arr) => i === 0 || c.time !== arr[i - 1].time);
+    for (const c of allCandlesSorted) {
       if (c.session === 'premarket') sessionGroups.premarket.push(toUtcTimestamp(c.time));
       else if (c.session === 'regular') sessionGroups.regular.push(toUtcTimestamp(c.time));
       else if (c.session === 'aftermarket') sessionGroups.aftermarket.push(toUtcTimestamp(c.time));

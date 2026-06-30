@@ -57,7 +57,27 @@ export async function GET(req: NextRequest) {
     prevSessionPromise,
   ]);
 
-  const prevCandles = prevSession?.ok ? prevSession.data.candles : null;
+  const rawPrevCandles = prevSession?.ok ? prevSession.data.candles : null;
+
+  // Drop prevCandles when there is a large time gap between the previous session
+  // and the current session (e.g. a weekend gap for MNQ futures). lightweight-charts
+  // renders any gap as a flat horizontal stretch, which makes the chart look broken.
+  // We keep prevCandles only when the last prev candle falls within 8 hours of the
+  // current session's first candle — enough to cover normal overnight/extended sessions
+  // while suppressing the 49-hour Fri→Sun gap that MNQ has on Mondays.
+  const currentFirstTime =
+    sessionResult.ok && sessionResult.data.candles.length > 0
+      ? new Date(sessionResult.data.candles[0].time).getTime()
+      : null;
+
+  const prevCandles = (() => {
+    if (!rawPrevCandles || rawPrevCandles.length === 0) return null;
+    if (currentFirstTime === null) return rawPrevCandles;
+    const lastPrevTime = new Date(rawPrevCandles[rawPrevCandles.length - 1].time).getTime();
+    const gapMs = currentFirstTime - lastPrevTime;
+    const EIGHT_HOURS_MS = 8 * 60 * 60 * 1000;
+    return gapMs > EIGHT_HOURS_MS ? null : rawPrevCandles;
+  })();
 
   // Helper to attach prevCandles to a session payload.
   function withPrev(data: typeof sessionResult) {

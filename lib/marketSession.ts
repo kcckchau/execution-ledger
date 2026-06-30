@@ -17,10 +17,21 @@ export type LoadMarketSessionResult =
 const prevDateCache = new Map<string, string | null>();
 
 // Module-level cache for fully parsed + normalized session data.
-// Market session files are write-once: once created they never change.
+// Only cache dates that are fully settled (> 2 calendar days old in UTC) because
+// session files for recent dates may still be written during or shortly after the session.
 // Cap at 300 entries (~30-60 MB heap) to bound memory use in long-running processes.
 const SESSION_CACHE_MAX = 300;
 const sessionCache = new Map<string, SessionChartData>();
+
+function isSettledDate(date: string): boolean {
+  const todayUtc = new Date().toISOString().slice(0, 10);
+  const msPerDay = 86_400_000;
+  const diffDays =
+    (new Date(`${todayUtc}T12:00:00Z`).getTime() -
+      new Date(`${date}T12:00:00Z`).getTime()) /
+    msPerDay;
+  return diffDays > 2;
+}
 
 function resolveMarketSessionPath(symbol: string, date: string): string | null {
   const sym = symbol.trim();
@@ -79,9 +90,12 @@ export async function loadMarketSession(
   }
 
   const cacheKey = `${symbol}:${date}`;
-  const cached = sessionCache.get(cacheKey);
-  if (cached) {
-    return { ok: true, data: cached };
+  const settled = isSettledDate(date);
+  if (settled) {
+    const cached = sessionCache.get(cacheKey);
+    if (cached) {
+      return { ok: true, data: cached };
+    }
   }
 
   let raw: string;
@@ -108,11 +122,13 @@ export async function loadMarketSession(
 
   const data = normalizeMarketSessionFile(parsed as MarketSessionFileJson);
 
-  // Evict oldest entry if at capacity, then store.
-  if (sessionCache.size >= SESSION_CACHE_MAX) {
-    sessionCache.delete(sessionCache.keys().next().value!);
+  // Only cache fully-settled historical dates; recent dates may still be updated on disk.
+  if (settled) {
+    if (sessionCache.size >= SESSION_CACHE_MAX) {
+      sessionCache.delete(sessionCache.keys().next().value!);
+    }
+    sessionCache.set(cacheKey, data);
   }
-  sessionCache.set(cacheKey, data);
 
   return { ok: true, data };
 }
