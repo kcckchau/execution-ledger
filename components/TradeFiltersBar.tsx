@@ -129,7 +129,8 @@ export default function TradeFiltersBar({
     filters.symbol.length > 0 ||
     filters.setupType.length > 0 ||
     filters.alignment.length > 0 ||
-    filters.transition.length > 0;
+    filters.transition.length > 0 ||
+    filters.acctNumber.length > 0;
 
   function toggle(key: keyof TradeFilters, value: string) {
     const current = filters[key];
@@ -144,7 +145,11 @@ export default function TradeFiltersBar({
   // Derive unique symbols present in current setups, sorted alphabetically.
   const symbols = [...new Set(setups.map((s) => s.symbol))].sort();
 
+  // Derive unique account numbers present in current setups, sorted alphabetically.
+  const accounts = [...new Set(setups.map((s) => s.acctNumber).filter((a): a is string => a !== null))].sort();
+
   // Grouped breakdown — alignment and transition sourced from day-level context.
+  const accountRows    = computeGroupedStats(setups, (s) => s.acctNumber ?? null, accounts);
   const symbolRows     = computeGroupedStats(setups, (s) => s.symbol, symbols);
   const alignmentRows  = computeGroupedStats(setups, (s) => s.alignment ?? null, ALIGNMENTS);
   const transitionRows = computeGroupedStats(setups, (s) => s.dayContext?.transition ?? null, TRANSITIONS);
@@ -156,6 +161,15 @@ export default function TradeFiltersBar({
 
       {/* ── Filter chip rows ── */}
       <div className="flex flex-col gap-1.5">
+        {accounts.length > 1 && (
+          <FilterRow
+            label="Acct"
+            options={accounts}
+            active={filters.acctNumber}
+            getLabel={(a) => a}
+            onToggle={(v) => toggle('acctNumber', v)}
+          />
+        )}
         {symbols.length > 1 && (
           <FilterRow
             label="Symbol"
@@ -235,7 +249,7 @@ export default function TradeFiltersBar({
         {hasFilters && (
           <button
             type="button"
-            onClick={() => onFiltersChange({ symbol: [], setupType: [], alignment: [], transition: [] })}
+            onClick={() => onFiltersChange({ symbol: [], setupType: [], alignment: [], transition: [], acctNumber: [] })}
             className="shrink-0 text-xs text-zinc-500 transition-colors hover:text-zinc-300"
           >
             Clear filters
@@ -248,6 +262,13 @@ export default function TradeFiltersBar({
         <>
           <div className="border-t border-zinc-800/80" />
           <div className="flex flex-col gap-3">
+            {accounts.length > 1 && (
+              <BreakdownSection
+                title="Account"
+                rows={accountRows}
+                getLabel={(k) => k}
+              />
+            )}
             {symbols.length > 1 && (
               <BreakdownSection
                 title="Symbol"

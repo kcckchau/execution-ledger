@@ -25,8 +25,9 @@ export interface ImportResult {
  * Builds a deterministic, stable ID for the auto-generated TradeSetup so that
  * re-running the import is always idempotent.
  */
-function setupIdFor(symbol: string, tradeDate: string): string {
-  return `ibkr-${symbol.toLowerCase()}-${tradeDate.replace(/-/g, '')}`;
+function setupIdFor(symbol: string, tradeDate: string, acctNumber?: string | null): string {
+  const acctSuffix = acctNumber ? `-${acctNumber.toLowerCase()}` : '';
+  return `ibkr-${symbol.toLowerCase()}-${tradeDate.replace(/-/g, '')}${acctSuffix}`;
 }
 
 /**
@@ -57,7 +58,7 @@ async function upsertTradeSetup(
 ): Promise<void> {
   await prisma.tradeSetup.upsert({
     where: { id: setupId },
-    update: {},
+    update: { ...(acctNumber ? { acctNumber } : {}) },
     create: {
       id: setupId,
       setupDate: tradeDate,
@@ -155,7 +156,7 @@ export async function importIbkrMarkersFile(
   // Derive setupId before normalization so the explicit FK fields
   // (executionId, setupId) can be embedded directly into each ChartMarker record,
   // eliminating the need for approximate minute+price matching at query time.
-  const setupId = setupIdFor(resolvedSymbol, resolvedDate);
+  const setupId = setupIdFor(resolvedSymbol, resolvedDate, payload.acctNumber);
 
   const records = normalizeIbkrMarkers(resolvedSymbol, resolvedDate, payload.markers, setupId);
 

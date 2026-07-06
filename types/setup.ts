@@ -613,6 +613,8 @@ export interface TradeSetup {
   overallNotes: string;
   /** Optional human-readable name shown in chart toggle UI. */
   setupName: string | null;
+  /** IBKR account number this trade belongs to (e.g. U1234567). Null for legacy records. */
+  acctNumber: string | null;
   executions: Execution[];
   createdAt: string;
   updatedAt: string;

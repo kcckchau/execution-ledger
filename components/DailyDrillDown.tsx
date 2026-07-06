@@ -46,16 +46,23 @@ export default function DailyDrillDown({
   const [showDeleteDayConfirm, setShowDeleteDayConfirm] = useState(false);
   const [deleteDayPending, setDeleteDayPending] = useState(false);
   const [mode, setMode] = useState<SetupMode>('executed');
+  const [acctFilter, setAcctFilter] = useState<string | null>(null);
 
-  const executedSetups = setups.filter((s) => !s.isIdeal);
-  const idealSetups = setups.filter((s) => s.isIdeal);
-  const visibleSetups = mode === 'executed' ? executedSetups : idealSetups;
+  const accounts = [...new Set(setups.map((s) => s.acctNumber).filter((a): a is string => a !== null))].sort();
 
-  // Always show at least one session chart for the selected day (default QQQ when no trades).
+  const allExecuted = setups.filter((s) => !s.isIdeal);
+  const allIdeal = setups.filter((s) => s.isIdeal);
+  const executedSetups = acctFilter ? allExecuted.filter((s) => s.acctNumber === acctFilter) : allExecuted;
+  const idealSetups = acctFilter ? allIdeal.filter((s) => s.acctNumber === acctFilter) : allIdeal;
+  const modeSetups = mode === 'executed' ? executedSetups : idealSetups;
+  const visibleSetups = modeSetups;
+
+  // Derive chart symbols from visible (account-filtered) setups.
+  // Fall back to QQQ only when there are no visible setups at all.
   const chartSymbols = useMemo(() => {
-    const symbols = [...new Set(setups.map((s) => s.symbol))];
+    const symbols = [...new Set(visibleSetups.map((s) => s.symbol))];
     return symbols.length > 0 ? symbols : ['QQQ'];
-  }, [setups]);
+  }, [visibleSetups]);
 
   const totalPnlExecuted = executedSetups.reduce(
     (sum, s) => sum + calcSetupPnl(s.executions, s.direction, getPointValue(s.symbol)).realizedPnl,
@@ -96,7 +103,30 @@ export default function DailyDrillDown({
           onUpdate={(dc) => onUpdateDayContext(date, dc)}
         />
 
-        {/* ── Setups section ── */}
+        {/* ── Account filter ── */}
+        {accounts.length > 1 && (
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-600">Acct</span>
+            <div className="flex gap-1">
+              {accounts.map((a) => (
+                <button
+                  key={a}
+                  type="button"
+                  onClick={() => setAcctFilter(acctFilter === a ? null : a)}
+                  className={`h-6 rounded px-2 text-[11px] font-medium transition-colors ${
+                    acctFilter === a
+                      ? 'border border-indigo-500/40 bg-indigo-500/15 text-indigo-300'
+                      : 'border border-zinc-700 bg-zinc-800 text-zinc-500 hover:border-zinc-600 hover:text-zinc-300'
+                  }`}
+                >
+                  {a}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Setups section header ── */}
         <div className="flex items-center gap-2">
           {/* Executed / Ideal toggle */}
           <div className="flex rounded-md border border-zinc-800 overflow-hidden shrink-0">
@@ -148,12 +178,6 @@ export default function DailyDrillDown({
             </span>
           )}
           <div className="h-px flex-1 bg-zinc-800" />
-          <Link
-            href={`/chart/${encodeURIComponent(chartSymbols[0])}/${encodeURIComponent(date)}`}
-            className="shrink-0 rounded border border-zinc-800 px-2.5 py-1 text-[10px] font-medium text-zinc-500 transition-colors hover:border-indigo-700 hover:text-indigo-400"
-          >
-            View Chart
-          </Link>
           {visibleSetups.length > 0 && (
             <button
               type="button"
@@ -165,45 +189,59 @@ export default function DailyDrillDown({
           )}
         </div>
 
-        {/* ── Session charts — always shown for the selected day ── */}
-        {chartSymbols.map((symbol) => (
-          <SetupSessionChart
-            key={`${symbol}::${date}`}
-            symbol={symbol}
-            setupDate={date}
-            setups={visibleSetups.filter((s) => s.symbol === symbol)}
-          />
-        ))}
+        {/* ── Per-symbol: chart → setups ── */}
+        {chartSymbols.map((symbol) => {
+          const symbolSetups = visibleSetups.filter((s) => s.symbol === symbol);
+          return (
+            <div key={`${symbol}::${date}`} className="flex flex-col gap-4">
+              {/* Chart + View Chart link */}
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center justify-end">
+                  <Link
+                    href={`/chart/${encodeURIComponent(symbol)}/${encodeURIComponent(date)}`}
+                    className="text-[10px] font-medium text-zinc-600 transition-colors hover:text-indigo-400"
+                  >
+                    View Chart →
+                  </Link>
+                </div>
+                <SetupSessionChart
+                  symbol={symbol}
+                  setupDate={date}
+                  setups={symbolSetups}
+                />
+              </div>
 
-        {/* ── Setup cards or empty state ── */}
-        {visibleSetups.length === 0 ? (
-          <p className="text-sm text-zinc-600 italic text-center py-6">
-            {mode === 'ideal'
-              ? 'No ideal setups logged for this day.'
-              : 'No executed setups logged for this day.'}
-          </p>
-        ) : (
-          <div className="flex flex-col gap-4">
-            {visibleSetups.map((setup) => (
-              <SetupCard
-                key={setup.id}
-                setup={setup}
-                relatedSetups={visibleSetups.filter(
-                  (candidate) =>
-                    candidate.symbol === setup.symbol && candidate.isIdeal === setup.isIdeal,
-                )}
-                onAddExecution={onAddExecution}
-                onUpdateStatus={onUpdateStatus}
-                onDeleteSetup={() => onDeleteSetup(setup.id)}
-                onUpdateSetup={(updated) => onUpdateSetup(setup.id, updated)}
-                onUpdateExecution={(exec) => onUpdateExecution(setup.id, exec)}
-                onDeleteExecution={(execId) => onDeleteExecution(setup.id, execId)}
-                onMoveExecutions={onMoveExecutions}
-                onCreateSetupAndMoveExecutions={onCreateSetupAndMoveExecutions}
-              />
-            ))}
-          </div>
-        )}
+              {/* Setup cards for this symbol */}
+              {symbolSetups.length === 0 ? (
+                <p className="text-sm text-zinc-600 italic text-center py-2">
+                  {mode === 'ideal'
+                    ? 'No ideal setups logged for this symbol.'
+                    : 'No executed setups logged for this symbol.'}
+                </p>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  {symbolSetups.map((setup) => (
+                    <SetupCard
+                      key={setup.id}
+                      setup={setup}
+                      relatedSetups={symbolSetups.filter(
+                        (candidate) => candidate.isIdeal === setup.isIdeal,
+                      )}
+                      onAddExecution={onAddExecution}
+                      onUpdateStatus={onUpdateStatus}
+                      onDeleteSetup={() => onDeleteSetup(setup.id)}
+                      onUpdateSetup={(updated) => onUpdateSetup(setup.id, updated)}
+                      onUpdateExecution={(exec) => onUpdateExecution(setup.id, exec)}
+                      onDeleteExecution={(execId) => onDeleteExecution(setup.id, execId)}
+                      onMoveExecutions={onMoveExecutions}
+                      onCreateSetupAndMoveExecutions={onCreateSetupAndMoveExecutions}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       <ConfirmDialog

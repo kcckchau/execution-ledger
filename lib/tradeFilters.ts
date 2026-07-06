@@ -9,6 +9,7 @@ export interface TradeFilters {
   alignment: string[];
   transition: string[];
   symbol: string[];
+  acctNumber: string[];
 }
 
 export const EMPTY_FILTERS: TradeFilters = {
@@ -16,6 +17,7 @@ export const EMPTY_FILTERS: TradeFilters = {
   alignment: [],
   transition: [],
   symbol: [],
+  acctNumber: [],
 };
 
 export function isFiltersEmpty(f: TradeFilters): boolean {
@@ -23,7 +25,8 @@ export function isFiltersEmpty(f: TradeFilters): boolean {
     f.setupType.length === 0 &&
     f.alignment.length === 0 &&
     f.transition.length === 0 &&
-    f.symbol.length === 0
+    f.symbol.length === 0 &&
+    f.acctNumber.length === 0
   );
 }
 
@@ -61,6 +64,7 @@ export function filterTrades(setups: TradeSetup[], filters: TradeFilters): Trade
     const transition = s.dayContext?.transition ?? null;
     if (filters.alignment.length > 0 && (!alignment || !filters.alignment.includes(alignment))) return false;
     if (filters.transition.length > 0 && (!transition || !filters.transition.includes(transition))) return false;
+    if (filters.acctNumber.length > 0 && (!s.acctNumber || !filters.acctNumber.includes(s.acctNumber))) return false;
     return true;
   });
 }

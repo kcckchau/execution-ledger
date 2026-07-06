@@ -267,6 +267,7 @@ export default function SetupForm({
           ...shared,
           status: 'open',
           executions: [],
+          acctNumber: null,
           createdAt: now,
           updatedAt: now,
           dayContext: null,
