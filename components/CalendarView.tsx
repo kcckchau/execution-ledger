@@ -129,13 +129,27 @@ export default function CalendarView({
   );
   const [typedDate, setTypedDate] = useState<string>('');
   const [typedDateError, setTypedDateError] = useState<string | null>(null);
+  const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
+
+  const accounts = useMemo(() => {
+    const seen = new Set<string>();
+    for (const s of setups) {
+      if (s.acctNumber) seen.add(s.acctNumber);
+    }
+    return Array.from(seen).sort();
+  }, [setups]);
+
+  const filteredSetups = useMemo(
+    () => selectedAccount ? setups.filter((s) => s.acctNumber === selectedAccount) : setups,
+    [setups, selectedAccount],
+  );
 
   const days = useMemo(
     () => getCalendarDays(viewYear, viewMonth),
     [viewYear, viewMonth],
   );
 
-  const summaries = useMemo(() => getDaySummaries(setups), [setups]);
+  const summaries = useMemo(() => getDaySummaries(filteredSetups), [filteredSetups]);
 
   function prevMonth() {
     if (viewMonth === 1) {
@@ -264,6 +278,28 @@ export default function CalendarView({
           </div>
         )}
       </div>
+
+      {/* ── Account filter ── */}
+      {accounts.length > 1 && (
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-zinc-500">Account</span>
+          {[null, ...accounts].map((acct) => (
+            <button
+              key={acct ?? 'all'}
+              type="button"
+              onClick={() => setSelectedAccount(acct)}
+              className={[
+                'h-7 rounded-md border px-2.5 text-[11px] transition-colors',
+                selectedAccount === acct
+                  ? 'border-indigo-600 bg-indigo-950 text-indigo-300'
+                  : 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200',
+              ].join(' ')}
+            >
+              {acct ?? 'All'}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ── Typed date jump ── */}
       <div className="flex flex-wrap items-center gap-2">
