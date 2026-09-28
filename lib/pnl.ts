@@ -6,6 +6,7 @@ interface NormalizedExecution {
   price: number;
   size: number;
   side: Side;
+  commission: number;
 }
 
 interface Lot {
@@ -19,7 +20,9 @@ export interface PnlSummary {
   totalEntrySize: number;
   totalExitSize: number;
   openSize: number;
-  realizedPnl: number;
+  realizedPnl: number;   // gross P&L (before commissions)
+  commission: number;    // total commissions paid (always positive)
+  netPnl: number;        // realizedPnl - commission
 }
 
 function parseImportedSide(note: string): Side | null {
@@ -31,11 +34,14 @@ function parseImportedSide(note: string): Side | null {
 
 function normalizeExecution(execution: SetupExecution, direction: Direction): NormalizedExecution {
   const importedSide = parseImportedSide(execution.note);
+  const commission = execution.commission ?? 0;
+
   if (importedSide) {
     return {
       price: execution.price,
       size: execution.size,
       side: importedSide,
+      commission,
     };
   }
 
@@ -53,6 +59,7 @@ function normalizeExecution(execution: SetupExecution, direction: Direction): No
     price: execution.price,
     size: execution.size,
     side,
+    commission,
   };
 }
 
@@ -63,6 +70,7 @@ function compareExecutionTime(a: SetupExecution, b: SetupExecution): number {
 export function calcSetupPnlFIFO(executions: NormalizedExecution[], pointValue: number = 1): PnlSummary {
   const inventory: Lot[] = [];
   let realizedPnl = 0;
+  let totalCommission = 0;
 
   let totalEntryValue = 0;
   let totalEntrySize = 0;
@@ -80,6 +88,7 @@ export function calcSetupPnlFIFO(executions: NormalizedExecution[], pointValue: 
       continue;
     }
 
+    totalCommission += execution.commission;
     const signedSize = execution.side === 'buy' ? execution.size : -execution.size;
     const currentPosition = inventory.reduce((sum, lot) => sum + lot.size, 0);
     const isOpeningTrade =
@@ -135,6 +144,8 @@ export function calcSetupPnlFIFO(executions: NormalizedExecution[], pointValue: 
     totalExitSize,
     openSize,
     realizedPnl,
+    commission: totalCommission,
+    netPnl: realizedPnl - totalCommission,
   };
 }
 

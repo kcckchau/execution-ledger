@@ -496,6 +496,8 @@ model Execution {
   size          Int
   executionTime DateTime
   note          String     @default("")
+  /// IBKR commission for this fill (absolute value, always positive). Null for legacy records.
+  commission    Float?
   setup         TradeSetup @relation(fields: [setupId], references: [id], onDelete: Cascade)
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt

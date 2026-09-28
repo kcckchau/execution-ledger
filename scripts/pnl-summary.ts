@@ -62,11 +62,12 @@ async function main() {
     for (const setup of daySetups) {
       const execs = setup.executions as unknown as SetupExecution[];
       const pointValue = getPointValue(setup.symbol);
-      const { realizedPnl } = calcSetupPnl(execs, setup.direction as 'long' | 'short', pointValue);
-      dayPnl += realizedPnl;
-      if (realizedPnl !== 0) {
-        const sign = realizedPnl >= 0 ? '+' : '';
-        symbolPnls.push(`${setup.symbol} ${sign}$${realizedPnl.toFixed(2)}`);
+      const { netPnl, commission } = calcSetupPnl(execs, setup.direction as 'long' | 'short', pointValue);
+      dayPnl += netPnl;
+      if (netPnl !== 0 || commission > 0) {
+        const sign = netPnl >= 0 ? '+' : '';
+        const commStr = commission > 0 ? ` (comm $${commission.toFixed(2)})` : '';
+        symbolPnls.push(`${setup.symbol} ${sign}$${netPnl.toFixed(2)}${commStr}`);
       }
     }
 

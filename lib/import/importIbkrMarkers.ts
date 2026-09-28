@@ -110,6 +110,7 @@ async function upsertExecutions(
     size: Math.round(r.shares),
     executionTime: r.executionTime,
     note: `${r.side} ${r.shares} sh`,
+    commission: r.commission,
   }));
 
   const result = await prisma.execution.createMany({

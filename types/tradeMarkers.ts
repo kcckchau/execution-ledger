@@ -15,6 +15,7 @@ export interface TradeMarkerItem {
   shape: string;
   color: string;
   text: string;
+  commission?: number | null;
 }
 
 /** Root JSON from `data/trades/{symbol}/{YYYYMMDD}-markers.json`. */

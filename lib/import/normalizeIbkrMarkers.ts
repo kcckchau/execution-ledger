@@ -8,6 +8,7 @@ export interface NormalizedChartMarker {
   side: string;
   shares: number;
   price: number;
+  commission: number | null;
   executionType: string;
   positionEffect: string;
   source: 'ibkr';
@@ -64,6 +65,7 @@ export function normalizeIbkrMarkers(
       side: m.side,
       shares: m.shares,
       price: m.price,
+      commission: typeof m.commission === 'number' ? m.commission : null,
       executionType: m.executionType,
       positionEffect: m.positionEffect,
       source: 'ibkr' as const,

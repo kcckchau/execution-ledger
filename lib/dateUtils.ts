@@ -148,11 +148,11 @@ export function getDaySummaries(
       date,
       setups: group,
       realizedPnlExecuted: executed.reduce(
-        (sum, s) => sum + calcSetupPnl(s.executions, s.direction, getPointValue(s.symbol)).realizedPnl,
+        (sum, s) => sum + calcSetupPnl(s.executions, s.direction, getPointValue(s.symbol)).netPnl,
         0,
       ),
       realizedPnlIdeal: ideal.reduce(
-        (sum, s) => sum + calcSetupPnl(s.executions, s.direction, getPointValue(s.symbol)).realizedPnl,
+        (sum, s) => sum + calcSetupPnl(s.executions, s.direction, getPointValue(s.symbol)).netPnl,
         0,
       ),
       setupCountExecuted: executed.length,

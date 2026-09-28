@@ -79,6 +79,7 @@ export default function ExecutionForm({
       size,
       executionTime: easternDateTimeToIso(setupDate, form.time),
       note: form.note.trim(),
+      commission: initialExecution?.commission ?? null,
       createdAt: initialExecution?.createdAt ?? now,
       updatedAt: now,
     };

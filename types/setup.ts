@@ -508,6 +508,8 @@ export interface Execution {
   size: number;
   executionTime: string;
   note: string;
+  /** IBKR commission for this fill (absolute value). Null for legacy records. */
+  commission: number | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -34,6 +34,7 @@ interface CsvRow {
   side: Side;
   shares: number;
   price: number;
+  commission: number; // absolute value; IBKR reports as negative, we store positive
   permId: string;
   acctNumber: string;
 }
@@ -43,6 +44,7 @@ interface MergedFill {
   side: Side;
   shares: number;
   price: number;    // VWAP across partial fills
+  commission: number; // sum across partial fills
   date: Date;       // UTC Date (used only for sort order)
   csvLocalStr: string; // Original NY wall-clock string from earliest fill, e.g. "2026-03-30 10:52:49"
   permId: string;
@@ -55,6 +57,7 @@ interface MarkerItem {
   side: Side;
   shares: number;
   price: number;
+  commission: number;
   executionType: ExecutionType;
   positionEffect: 'open' | 'close';
   shape: 'arrowUp' | 'arrowDown';
@@ -160,6 +163,7 @@ function parseCsv(raw: string, symbolFilter?: string): CsvRow[] {
       side,
       shares:      parseFloat(col(cells, 'shares')),
       price:       parseFloat(col(cells, 'price')),
+      commission:  Math.abs(parseFloat(col(cells, 'commission')) || 0),
       permId:      col(cells, 'perm_id'),
       acctNumber:  col(cells, 'acct_number'),
     });
@@ -184,12 +188,14 @@ function mergeByPermId(rows: (CsvRow & { date: Date })[]): MergedFill[] {
   return [...map.values()].map((fills) => {
     const totalShares = fills.reduce((s, f) => s + f.shares, 0);
     const vwap = fills.reduce((s, f) => s + f.price * f.shares, 0) / totalShares;
+    const totalCommission = fills.reduce((s, f) => s + f.commission, 0);
     const earliest = fills.reduce((a, b) => (a.date < b.date ? a : b));
     return {
       symbol:      earliest.symbol,
       side:        earliest.side,
       shares:      totalShares,
       price:       parseFloat(vwap.toFixed(4)),
+      commission:  parseFloat(totalCommission.toFixed(4)),
       date:        earliest.date,
       csvLocalStr: earliest.localTime, // keep original NY wall-clock string
       permId:      earliest.permId,
@@ -227,6 +233,7 @@ function assignExecutionTypes(
       side:            fill.side,
       shares:          fill.shares,
       price:           fill.price,
+      commission:      fill.commission,
       executionType,
       positionEffect:  executionType === 'starter' || executionType === 'add' ? 'open' : 'close',
       shape:           fill.side === 'BOT' ? 'arrowUp' : 'arrowDown',
