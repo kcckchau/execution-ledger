@@ -20,6 +20,8 @@ interface CalendarViewProps {
   onSelectAccount: (account: string | null) => void;
   selectedSecType: string | null;
   onSelectSecType: (secType: string | null) => void;
+  selectedSymbol: string | null;
+  onSelectSymbol: (symbol: string | null) => void;
 }
 
 interface CellProps {
@@ -126,6 +128,8 @@ export default function CalendarView({
   onSelectAccount,
   selectedSecType,
   onSelectSecType,
+  selectedSymbol,
+  onSelectSymbol,
 }: CalendarViewProps) {
   const today = useMemo(() => getTodayInEasternTime(), []);
 
@@ -154,12 +158,25 @@ export default function CalendarView({
     return Array.from(seen).sort();
   }, [setups]);
 
+  // Symbols available given current account + secType selection
+  const symbols = useMemo(() => {
+    const seen = new Set<string>();
+    for (const s of setups) {
+      if ((!selectedAccount || s.acctNumber === selectedAccount) &&
+          (!selectedSecType || s.secType === selectedSecType)) {
+        seen.add(s.symbol);
+      }
+    }
+    return Array.from(seen).sort();
+  }, [setups, selectedAccount, selectedSecType]);
+
   const filteredSetups = useMemo(
     () => setups.filter((s) =>
       (!selectedAccount || s.acctNumber === selectedAccount) &&
-      (!selectedSecType || s.secType === selectedSecType),
+      (!selectedSecType || s.secType === selectedSecType) &&
+      (!selectedSymbol || s.symbol === selectedSymbol),
     ),
-    [setups, selectedAccount, selectedSecType],
+    [setups, selectedAccount, selectedSecType, selectedSymbol],
   );
 
   const days = useMemo(
@@ -297,8 +314,8 @@ export default function CalendarView({
         )}
       </div>
 
-      {/* ── Account + SecType filters ── */}
-      {(accounts.length > 1 || secTypes.length > 1) && (
+      {/* ── Filters: Account · Type · Symbol ── */}
+      {(accounts.length > 1 || secTypes.length > 1 || symbols.length > 1) && (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           {accounts.length > 1 && (
             <div className="flex items-center gap-2">
@@ -327,7 +344,7 @@ export default function CalendarView({
                 <button
                   key={st ?? 'all'}
                   type="button"
-                  onClick={() => onSelectSecType(st)}
+                  onClick={() => { onSelectSecType(st); onSelectSymbol(null); }}
                   className={[
                     'h-7 rounded-md border px-2.5 text-[11px] transition-colors',
                     selectedSecType === st
@@ -336,6 +353,26 @@ export default function CalendarView({
                   ].join(' ')}
                 >
                   {st === 'FUT' ? 'Futures' : st === 'STK' ? 'Stocks' : 'All'}
+                </button>
+              ))}
+            </div>
+          )}
+          {symbols.length > 1 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] text-zinc-500">Symbol</span>
+              {[null, ...symbols].map((sym) => (
+                <button
+                  key={sym ?? 'all'}
+                  type="button"
+                  onClick={() => onSelectSymbol(sym)}
+                  className={[
+                    'h-7 rounded-md border px-2.5 text-[11px] transition-colors',
+                    selectedSymbol === sym
+                      ? 'border-indigo-600 bg-indigo-950 text-indigo-300'
+                      : 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200',
+                  ].join(' ')}
+                >
+                  {sym ?? 'All'}
                 </button>
               ))}
             </div>

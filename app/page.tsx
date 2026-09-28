@@ -46,6 +46,7 @@ export default function Home() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
   const [selectedSecType, setSelectedSecType] = useState<string | null>(null);
+  const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/setups?limit=500')
@@ -336,10 +337,11 @@ export default function Home() {
       ? setups.filter((s) =>
           s.setupDate === selectedDate &&
           (!selectedAccount || s.acctNumber === selectedAccount) &&
-          (!selectedSecType || s.secType === selectedSecType),
+          (!selectedSecType || s.secType === selectedSecType) &&
+          (!selectedSymbol || s.symbol === selectedSymbol),
         )
       : [],
-    [setups, selectedDate, selectedAccount, selectedSecType],
+    [setups, selectedDate, selectedAccount, selectedSecType, selectedSymbol],
   );
 
   const recentDays = useMemo(() => {
@@ -680,6 +682,8 @@ export default function Home() {
                   onSelectAccount={setSelectedAccount}
                   selectedSecType={selectedSecType}
                   onSelectSecType={setSelectedSecType}
+                  selectedSymbol={selectedSymbol}
+                  onSelectSymbol={setSelectedSymbol}
                 />
                 {selectedDate !== null && (
                   <DailyDrillDown
