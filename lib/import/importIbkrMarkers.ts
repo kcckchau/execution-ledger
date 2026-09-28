@@ -38,8 +38,9 @@ async function upsertMarkers(records: NormalizedChartMarker[]): Promise<{
   skipped: number;
 }> {
   if (records.length === 0) return { inserted: 0, skipped: 0 };
+  // commission lives on Execution, not ChartMarker — strip it before insert
   const result = await prisma.chartMarker.createMany({
-    data: records,
+    data: records.map(({ commission: _c, ...r }) => r),
     skipDuplicates: true,
   });
   return { inserted: result.count, skipped: records.length - result.count };
