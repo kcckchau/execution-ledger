@@ -44,6 +44,7 @@ export default function Home() {
   const [showDetectModal, setShowDetectModal] = useState(false);
   const [activeView, setActiveView] = useState<ActiveView>('log');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/setups?limit=500')
@@ -330,8 +331,10 @@ export default function Home() {
   );
 
   const selectedDateSetups = useMemo(
-    () => selectedDate ? setups.filter((s) => s.setupDate === selectedDate) : [],
-    [setups, selectedDate],
+    () => selectedDate
+      ? setups.filter((s) => s.setupDate === selectedDate && (!selectedAccount || s.acctNumber === selectedAccount))
+      : [],
+    [setups, selectedDate, selectedAccount],
   );
 
   const recentDays = useMemo(() => {
@@ -668,6 +671,8 @@ export default function Home() {
                   setups={setups}
                   selectedDate={selectedDate}
                   onSelectDate={setSelectedDate}
+                  selectedAccount={selectedAccount}
+                  onSelectAccount={setSelectedAccount}
                 />
                 {selectedDate !== null && (
                   <DailyDrillDown

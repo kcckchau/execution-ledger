@@ -16,6 +16,8 @@ interface CalendarViewProps {
   setups: TradeSetup[];
   selectedDate: string | null;
   onSelectDate: (date: string | null) => void;
+  selectedAccount: string | null;
+  onSelectAccount: (account: string | null) => void;
 }
 
 interface CellProps {
@@ -118,6 +120,8 @@ export default function CalendarView({
   setups,
   selectedDate,
   onSelectDate,
+  selectedAccount,
+  onSelectAccount,
 }: CalendarViewProps) {
   const today = useMemo(() => getTodayInEasternTime(), []);
 
@@ -129,7 +133,6 @@ export default function CalendarView({
   );
   const [typedDate, setTypedDate] = useState<string>('');
   const [typedDateError, setTypedDateError] = useState<string | null>(null);
-  const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
 
   const accounts = useMemo(() => {
     const seen = new Set<string>();
@@ -287,7 +290,7 @@ export default function CalendarView({
             <button
               key={acct ?? 'all'}
               type="button"
-              onClick={() => setSelectedAccount(acct)}
+              onClick={() => onSelectAccount(acct)}
               className={[
                 'h-7 rounded-md border px-2.5 text-[11px] transition-colors',
                 selectedAccount === acct

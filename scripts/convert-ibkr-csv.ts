@@ -28,7 +28,9 @@ type ExecutionType = 'starter' | 'add' | 'trim' | 'exit';
 
 interface CsvRow {
   localTime: string; // "2026-03-30 10:52:49"  (NY wall-clock from CSV)
+  tradeDay: string | null; // YYYY-MM-DD from Flex trade_day column, if present
   symbol: string;
+  secType: string;
   side: Side;
   shares: number;
   price: number;
@@ -149,9 +151,12 @@ function parseCsv(raw: string, symbolFilter?: string): CsvRow[] {
     if (symbolFilter && symbol !== symbolFilter) continue;
     const side = col(cells, 'side') as Side;
     if (side !== 'BOT' && side !== 'SLD') continue;
+    const rawTradeDay = col(cells, 'trade_day');
     rows.push({
       localTime:   col(cells, 'time'),
+      tradeDay:    rawTradeDay && /^\d{4}-\d{2}-\d{2}$/.test(rawTradeDay) ? rawTradeDay : null,
       symbol,
+      secType:     col(cells, 'secType'),
       side,
       shares:      parseFloat(col(cells, 'shares')),
       price:       parseFloat(col(cells, 'price')),
@@ -249,7 +254,22 @@ function main() {
     process.exit(1);
   }
 
-  const tradeDate = rows[0].localTime.split(' ')[0]; // "2026-03-30"
+  // Use trade_day from Flex CSV if present — it is IBKR's authoritative trading session date
+  // and correctly handles futures overnight sessions (e.g. Sunday 6am belongs to Monday session).
+  // Fallback: for non-Flex CSVs, derive from execution timestamp with hour>=17 advancement.
+  let tradeDate: string;
+  if (rows[0].tradeDay) {
+    tradeDate = rows[0].tradeDay;
+  } else {
+    const isFuture = rows[0].secType === 'FUT';
+    const firstHour = parseInt(rows[0].localTime.split(' ')[1]?.split(':')[0] ?? '0', 10);
+    tradeDate = rows[0].localTime.split(' ')[0]; // "2026-03-30"
+    if (isFuture && firstHour >= 17) {
+      const d = new Date(`${tradeDate}T12:00:00Z`);
+      d.setUTCDate(d.getUTCDate() + 1);
+      tradeDate = d.toISOString().slice(0, 10);
+    }
+  }
   const offset    = easternOffset(tradeDate);
   const symbol    = symbolArg ?? rows[0].symbol;
 

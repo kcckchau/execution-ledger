@@ -49,13 +49,31 @@ function parseCsvHeaderAndFirstRow(csvRaw: string): {
 
   const rawTime = values[timeIdx];
   const csvSymbol = values[symbolIdx];
-  const date = rawTime.split(' ')[0];
+  let date = rawTime.split(' ')[0];
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     throw new Error(`Could not parse trade date from CSV time "${rawTime}".`);
   }
   if (!csvSymbol) {
     throw new Error('Could not parse symbol from CSV.');
+  }
+
+  // If normalize_flex_csv.py included trade_day, use it as the authoritative trading session date.
+  // This correctly handles futures overnight sessions where execution timestamps can be on a
+  // different calendar day than the trading session (e.g. Sunday 6am belongs to Monday session).
+  const tradeDayIdx = headers.indexOf('trade_day');
+  if (tradeDayIdx >= 0 && values[tradeDayIdx] && /^\d{4}-\d{2}-\d{2}$/.test(values[tradeDayIdx])) {
+    return { date: values[tradeDayIdx], symbol: csvSymbol };
+  }
+
+  // Fallback for non-Flex CSVs: for futures, executions at or after 17:00 ET belong to the next calendar day's session.
+  const secTypeIdx = headers.indexOf('secType');
+  const secType = secTypeIdx >= 0 ? values[secTypeIdx] : '';
+  const firstHour = parseInt(rawTime.split(' ')[1]?.split(':')[0] ?? '0', 10);
+  if (secType === 'FUT' && firstHour >= 17) {
+    const d = new Date(`${date}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + 1);
+    date = d.toISOString().slice(0, 10);
   }
 
   return { date, symbol: csvSymbol };
