@@ -54,3 +54,4 @@ data/market/**
 result.txt
 src.zip
 diff.txt
+data/ledger.db
