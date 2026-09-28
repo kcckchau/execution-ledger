@@ -286,11 +286,13 @@ function main() {
 
   const compactDate = tradeDate.replace(/-/g, '');
   const acctNumber = rows[0]?.acctNumber || null;
+  const secType = rows[0]?.secType || null;
   const output = {
     symbol,
     tradeDate:    compactDate,
     timezone:     'America/New_York',
     acctNumber,
+    secType,
     rawCount:     rows.length,
     mergedCount:  markers.length,
     markers,

@@ -55,16 +55,21 @@ async function upsertTradeSetup(
   tradeDate: string,
   direction: 'long' | 'short',
   acctNumber?: string | null,
+  secType?: string | null,
 ): Promise<void> {
   await prisma.tradeSetup.upsert({
     where: { id: setupId },
-    update: { ...(acctNumber ? { acctNumber } : {}) },
+    update: {
+      ...(acctNumber ? { acctNumber } : {}),
+      ...(secType ? { secType } : {}),
+    },
     create: {
       id: setupId,
       setupDate: tradeDate,
       symbol,
       direction,
       acctNumber: acctNumber ?? null,
+      secType: secType ?? null,
       setupType: 'VWAP_PLAY',
       triggers: [],
       dayType: null,
@@ -165,7 +170,7 @@ export async function importIbkrMarkersFile(
   const firstStarter = records.find((r) => r.executionType === 'starter');
   const direction: 'long' | 'short' = firstStarter?.side === 'SLD' ? 'short' : 'long';
 
-  await upsertTradeSetup(setupId, resolvedSymbol, resolvedDate, direction, payload.acctNumber);
+  await upsertTradeSetup(setupId, resolvedSymbol, resolvedDate, direction, payload.acctNumber, payload.secType);
   const execResult = await upsertExecutions(setupId, records);
 
   return {

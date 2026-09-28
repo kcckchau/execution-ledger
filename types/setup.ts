@@ -615,6 +615,8 @@ export interface TradeSetup {
   setupName: string | null;
   /** IBKR account number this trade belongs to (e.g. U1234567). Null for legacy records. */
   acctNumber: string | null;
+  /** Asset class: "FUT" for futures, "STK" for stocks/ETFs. Null for legacy records. */
+  secType: string | null;
   executions: Execution[];
   createdAt: string;
   updatedAt: string;

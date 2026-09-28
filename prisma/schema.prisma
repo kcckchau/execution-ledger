@@ -435,6 +435,9 @@ model TradeSetup {
   /// IBKR account number this trade belongs to (e.g. U1234567). Null for legacy records.
   acctNumber String?
 
+  /// Asset class: "FUT" for futures, "STK" for stocks/ETFs. Null for legacy records.
+  secType String?
+
   executions Execution[]
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt

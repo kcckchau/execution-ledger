@@ -268,6 +268,7 @@ export default function SetupForm({
           status: 'open',
           executions: [],
           acctNumber: null,
+          secType: null,
           createdAt: now,
           updatedAt: now,
           dayContext: null,

@@ -18,6 +18,8 @@ interface CalendarViewProps {
   onSelectDate: (date: string | null) => void;
   selectedAccount: string | null;
   onSelectAccount: (account: string | null) => void;
+  selectedSecType: string | null;
+  onSelectSecType: (secType: string | null) => void;
 }
 
 interface CellProps {
@@ -122,6 +124,8 @@ export default function CalendarView({
   onSelectDate,
   selectedAccount,
   onSelectAccount,
+  selectedSecType,
+  onSelectSecType,
 }: CalendarViewProps) {
   const today = useMemo(() => getTodayInEasternTime(), []);
 
@@ -142,9 +146,20 @@ export default function CalendarView({
     return Array.from(seen).sort();
   }, [setups]);
 
+  const secTypes = useMemo(() => {
+    const seen = new Set<string>();
+    for (const s of setups) {
+      if (s.secType) seen.add(s.secType);
+    }
+    return Array.from(seen).sort();
+  }, [setups]);
+
   const filteredSetups = useMemo(
-    () => selectedAccount ? setups.filter((s) => s.acctNumber === selectedAccount) : setups,
-    [setups, selectedAccount],
+    () => setups.filter((s) =>
+      (!selectedAccount || s.acctNumber === selectedAccount) &&
+      (!selectedSecType || s.secType === selectedSecType),
+    ),
+    [setups, selectedAccount, selectedSecType],
   );
 
   const days = useMemo(
@@ -282,25 +297,49 @@ export default function CalendarView({
         )}
       </div>
 
-      {/* ── Account filter ── */}
-      {accounts.length > 1 && (
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] text-zinc-500">Account</span>
-          {[null, ...accounts].map((acct) => (
-            <button
-              key={acct ?? 'all'}
-              type="button"
-              onClick={() => onSelectAccount(acct)}
-              className={[
-                'h-7 rounded-md border px-2.5 text-[11px] transition-colors',
-                selectedAccount === acct
-                  ? 'border-indigo-600 bg-indigo-950 text-indigo-300'
-                  : 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200',
-              ].join(' ')}
-            >
-              {acct ?? 'All'}
-            </button>
-          ))}
+      {/* ── Account + SecType filters ── */}
+      {(accounts.length > 1 || secTypes.length > 1) && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          {accounts.length > 1 && (
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-zinc-500">Account</span>
+              {[null, ...accounts].map((acct) => (
+                <button
+                  key={acct ?? 'all'}
+                  type="button"
+                  onClick={() => onSelectAccount(acct)}
+                  className={[
+                    'h-7 rounded-md border px-2.5 text-[11px] transition-colors',
+                    selectedAccount === acct
+                      ? 'border-indigo-600 bg-indigo-950 text-indigo-300'
+                      : 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200',
+                  ].join(' ')}
+                >
+                  {acct ?? 'All'}
+                </button>
+              ))}
+            </div>
+          )}
+          {secTypes.length > 1 && (
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-zinc-500">Type</span>
+              {[null, ...secTypes].map((st) => (
+                <button
+                  key={st ?? 'all'}
+                  type="button"
+                  onClick={() => onSelectSecType(st)}
+                  className={[
+                    'h-7 rounded-md border px-2.5 text-[11px] transition-colors',
+                    selectedSecType === st
+                      ? 'border-indigo-600 bg-indigo-950 text-indigo-300'
+                      : 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200',
+                  ].join(' ')}
+                >
+                  {st === 'FUT' ? 'Futures' : st === 'STK' ? 'Stocks' : 'All'}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

@@ -67,6 +67,7 @@ export async function parseIbkrMarkersFile(
     tradeDate: obj.tradeDate,
     timezone: typeof obj.timezone === 'string' ? obj.timezone : 'America/New_York',
     acctNumber: typeof obj.acctNumber === 'string' ? obj.acctNumber : null,
+    secType: typeof obj.secType === 'string' ? obj.secType : null,
     rawCount: typeof obj.rawCount === 'number' ? obj.rawCount : obj.markers.length,
     mergedCount:
       typeof obj.mergedCount === 'number' ? obj.mergedCount : obj.markers.length,
